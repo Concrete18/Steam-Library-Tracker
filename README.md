@@ -1,1 +1,1 @@
-# Steam-Library-Tracker
+# Steam Library Tracker
