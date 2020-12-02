@@ -131,3 +131,4 @@ dmypy.json
 # custom
 api_key.txt
 *.db
+*.xlsx
