@@ -4,11 +4,11 @@ ph
 
 ## Game status
 
+* Currently playing
 * Played
 * Unplayed
-* Bad
 * Waiting for updates
-* Currently playing
+* Blacklisted
 
 ## Todo
 
