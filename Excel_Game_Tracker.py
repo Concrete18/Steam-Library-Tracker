@@ -3,34 +3,49 @@ from Excel_Indexer import *
 import datetime as dt
 import openpyxl
 import requests
+import shutil
+import time
 import os
-from openpyxl.styles import Border, Side, Alignment
-from openpyxl.utils import get_column_letter
 
 class Tracker:
+
+    api_key = Check_for_API()
+    file_title = 'game_data'
+    file_path = os.path.join(os.getcwd(), file_title + '.xlsx')
+    wb = openpyxl.load_workbook(file_path)
+    games = wb['Games']
+    column_index, row_index = Create_Column_Row_Index(workbook=games, column_name='Game Name', column_letter='A')
 
 
     def __init__(self, steam_id):
         self.steam_id = str(steam_id)
-        self.api_key = Check_for_API()
-        self.wb = openpyxl.load_workbook(os.path.join(os.getcwd(), 'game_data.xlsx'))
-        self.games = self.wb['Games']
-        self.column_index, self.row_index = Create_Column_Row_Index(workbook=self.games,
-            column_name='Game Name', column_letter='A')
-        self.excel_loc = ''
+
+
+    @staticmethod
+    def playtime_conv(playtime_forever):
+        '''
+        Converts minutes to a written string of minutes(1) or hours(1.0).
+        '''
+        if playtime_forever < 61:
+            playtime_converted = f'{playtime_forever} minutes'
+        else:
+            playtime_converted = f'{round(playtime_forever/60, 1)} hours'
+        return playtime_converted
 
 
     def refresh_steam_games(self):
-        '''Gets games owned by the entered Steam ID.'''
+        '''
+        Gets games owned by the entered Steam ID amd runs excel update functions.
+        '''
         if len(self.steam_id) != 17:
             self.steam_id = input('Invalid Steam ID (It must be 17 numbers.)\nTry Again.\n')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
-        combinded_url = f'''
-        {root_url}?key={self.api_key}&steamid={self.steam_id}&include_played_free_games=0&format=json&include_appinfo=1
-        '''
+        url_var = f'?key={self.api_key}&steamid={self.steam_id}'
+        combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
         data = requests.get(combinded_url).json()
         self.games_updated = 0
         self.games_added = 0
+        added_games = []
         for item in data['response']['games']:
             game_name = item['name']
             playtime_forever = item['playtime_forever']
@@ -38,24 +53,42 @@ class Tracker:
             if playtime_forever == 0:
                 play_status = 'Unplayed'
             else:
-                play_status = 'unset'
+                play_status = 'Unset'
             if game_name in self.row_index.keys():
                 self.update_game(game_name, playtime_forever, play_status)
             else:
                 self.add_steam_game(game_name, playtime_forever, game_appid, play_status)
-        print(f'Games Added: {self.games_added}\nGames Updated: {self.games_updated}')
-        self.wb.save('game_data.xlsx')
+                added_games.append(game_name)
+        print(f'\nGames Added: {self.games_added}')
+        if len(added_games) > 0:
+            added_games_string = ', '.join(added_games)
+            print(added_games_string)
+        print(f'\nGames Updated: {self.games_updated}')
+        # backs up the excel file before updating.
+        shutil.copy(self.file_path, os.path.join(os.getcwd(), self.file_title + '.bak'))
+        Complete = False
+        while Complete != True:
+            try:
+                self.wb.save(self.file_title + '.xlsx')
+                print('\nSave Complete')
+                Complete = True
+            except PermissionError:
+                print("Can't Save Excel File. File is already open.", end='\r')
+                time.sleep(1000)
 
 
     def update_game(self, game_name, playtime_forever, play_status):
+        '''
+        ph
+        '''
         current_playtime = self.games.cell(row=self.row_index[game_name],
-        column=self.column_index['Minutes Played']).value
-        if current_playtime == 'Minutes Played':
+            column=self.column_index['Minutes Played']).value
+        current_platform = self.games.cell(row=self.row_index[game_name], column=self.column_index['Platform']).value
+        if current_playtime == 'Minutes Played' or current_platform != 'Steam':
             return
         else:
             current_playtime = int(current_playtime)
         if playtime_forever > current_playtime:
-            print(game_name, current_playtime)
             self.games.cell(row=self.row_index[game_name],
                 column=self.column_index['Minutes Played']).value = playtime_forever
             self.games.cell(row=self.row_index[game_name],
@@ -65,7 +98,8 @@ class Tracker:
             self.games_updated += 1
             if play_status == 'unset':
                 self.games.cell(row=self.row_index[game_name], column=self.column_index['Play Status']).value = 'Played'
-                print('Test')
+            added_time = self.playtime_conv(playtime_forever - current_playtime)
+            print(f'\n{game_name} updated.\nAdded {added_time}.')
 
 
     def add_steam_game(self, game_name, playtime_forever, game_appid, play_status):
@@ -98,52 +132,15 @@ class Tracker:
         self.games_added += 1
 
 
-    @staticmethod
-    def playtime_conv(playtime_forever):
+    def main(self):
         '''
-        Converts minutes to a written string of minutes(1) or hours(1.0).
+        Main init function.
         '''
-        if playtime_forever < 61:
-            playtime_converted = f'{playtime_forever} minutes'
-        else:
-            playtime_converted = f'{round(playtime_forever/60, 1)} hours'
-        return playtime_converted
-
-
-    def set_styles(self):
-        '''
-        Sets styles for each column.
-        TODO finish centering and setting format for dates and centering of other specific columns.
-        '''
-        border = Border(left=Side(border_style=None, color='FF000000'),
-        right=Side(border_style=None, color='FF000000'),
-        top=Side(border_style=None, color='FF000000'),
-        bottom=Side(border_style=None, color='FF000000'),
-        diagonal=Side(border_style=None, color='FF000000'),
-        diagonal_direction=0,
-        outline=Side(border_style=None, color='FF000000'),
-        vertical=Side(border_style=None, color='FF000000'),
-        horizontal=Side(border_style=None, color='FF000000'))
-        alignment=Alignment(horizontal='general',
-            vertical='bottom',
-            text_rotation=0,
-            wrap_text=True,
-            shrink_to_fit=False,
-            indent=0)
-        number_format = 'Date'
-        date_columns = ['Date Added', 'Last Updated']
-        # for column in self.column_index:
-        #     print(column)
-        #     if column in date_columns:
-        #         column_letter = get_column_letter(self.column_index[column])
-        #         col = self.wb.column_dimensions[column_letter]
-        #         col.border = Bor
-        # col.font = Font(bold=True)
-        # row = self.wbs.row_dimensions[1]
-        # row.font = Font(underline="single")
+        self.refresh_steam_games()
+        input('\nCheck Complete.\nPress Enter to open updated file in Excel.')
+        os.startfile(self.file_path)
 
 
 if __name__ == "__main__":
     App = Tracker(76561197982626192)
-    # App.refresh_steam_games()
-    App.set_styles()
+    App.main()
