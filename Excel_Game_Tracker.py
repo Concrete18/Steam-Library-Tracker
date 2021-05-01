@@ -2,6 +2,7 @@ from Check_for_API_File import Check_for_API
 from Excel_Indexer import *
 import datetime as dt
 import openpyxl
+from openpyxl.styles.borders import Side
 import requests
 import shutil
 import time
@@ -33,6 +34,31 @@ class Tracker:
         return playtime_converted
 
 
+    def format_cells(self, game_name):
+        '''
+        Aligns and adds border to the games cells.
+        '''
+        # alignment setting
+        alignment = openpyxl.styles.alignment.Alignment(
+            horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
+        center_list = [
+            'My Rating', 'Play Status', 'Platform', 'VR Support', 'Release', 'Minutes Played',
+            'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
+        for cell in center_list:
+            self.games.cell(
+                row=self.row_index[game_name], column=self.column_index[cell]).alignment = alignment
+        # border setting
+        border = openpyxl.styles.borders.Border(
+            left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
+            diagonal=None, outline=True, start=None, end=None)
+        border_list = [
+            'My Rating', 'Game Name', 'Play Status', 'Platform', 'VR Support', 'Release', 'Minutes Played',
+            'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
+        for cell in border_list:
+            self.games.cell(
+                row=self.row_index[game_name], column=self.column_index[cell]).border = border
+
+
     def refresh_steam_games(self):
         '''
         Gets games owned by the entered Steam ID amd runs excel update functions.
@@ -59,6 +85,7 @@ class Tracker:
             else:
                 self.add_steam_game(game_name, playtime_forever, game_appid, play_status)
                 added_games.append(game_name)
+            self.format_cells(item['name'])
         print(f'\nGames Added: {self.games_added}')
         if len(added_games) > 0:
             added_games_string = ', '.join(added_games)
@@ -79,13 +106,16 @@ class Tracker:
 
     def update_game(self, game_name, playtime_forever, play_status):
         '''
-        ph
+        Updates the games playtime(if changed) and play status(if unset).
         '''
         current_playtime = self.games.cell(row=self.row_index[game_name],
             column=self.column_index['Minutes Played']).value
         current_platform = self.games.cell(row=self.row_index[game_name], column=self.column_index['Platform']).value
         if current_playtime == 'Minutes Played' or current_platform != 'Steam':
             return
+        elif current_playtime == None:
+            print(f'Missing current_playtime for {game_name}')
+            current_playtime = 0
         else:
             current_playtime = int(current_playtime)
         if playtime_forever > current_playtime:
@@ -117,8 +147,8 @@ class Tracker:
             'Converted Time Played':self.playtime_conv(playtime_forever),
             'App ID':game_appid,
             'Play Status':play_status,
-            'Last Updated':dt.datetime.now(),
-            'Date Added':dt.datetime.now(),
+            'Last Updated':dt.datetime.now().date(),
+            'Date Added':dt.datetime.now().date(),
         }
         append_list = []
         for column in self.column_index:
@@ -128,8 +158,9 @@ class Tracker:
                 append_list.append('')
                 print(f'Missing data for {column}.')
         self.games.append(append_list)
-        # TODO add gridlines to appended rows
         self.games_added += 1
+        # adds game to row_index early
+        self.row_index[game_name] = self.games._current_row
 
 
     def main(self):
@@ -144,3 +175,4 @@ class Tracker:
 if __name__ == "__main__":
     App = Tracker(76561197982626192)
     App.main()
+    # App.align_text()
