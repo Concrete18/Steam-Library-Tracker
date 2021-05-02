@@ -7,6 +7,8 @@ import requests
 import shutil
 import time
 import os
+import re
+
 
 class Tracker:
 
@@ -76,8 +78,16 @@ class Tracker:
             game_name = item['name']
             playtime_forever = item['playtime_forever']
             game_appid = item['appid']
-            if playtime_forever == 0:
+            # sets play_status to Demo if demo or test appears in the name
+            if re.search(r'\bdemo\b', item['name'].lower()) or re.search(r'\btest\b', item['name'].lower()):
+                play_status = 'Demo'
+            # sets play_status to Unplayed if playtime_forever is 0 minutes
+            elif playtime_forever == 0:
                 play_status = 'Unplayed'
+            # sets play_status to Played if playtime_forever is greater then 600 minutes
+            elif item['playtime_windows_forever'] > 600:
+                play_status = 'Played'
+            # sets play_status to Unset if none of the above applies
             else:
                 play_status = 'Unset'
             if game_name in self.row_index.keys():
@@ -94,14 +104,14 @@ class Tracker:
         # backs up the excel file before updating.
         shutil.copy(self.file_path, os.path.join(os.getcwd(), self.file_title + '.bak'))
         Complete = False
+        print('\nTrying to save. Make sure the excel sheet is closed.')
         while Complete != True:
             try:
                 self.wb.save(self.file_title + '.xlsx')
-                print('\nSave Complete')
+                print('Save Complete')
                 Complete = True
             except PermissionError:
-                print("Can't Save Excel File. File is already open.", end='\r')
-                time.sleep(1000)
+                time.sleep(.1)
 
 
     def update_game(self, game_name, playtime_forever, play_status):
@@ -167,6 +177,7 @@ class Tracker:
         '''
         Main init function.
         '''
+        print('Starting Game Tracker Update')
         self.refresh_steam_games()
         input('\nCheck Complete.\nPress Enter to open updated file in Excel.')
         os.startfile(self.file_path)
