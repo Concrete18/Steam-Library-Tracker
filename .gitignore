@@ -133,3 +133,5 @@ api_key.txt
 *.db
 *.xlsx
 *.bak
+*.xml
+*.png
