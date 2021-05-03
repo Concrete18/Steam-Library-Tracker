@@ -1,14 +1,10 @@
 import openpyxl
 from openpyxl.styles.borders import Side
 import datetime as dt
-import requests
-import shutil
-import time
-import os
-import re
+import requests, random, shutil, time, json, os, re
 
 
-class indexer:
+class Indexer:
 
 
     def column_index(self, workbook):
@@ -49,19 +45,20 @@ class indexer:
 
 class Tracker:
 
-    excel_filename = 'Game Sheet'
+    # config init
+    with open('config.json') as file:
+        data = json.load(file)
+    steam_id = str(data['settings']['steam_id'])
+    excel_filename = data['settings']['excel_filename']
+    # var init
     file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
     wb = openpyxl.load_workbook(file_path)
     games = wb['Games']
-    excel = indexer()
+    excel = Indexer()
     column_index, row_index = excel.create_column_row_index(
         workbook=games,
         column_name='Game Name',
         column_letter='A')
-
-
-    def __init__(self, steam_id):
-        self.steam_id = str(steam_id)
 
 
     @staticmethod
@@ -120,17 +117,18 @@ class Tracker:
 
     def refresh_steam_games(self):
         '''
-        Gets games owned by the entered Steam ID amd runs excel update functions.
+        Gets games owned by the entered Steam ID amd runs excel update/add functions.
         '''
+        # asks for a steam id if the given one is invalid
         if len(self.steam_id) != 17:
             self.steam_id = input('Invalid Steam ID (It must be 17 numbers.)\nTry Again.\n')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
         url_var = f'?key={self.get_api_key()}&steamid={self.steam_id}'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
         data = requests.get(combinded_url).json()
-        self.games_updated = 0
-        self.games_added = 0
-        added_games = []
+        self.total_games_updated = 0
+        self.total_games_added = 0
+        self.added_games = []
         for item in data['response']['games']:
             game_name = item['name']
             playtime_forever = item['playtime_forever']
@@ -151,18 +149,19 @@ class Tracker:
                 self.update_game(game_name, playtime_forever, play_status)
             else:
                 self.add_game(game_name, playtime_forever, game_appid, play_status)
-                added_games.append(game_name)
+                self.added_games.append(game_name)
             self.format_cells(item['name'])
-        print(f'\nGames Added: {self.games_added}')
-        if len(added_games) > 0:
-            added_games_string = ', '.join(added_games)
-            print(added_games_string)
-        print(f'\nGames Updated: {self.games_updated}')
-        # backs up the excel file before updating
+
+
+    def save_excel_sheet(self):
+        '''
+        Backs up the excel file before saving the changes.
+        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+        '''
         shutil.copy(self.file_path, os.path.join(os.getcwd(), self.excel_filename + '.bak'))
         # saves the file once it is closed
         complete = False
-        print('\nTrying to save.\nMake sure the excel sheet is closed.')
+        print('\nSaving.\nMake sure the excel sheet is closed.')
         while complete != True:
             try:
                 self.wb.save(self.excel_filename + '.xlsx')
@@ -193,7 +192,7 @@ class Tracker:
                 column=self.column_index['Converted Time Played']).value = self.playtime_conv(playtime_forever)
             self.games.cell(row=self.row_index[game_name],
                 column=self.column_index['Last Updated']).value = dt.datetime.now()
-            self.games_updated += 1
+            self.total_games_updated += 1
             if play_status == 'unset':
                 self.games.cell(row=self.row_index[game_name], column=self.column_index['Play Status']).value = 'Played'
             added_time = self.playtime_conv(playtime_forever - current_playtime)
@@ -226,9 +225,30 @@ class Tracker:
                 append_list.append('')
                 print(f'Missing data for {column}.')
         self.games.append(append_list)
-        self.games_added += 1
+        self.total_games_added += 1
         # adds game to row_index
         self.row_index[game_name] = self.games._current_row
+
+
+    def pick_random_game(self):
+        '''
+        Allows you to pick a play_status to have a random game chosen from. It allows retrying.
+        '''
+        if input('\nDo you want to pick a random game with a specific play status?').lower() in ['yes', 'y', 'yeah']:
+            print('What play status do you want a random game picked from?')
+            play_status_choices = ['Played', 'Playing', 'Waiting', 'Finished', 'Quit', 'Unplayed', 'Ignore', 'Demo']
+            play_status = input(', '.join(play_status_choices) + '\n')
+            choice_list = []
+            for game, index in self.row_index.items():
+                game_play_status = self.games.cell(row=index, column=self.column_index['Play Status']).value.lower()
+                if game_play_status == play_status.lower():
+                    choice_list.append(game)
+            picked_game = random.choice(choice_list)
+            print(f'\nPicked game:\n{picked_game}')
+            # allows getting another random pick
+            while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
+                picked_game = random.choice(choice_list)
+                print(f'\nPicked game:\n{picked_game}')
 
 
     def run(self):
@@ -237,9 +257,20 @@ class Tracker:
         '''
         print('Starting Game Tracker Update')
         self.refresh_steam_games()
-        input('\nCheck Complete.\nPress Enter to open updated file in Excel.')
-        os.startfile(self.file_path)  # opens excel file if previous input is passed
+        # shows total games added and updated(includes info that was updated)
+        print(f'\nGames Added: {self.total_games_added}')
+        if len(self.added_games) > 0:
+            added_games_string = ', '.join(self.added_games)
+            print(added_games_string)
+        print(f'\nGames Updated: {self.total_games_updated}')
+        self.save_excel_sheet()
+        try:
+            self.pick_random_game()
+            input('\nPress Enter to open updated file in Excel.\n')
+            os.startfile(self.file_path)  # opens excel file if previous input is passed
+        except KeyboardInterrupt:
+            print('Closing')
 
 
 if __name__ == "__main__":
-    Tracker(76561197982626192).run()
+    Tracker().run()
