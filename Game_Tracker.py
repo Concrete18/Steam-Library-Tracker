@@ -3,6 +3,7 @@ import openpyxl
 import requests, random, shutil, time, json, os, re
 import datetime as dt
 from howlongtobeatpy import HowLongToBeat
+from tqdm import tqdm
 
 
 class Indexer:
@@ -10,7 +11,7 @@ class Indexer:
 
     def __init__(self, excel_filename, workbook_name, column_name, column_letter):
         '''
-        ph
+        Class object init.
         '''
         self.script_dir = ''
         self.excel_filename = excel_filename
@@ -81,24 +82,25 @@ class Indexer:
             exit()
 
 
-    def update_cell(self, game_name, column, value):
+    def update_cell(self, row_value, column_value, string):
         '''
-        ph
+        Updates the given cell based on row and column to the given value.
+        if row_value is not a string, it will be considered an exact index instead.
         '''
-        self.cur_workbook.cell(
-            row=self.row_index[game_name],
-            column=self.column_index[column]
-            ).value = value
+        if type(row_value) == str:
+            self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value = string
+        else:
+            self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value = string
 
 
-    def get_cell(self, game_name, column):
+    def get_cell(self, row_value, column_value):
         '''
         Gets the cell value based on the row and column
         '''
-        return self.cur_workbook.cell(
-            row=self.row_index[game_name],
-            column=self.column_index[column]
-            ).value
+        if type(row_value) == str:
+            return self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value
+        else:
+            return self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value
 
 
 class Tracker:
@@ -171,21 +173,21 @@ class Tracker:
                 return round(float(time_to_beat)/60, 1)  # converts minutes to hours
 
 
-    def get_time_to_beat(self):
+    def time_to_beat_loop(self):
         '''
         Uses howlongtobeatpy to get the time to beat for each game in the row_index.
         '''
         skip_filled = 1
         time_to_beat_column_name = 'Time To Beat in Hours'
         try:
-            for game_name in self.excel.row_index:
+            for game_name in tqdm(self.excel.row_index):
                 if skip_filled:
                     hltb = self.excel.get_cell(game_name, time_to_beat_column_name)
                     if hltb != None:
                         continue
                 start = time.perf_counter()
                 play_status = self.excel.get_cell(game_name, 'Play Status')
-                if play_status in ['Unplayed', 'Playing', 'Played']:
+                if play_status in ['Unplayed', 'Playing', 'Played', 'Finished']:
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat != None:
                         self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
@@ -197,7 +199,7 @@ class Tracker:
         except KeyboardInterrupt:
             print('\nCancelled')
         finally:
-            self.save_excel_sheet()
+            self.excel.save_excel_sheet()
 
 
     def refresh_steam_games(self, steam_id):
@@ -322,7 +324,7 @@ class Tracker:
                 play_status = play_status_choices[play_status]
             choice_list = []
             for game, index in self.excel.row_index.items():
-                game_play_status = self.games.cell(row=index, column=self.column_index['Play Status']).value.lower()
+                game_play_status = self.excel.get_cell(index, 'Play Status').lower()
                 if game_play_status == play_status.lower():
                     choice_list.append(game)
             picked_game = random.choice(choice_list)
@@ -346,7 +348,8 @@ class Tracker:
                 added_games_string = ', '.join(self.added_games)
                 print(added_games_string)
             print(f'\nGames Updated: {self.total_games_updated}')
-            self.excel.save_excel_sheet()
+            if self.total_games_updated > 0 or self.total_games_added > 0:  # skips save if nothing is new
+                self.excel.save_excel_sheet()
         try:
             self.pick_random_game()
             input('\nPress Enter to open updated file in Excel.\n')
@@ -357,4 +360,4 @@ class Tracker:
 
 if __name__ == "__main__":
     Tracker().run()
-    # Tracker().get_time_to_beat()
+    # Tracker().time_to_beat_loop()
