@@ -8,57 +8,97 @@ from howlongtobeatpy import HowLongToBeat
 class Indexer:
 
 
-    def column_index(self, workbook):
+    def __init__(self, excel_filename, workbook_name, column_name, column_letter):
         '''
-        Creates excel sheet index based on column names such as Anime name and Score.
-        The starting_row var is the number of the row that the main column is on.
+        ph
         '''
-        column_index = {}
-        for i in range(1, len(workbook['1'])+1):
-            title = workbook.cell(row=1, column=i).value
-            if title is not None:
-                column_index[title] = i
-        return column_index
+        self.script_dir = ''
+        self.excel_filename = excel_filename
+        self.file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
+        self.wb = openpyxl.load_workbook(self.file_path)
+        self.cur_workbook = self.wb[workbook_name]
+        self.column_name = column_name
+        self.column_letter = column_letter
+        # column and row indexcs
+        self.row_index, self.column_index = self.create_column_row_index()
 
 
-    def row_index(self, workbook, column_name, column_letter):
-        '''
-        Creates excel sheet index based on anime names.
-        The starting_col var is the number of the column that the main column is on.
-        '''
-        column_index = self.column_index(workbook, )
-        row_index = {}
-        for i in range(1, len(workbook[column_letter])):
-            title = workbook.cell(row=i+1, column=column_index[column_name]).value
-            if title is not None:
-                row_index[title] = i+1
-        return row_index
-
-
-    def create_column_row_index(self, workbook=None, column_name=None, column_letter='B'):
+    def create_column_row_index(self):
         '''
         Creates the column and row index.
         '''
-        column_index = self.column_index(workbook)
-        row_index = self.row_index(workbook, column_name, column_letter)
-        return column_index, row_index
+        # column
+        column_index = {}
+        for i in range(1, len(self.cur_workbook['1'])+1):
+            title = self.cur_workbook.cell(row=1, column=i).value
+            if title is not None:
+                column_index[title] = i
+        # row
+        row_index = {}
+        for i in range(1, len(self.cur_workbook[self.column_letter])):
+            title = self.cur_workbook.cell(row=i+1, column=column_index[self.column_name]).value
+            if title is not None:
+                row_index[title] = i+1
+        return row_index, column_index
 
 
-    # TODO move excel stuff into this class
+    def format_cells(self, game_name, center_list, border_list):
+        '''
+        Aligns specific columns to center and adds border to cells.
+        '''
+        # alignment setting
+        alignment = openpyxl.styles.alignment.Alignment(
+            horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
+        for cell in center_list:
+            self.cur_workbook.cell(row=self.row_index[game_name], column=self.column_index[cell]).alignment = alignment
+        # border setting
+        border = openpyxl.styles.borders.Border(
+            left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
+            diagonal=None, outline=True, start=None, end=None)
+        for cell in border_list:
+            self.cur_workbook.cell(row=self.row_index[game_name], column=self.column_index[cell]).border = border
 
 
-    def update_cell(self):
+    def save_excel_sheet(self):
+        '''
+        Backs up the excel file before saving the changes.
+        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+        '''
+        try:
+            shutil.copy(self.file_path, os.path.join(os.getcwd(), self.excel_filename + '.bak'))
+            # saves the file once it is closed
+            complete = False
+            print('\nSaving.\nMake sure the excel sheet is closed.')
+            while complete != True:
+                try:
+                    self.wb.save(self.excel_filename + '.xlsx')
+                    print('Save Complete.')
+                    complete = True
+                except PermissionError:
+                    time.sleep(.1)
+        except KeyboardInterrupt:
+            print('\nCancelling Save')
+            exit()
+
+
+    def update_cell(self, game_name, column, value):
         '''
         ph
         '''
-        pass
+        self.cur_workbook.cell(
+            row=self.row_index[game_name],
+            column=self.column_index[column]
+            ).value = value
 
 
-    def view_cell(self):
+    def get_cell(self, game_name, column):
         '''
-        ph
+        Gets the cell value based on the row and column
         '''
-        pass
+        return self.cur_workbook.cell(
+            row=self.row_index[game_name],
+            column=self.column_index[column]
+            ).value
 
 
 class Tracker:
@@ -69,15 +109,22 @@ class Tracker:
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
     # var init
+    date_format = '%m/%d/%Y'
+    # Indexer init
     file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
     wb = openpyxl.load_workbook(file_path)
     games = wb['Games']
-    excel = Indexer()
-    column_index, row_index = excel.create_column_row_index(
-        workbook=games,
+    excel = Indexer(
+        excel_filename=excel_filename,
+        workbook_name='Games',
         column_name='Game Name',
-        column_letter='A')
-    date_format = '%m/%d/%Y'
+        column_letter='B')
+    center_list = [
+        'My Rating', 'Play Status', 'Platform', 'VR Support', 'Time To Beat in Hours', 'Minutes Played',
+        'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
+    border_list = [
+        'My Rating', 'Game Name', 'Play Status', 'Platform', 'VR Support', 'Time To Beat in Hours',
+        'Minutes Played', 'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
 
 
     @staticmethod
@@ -109,69 +156,48 @@ class Tracker:
             return f'{round(playtime_forever/60, 1)} hours'
 
 
+    def get_time_to_beat(self, game_name):
+        '''
+        Uses howlongtobeatpy to get the time to beat for entered game.
+        '''
+        results = HowLongToBeat().search(game_name)
+        if results is not None and len(results) > 0:
+            best_element = max(results, key=lambda element: element.similarity)
+            time_to_beat = str(best_element.gameplay_main).replace('½','.5')
+            time_to_beat_unit = best_element.gameplay_main_unit
+            if time_to_beat_unit == None:
+                return None
+            elif time_to_beat_unit != 'Hours':
+                return round(float(time_to_beat)/60, 1)  # converts minutes to hours
+
+
     def get_time_to_beat(self):
         '''
-        ph
+        Uses howlongtobeatpy to get the time to beat for each game in the row_index.
         '''
         skip_filled = 1
         time_to_beat_column_name = 'Time To Beat in Hours'
         try:
-            for game_name in self.row_index:
+            for game_name in self.excel.row_index:
                 if skip_filled:
-                    hltb = self.games.cell(row=self.row_index[game_name],
-                        column=self.column_index[time_to_beat_column_name]).value
+                    hltb = self.excel.get_cell(game_name, time_to_beat_column_name)
                     if hltb != None:
                         continue
                 start = time.perf_counter()
-                play_status = self.games.cell(row=self.row_index[game_name],
-                    column=self.column_index['Play Status']).value
+                play_status = self.excel.get_cell(game_name, 'Play Status')
                 if play_status in ['Unplayed', 'Playing', 'Played']:
-                    results = HowLongToBeat().search(game_name)
-                    if results is not None and len(results) > 0:
-                        best_element = max(results, key=lambda element: element.similarity)
-                        time_to_beat = str(best_element.gameplay_main).replace('½','.5')
-                        time_to_beat_unit = best_element.gameplay_main_unit
-                        if time_to_beat_unit == None:
-                            continue
-                        elif time_to_beat_unit != 'Hours':
-                            time_to_beat = round(float(time_to_beat)/60, 1)  # converts minutes to hours
-                        print(best_element.game_name, time_to_beat, time_to_beat_unit)
-                        # TODO switch to hours only
-                        self.games.cell(row=self.row_index[game_name],
-                            column=self.column_index[time_to_beat_column_name]).value = time_to_beat
+                    time_to_beat = self.get_time_to_beat(game_name)
+                    if time_to_beat != None:
+                        self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
+                    else:
+                        continue
                 end = time.perf_counter()
-                print('Time to check', round(end-start, 2))
                 if end-start < 2:
                     time.sleep(1)
         except KeyboardInterrupt:
             print('\nCancelled')
         finally:
             self.save_excel_sheet()
-
-
-    def format_cells(self, game_name):
-        '''
-        Aligns specific columns to center and adds border to cells.
-        '''
-        # alignment setting
-        alignment = openpyxl.styles.alignment.Alignment(
-            horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
-        center_list = [
-            'My Rating', 'Play Status', 'Platform', 'VR Support', 'Release', 'Minutes Played',
-            'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
-        for cell in center_list:
-            self.games.cell(
-                row=self.row_index[game_name], column=self.column_index[cell]).alignment = alignment
-        # border setting
-        border = openpyxl.styles.borders.Border(
-            left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
-            diagonal=None, outline=True, start=None, end=None)
-        border_list = [
-            'My Rating', 'Game Name', 'Play Status', 'Platform', 'VR Support', 'Release', 'Minutes Played',
-            'Converted Time Played', 'App ID', 'Last Updated', 'Date Added']
-        for cell in border_list:
-            self.games.cell(
-                row=self.row_index[game_name], column=self.column_index[cell]).border = border
 
 
     def refresh_steam_games(self, steam_id):
@@ -210,13 +236,13 @@ class Tracker:
                 else:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
-                if game_name in self.row_index.keys():
+                if game_name in self.excel.row_index.keys():
                     self.update_game(game_name, playtime_forever, play_status)
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
                     self.added_games.append(game_name)
                 # formats the added/updated cells to be sure it is set right
-                self.format_cells(game['name'])
+                self.excel.format_cells(game['name'], self.center_list, self.border_list)
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -226,31 +252,12 @@ class Tracker:
             return False
 
 
-    def save_excel_sheet(self):
-        '''
-        Backs up the excel file before saving the changes.
-        It will keep trying to save until it completes in case of permission errors caused by the file being open.
-        '''
-        shutil.copy(self.file_path, os.path.join(os.getcwd(), self.excel_filename + '.bak'))
-        # saves the file once it is closed
-        complete = False
-        print('\nSaving.\nMake sure the excel sheet is closed.')
-        while complete != True:
-            try:
-                self.wb.save(self.excel_filename + '.xlsx')
-                print('Save Complete.')
-                complete = True
-            except PermissionError:
-                time.sleep(.1)
-
-
     def update_game(self, game_name, playtime_forever, play_status):
         '''
         Updates the games playtime(if changed) and play status(if unset).
         '''
-        current_playtime = self.games.cell(row=self.row_index[game_name],
-            column=self.column_index['Minutes Played']).value
-        current_platform = self.games.cell(row=self.row_index[game_name], column=self.column_index['Platform']).value
+        current_playtime = self.excel.get_cell(game_name, 'Minutes Played')
+        current_platform = self.excel.get_cell(game_name, 'Platform')
         if current_playtime == 'Minutes Played' or current_platform != 'Steam':
             return
         elif current_playtime == None:
@@ -259,15 +266,12 @@ class Tracker:
         else:
             current_playtime = int(current_playtime)
         if playtime_forever > current_playtime:
-            self.games.cell(row=self.row_index[game_name],
-                column=self.column_index['Minutes Played']).value = playtime_forever
-            self.games.cell(row=self.row_index[game_name],
-                column=self.column_index['Converted Time Played']).value = self.playtime_conv(playtime_forever)
-            self.games.cell(row=self.row_index[game_name],
-                column=self.column_index['Last Updated']).value = dt.datetime.now().strftime(self.date_format)
+            self.excel.update_cell(game_name, 'Minutes Played', playtime_forever)
+            self.excel.update_cell(game_name, 'Converted Time Played', self.playtime_conv(playtime_forever))
+            self.excel.update_cell(game_name, 'Last Updated', dt.datetime.now().strftime(self.date_format))
             self.total_games_updated += 1
             if play_status == 'unset':
-                self.games.cell(row=self.row_index[game_name], column=self.column_index['Play Status']).value = 'Played'
+                self.excel.update_cell(game_name, 'Play Status', 'Played')
             added_time = self.playtime_conv(playtime_forever - current_playtime)
             print(f'\n > {game_name} updated.\n   Added {added_time}.')
 
@@ -280,27 +284,27 @@ class Tracker:
         column_info = {
             'My Rating':'',
             'Game Name':game_name,
+            'Play Status':play_status,
             'Platform':'Steam',
-            'Release':'',
             'VR Support':'',
+            'Time To Beat in Hours':'',
             'Minutes Played':playtime_forever,
             'Converted Time Played':self.playtime_conv(playtime_forever),
             'App ID':game_appid,
-            'Play Status':play_status,
             'Last Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
         }
         append_list = []
-        for column in self.column_index:
+        for column in self.excel.column_index:
             if column in column_info:
                 append_list.append(column_info[column])
             else:
                 append_list.append('')
-                print(f'Missing data for {column}.')
-        self.games.append(append_list)
+                # print(f'Missing data for {column}.')
+        self.excel.cur_workbook.append(append_list)
         self.total_games_added += 1
         # adds game to row_index
-        self.row_index[game_name] = self.games._current_row
+        self.excel.row_index[game_name] = self.excel.cur_workbook._current_row
 
 
     def pick_random_game(self):
@@ -317,7 +321,7 @@ class Tracker:
             if len(play_status) == 1:
                 play_status = play_status_choices[play_status]
             choice_list = []
-            for game, index in self.row_index.items():
+            for game, index in self.excel.row_index.items():
                 game_play_status = self.games.cell(row=index, column=self.column_index['Play Status']).value.lower()
                 if game_play_status == play_status.lower():
                     choice_list.append(game)
@@ -342,7 +346,7 @@ class Tracker:
                 added_games_string = ', '.join(self.added_games)
                 print(added_games_string)
             print(f'\nGames Updated: {self.total_games_updated}')
-            self.save_excel_sheet()
+            self.excel.save_excel_sheet()
         try:
             self.pick_random_game()
             input('\nPress Enter to open updated file in Excel.\n')
@@ -352,5 +356,5 @@ class Tracker:
 
 
 if __name__ == "__main__":
-    # Tracker().run()
-    Tracker().get_time_to_beat()
+    Tracker().run()
+    # Tracker().get_time_to_beat()
