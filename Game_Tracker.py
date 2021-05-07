@@ -179,14 +179,16 @@ class Tracker:
         results = HowLongToBeat().search(game_name)
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
-            time_to_beat = str(best_element.gameplay_main).replace('½','.5')
+            time_to_beat = float(str(best_element.gameplay_main).replace('½','.5'))
             time_to_beat_unit = best_element.gameplay_main_unit
             if time_to_beat_unit == None:
                 return 'Unknown'
             elif time_to_beat_unit != 'Hours':
-                return round(float(time_to_beat)/60, 1)  # converts minutes to hours
+                return round(time_to_beat/60, 1)  # converts minutes to hours
+            else:
+                return time_to_beat
         else:
-            return 'Unknown'
+            return 'Not Found'
 
 
     def get_metacritic_score(self, game_name, platform='pc', delay=1):
@@ -238,9 +240,11 @@ class Tracker:
                 check_list.append(game)
         missing_data = len(check_list)
         if missing_data != 0:
-            msg = f'\nSome data is missing for {missing_data} games. Do you want to retrieve it?\n'
+            msg = f'\nSome data is missing for {missing_data} games.\nDo you want to retrieve it?\n'
             if not input(msg) in ['yes', 'y']:
                 return
+        else:
+            return
         try:
             print('\nStarting Time To Beat and Metacritic Score check.')
             for game_name in tqdm(iterable=check_list, ascii=True, unit='games', dynamic_ncols=True):
@@ -274,7 +278,12 @@ class Tracker:
             print('Internet Error')
             return False
         if data.status_code == requests.codes.ok:
-            self.removed_from_steams = list(self.excel.row_index.keys())
+            self.removed_from_steams = []
+            # checks for games that changed names
+            # TODO switch to using appid
+            for game in self.excel.row_index.keys():
+                if self.excel.get_cell(game, 'Platform') == 'Steam':
+                    self.removed_from_steams.append(str(game))
             self.total_games_updated = 0
             self.total_games_added = 0
             self.added_games = []
@@ -296,16 +305,19 @@ class Tracker:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
                 if game_name in self.excel.row_index.keys():
-                    print(game_name)
-                    self.removed_from_steams.remove(game_name)
+                    try:
+                        self.removed_from_steams.remove(game_name)
+                    except ValueError:
+                        # This is for ignoring duplicates that should not exist.
+                        pass
                     self.update_game(game_name, playtime_forever, play_status)
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
                     self.added_games.append(game_name)
                 # formats the added/updated cells to be sure it is set right
                 self.excel.format_cells(game['name'], do_not_center_list=self.do_not_center_list)
-            print(self.removed_from_steams)
-            input()
+            if len(self.removed_from_steams) > 0:
+                print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steams)}')
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -358,7 +370,7 @@ class Tracker:
             'VR Support':vr_support,
             'Time To Beat in Hours':time_to_beat,
             'Metacritic Score':metacritic_score,
-            # TODO add
+            # TODO add working formula that uses correct letters
             # 'Probable Completion':f'=IFERROR((G{1018}/60)/F{1018},0)',
             'Probable Completion':'',
             'Minutes Played':playtime_forever,
@@ -407,20 +419,23 @@ class Tracker:
         print('Starting Game Tracker')
         if self.refresh_steam_games(self.steam_id):
             # shows total games added and updated(includes info that was updated)
-            print(f'\nGames Added: {self.total_games_added}')
-            if len(self.added_games) > 0:
-                added_games_string = ', '.join(self.added_games)
-                print(added_games_string)
-            print(f'\nGames Updated: {self.total_games_updated}')
+            if self.total_games_added > 0:
+                print(f'\nGames Added: {self.total_games_added}')
+                if len(self.added_games) > 0:
+                    print(', '.join(self.added_games))
+            if self.total_games_updated > 0:
+                print(f'\nGames Updated: {self.total_games_updated}')
             if self.total_games_updated > 0 or self.total_games_added > 0:  # skips save if nothing is new
                 self.excel.save_excel_sheet()
+            else:
+                print('\nNo games wered added or updated.')
         try:
             self.requests_loop()
             self.pick_random_game()
             input('\nPress Enter to open updated file in Excel.\n')
             os.startfile(self.file_path)  # opens excel file if previous input is passed
         except KeyboardInterrupt:
-            print('Closing')
+            print('\nClosing')
 
 
 if __name__ == "__main__":
