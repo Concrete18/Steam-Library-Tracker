@@ -15,7 +15,6 @@ class Indexer:
         '''
         Class object init.
         '''
-        self.script_dir = ''
         self.excel_filename = excel_filename
         self.file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
         self.wb = openpyxl.load_workbook(self.file_path)
@@ -23,6 +22,7 @@ class Indexer:
         self.column_name = column_name
         self.column_letter = column_letter
         # column and row indexcs
+        # TODO split and add optional change of self.column_name for row_index
         self.row_index, self.column_index = self.create_column_row_index()
 
 
@@ -127,9 +127,11 @@ class Tracker:
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
     # var init
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
     date_format = '%m/%d/%Y'
     # Indexer init
-    file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
+    file_path = os.path.join(script_dir, excel_filename + '.xlsx')
     wb = openpyxl.load_workbook(file_path)
     games = wb['Games']
     excel = Indexer(
@@ -141,8 +143,7 @@ class Tracker:
     do_not_border_list = []
 
 
-    @staticmethod
-    def get_api_key():
+    def get_api_key(self):
         '''
         Checks for an api_key.txt so it can retrieve the key. If it does not exists,
         it will ask for an API key so it can create an api_key.txt file.
@@ -152,7 +153,7 @@ class Tracker:
                 return f.read()
         else:
             api_key = ''
-            with open(os.path.join(os.getcwd(), 'api_key.txt'), 'w') as f:
+            with open(os.path.join(self.script_dir, 'api_key.txt'), 'w') as f:
                 while len(api_key) != 32:
                     api_key = input('Enter your Steam API Key.\n')
                 f.write(api_key)
@@ -268,7 +269,7 @@ class Tracker:
         '''
         # asks for a steam id if the given one is invalid
         if len(steam_id) != 17:
-            steam_id = input('Invalid Steam ID (It must be 17 numbers.)\nTry Again.\n')
+            steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
         url_var = f'?key={self.get_api_key()}&steamid={steam_id}'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
@@ -440,4 +441,3 @@ class Tracker:
 
 if __name__ == "__main__":
     Tracker().run()
-    # Tracker().requests_loop()
