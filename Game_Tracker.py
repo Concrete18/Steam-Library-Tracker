@@ -21,28 +21,33 @@ class Indexer:
         self.cur_workbook = self.wb[workbook_name]
         self.column_name = column_name
         self.column_letter = column_letter
-        # column and row indexcs
-        # TODO split and add optional change of self.column_name for row_index
-        self.row_index, self.column_index = self.create_column_row_index()
+        # column and row indexes
+        self.column_index = self.create_column_index()
+        self.row_index = self.create_row_index(self.column_name)
 
 
-    def create_column_row_index(self):
+    def create_column_index(self):
         '''
-        Creates the column and row index.
+        Creates the column index.
         '''
-        # column
         column_index = {}
         for i in range(1, len(self.cur_workbook['1'])+1):
             title = self.cur_workbook.cell(row=1, column=i).value
             if title is not None:
                 column_index[title] = i
-        # row
+        return column_index
+
+
+    def create_row_index(self, column_name):
+        '''
+        Creates the row index.
+        '''
         row_index = {}
         for i in range(1, len(self.cur_workbook[self.column_letter])):
-            title = self.cur_workbook.cell(row=i+1, column=column_index[self.column_name]).value
+            title = self.cur_workbook.cell(row=i+1, column=self.column_index[column_name]).value
             if title is not None:
                 row_index[title] = i+1
-        return row_index, column_index
+        return row_index
 
 
     def format_cells(self, game_name, do_not_center_list=[], do_not_border_list=[]):
@@ -83,6 +88,16 @@ class Indexer:
             exit()
 
 
+    def get_cell(self, row_value, column_value):
+        '''
+        Gets the cell value based on the row and column
+        '''
+        if type(row_value) == str:
+            return self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value
+        else:
+            return self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value
+
+
     def update_cell(self, row_value, column_value, string):
         '''
         Updates the given cell based on row and column to the given value.
@@ -92,16 +107,6 @@ class Indexer:
             self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value = string
         else:
             self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value = string
-
-
-    def get_cell(self, row_value, column_value):
-        '''
-        Gets the cell value based on the row and column
-        '''
-        if type(row_value) == str:
-            return self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value
-        else:
-            return self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value
 
 
     def add_new_cell(self, cell_dict):
