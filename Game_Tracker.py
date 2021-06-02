@@ -1,6 +1,6 @@
 from openpyxl.styles.borders import Side
 import openpyxl
-import requests, random, shutil, json, os, re
+import requests, random, shutil, json, os, re, sys
 from time import sleep
 import datetime as dt
 from howlongtobeatpy import HowLongToBeat
@@ -9,6 +9,10 @@ from tqdm import tqdm
 
 
 class Indexer:
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+    changes_made = 0
 
 
     def __init__(self, excel_filename, workbook_name, column_name, column_letter):
@@ -22,32 +26,32 @@ class Indexer:
         self.column_name = column_name
         self.column_letter = column_letter
         # column and row indexes
-        self.column_index = self.create_column_index()
-        self.row_index = self.create_row_index(self.column_name)
+        self.column_i = self.create_column_index()
+        self.row_i = self.create_row_index(self.column_name)
 
 
     def create_column_index(self):
         '''
         Creates the column index.
         '''
-        column_index = {}
+        column_i = {}
         for i in range(1, len(self.cur_workbook['1'])+1):
             title = self.cur_workbook.cell(row=1, column=i).value
             if title is not None:
-                column_index[title] = i
-        return column_index
+                column_i[title] = i
+        return column_i
 
 
     def create_row_index(self, column_name):
         '''
         Creates the row index.
         '''
-        row_index = {}
+        row_i = {}
         for i in range(1, len(self.cur_workbook[self.column_letter])):
-            title = self.cur_workbook.cell(row=i+1, column=self.column_index[column_name]).value
+            title = self.cur_workbook.cell(row=i+1, column=self.column_i[column_name]).value
             if title is not None:
-                row_index[title] = i+1
-        return row_index
+                row_i[title] = i+1
+        return row_i
 
 
     def format_cells(self, game_name, do_not_center_list=[], do_not_border_list=[]):
@@ -59,33 +63,11 @@ class Indexer:
         border = openpyxl.styles.borders.Border(
             left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
             diagonal=None, outline=True, start=None, end=None)
-        for cell in self.column_index.keys():
+        for cell in self.column_i.keys():
             if cell not in do_not_center_list:
-                self.cur_workbook.cell(row=self.row_index[game_name], column=self.column_index[cell]).alignment = align
+                self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).alignment = align
             if cell not in do_not_border_list:
-                self.cur_workbook.cell(row=self.row_index[game_name], column=self.column_index[cell]).border = border
-
-
-    def save_excel_sheet(self):
-        '''
-        Backs up the excel file before saving the changes.
-        It will keep trying to save until it completes in case of permission errors caused by the file being open.
-        '''
-        try:
-            shutil.copy(self.file_path, os.path.join(os.getcwd(), self.excel_filename + '.bak'))
-            # saves the file once it is closed
-            complete = False
-            print('\nSaving.\nMake sure the excel sheet is closed.')
-            while complete != True:
-                try:
-                    self.wb.save(self.excel_filename + '.xlsx')
-                    print('Save Complete.')
-                    complete = True
-                except PermissionError:
-                    sleep(.1)
-        except KeyboardInterrupt:
-            print('\nCancelling Save')
-            exit()
+                self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).border = border
 
 
     def get_cell(self, row_value, column_value):
@@ -93,9 +75,11 @@ class Indexer:
         Gets the cell value based on the row and column
         '''
         if type(row_value) == str:
-            return self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value
+            value = str(self.cur_workbook.cell(row=self.row_i[row_value], column=self.column_i[column_value]).value)
+            return value
         else:
-            return self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value
+            value = str(self.cur_workbook.cell(row=row_value, column=self.column_i[column_value]).value)
+            return value
 
 
     def update_cell(self, row_value, column_value, string):
@@ -104,9 +88,10 @@ class Indexer:
         if row_value is not a string, it will be considered an exact index instead.
         '''
         if type(row_value) == str:
-            self.cur_workbook.cell(row=self.row_index[row_value], column=self.column_index[column_value]).value = string
+            self.cur_workbook.cell(row=self.row_i[row_value], column=self.column_i[column_value]).value = string
         else:
-            self.cur_workbook.cell(row=row_value, column=self.column_index[column_value]).value = string
+            self.cur_workbook.cell(row=row_value, column=self.column_i[column_value]).value = string
+        self.changes_made = 1
 
 
     def add_new_cell(self, cell_dict):
@@ -115,13 +100,40 @@ class Indexer:
         If dictionary keys match existing columns within the set sheet, it will add the value to that column.
         '''
         append_list = []
-        for column in self.column_index:
+        for column in self.column_i:
             if column in cell_dict:
                 append_list.append(cell_dict[column])
             else:
                 append_list.append('')
                 print(f'Missing data for {column}.')
         self.cur_workbook.append(append_list)
+        self.changes_made = 1
+
+
+    def save_excel_sheet(self):
+        '''
+        Backs up the excel file before saving the changes.
+        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+        '''
+        try:
+            # backups the file before saving.
+            shutil.copy(self.file_path, os.path.join(self.script_dir, self.excel_filename + '.bak'))
+            # saves the file once it is closed
+            print('\nSaving...')
+            first_run = 1
+            while True:
+                try:
+                    self.wb.save(self.excel_filename + '.xlsx')
+                    print('Save Complete.                                  ')
+                    break
+                except PermissionError:
+                    if first_run:
+                        print('Make sure the excel sheet is closed.', end='\r')
+                        first_run = 0
+                    sleep(.1)
+        except KeyboardInterrupt:
+            print('\nCancelling Save')
+            exit()
 
 
 class Tracker:
@@ -136,9 +148,6 @@ class Tracker:
     os.chdir(script_dir)
     date_format = '%m/%d/%Y'
     # Indexer init
-    file_path = os.path.join(script_dir, excel_filename + '.xlsx')
-    wb = openpyxl.load_workbook(file_path)
-    games = wb['Games']
     excel = Indexer(
         excel_filename=excel_filename,
         workbook_name='Games',
@@ -188,7 +197,7 @@ class Tracker:
             time_to_beat = float(str(best_element.gameplay_main).replace('½','.5'))
             time_to_beat_unit = best_element.gameplay_main_unit
             if time_to_beat_unit == None:
-                return 'Unknown'
+                return 'No Data'
             elif time_to_beat_unit != 'Hours':
                 return round(time_to_beat/60, 1)  # converts minutes to hours
             else:
@@ -197,19 +206,30 @@ class Tracker:
             return 'Not Found'
 
 
-    def get_metacritic_score(self, game_name, platform='pc', delay=1):
+    def get_metacritic_score(self, game_name, platform, delay=1):
         '''
-        Uses requests to get the metacritic review score for entered game.
+        Uses requests to get the metacritic review score for the entered game.
         '''
-        if delay > 0:
-            sleep(delay)
-        game_name = game_name.replace(':','')
-        game_name = game_name.replace("'",'')
-        game_name = game_name.replace('&','')
-        game_name = game_name.replace('_','-')
-        game_name = game_name.replace('™','')
-        game_name = game_name.replace(' ','-').lower()
-        url = f'https://www.metacritic.com/game/{platform}/{game_name}'
+        sleep(delay)
+        if platform == 'PS4':
+            platform = 'playstation-4'
+        elif platform == 'PS5':
+            platform = 'playstation-5'
+        elif platform in ['Steam', 'Uplay', 'Origin']:
+            platform = 'pc'
+        replace_dict = {
+            ':':'',
+            "'":'',
+            '&':'',
+            ',':'',
+            '?':'',
+            '™':'',
+            '_':'-',
+            ' ':'-'
+            }
+        for string, replace in replace_dict.items():
+            game_name = game_name.replace(string, replace)
+        url = f'https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}'
         user_agent = {'User-agent': 'Mozilla/5.0'}
         source = requests.get(url, headers=user_agent)
         if source.status_code == requests.codes.ok:
@@ -218,34 +238,34 @@ class Tracker:
             if review_score != None:
                 review_score = int(review_score.text)
             else:
-                review_score = 'Unknown'
+                review_score = 'No Data'
             return review_score
         else:
             # print(source.status_code)
-            return 'Unknown'
+            return 'Page Error'
 
 
     def requests_loop(self, skip_filled=1):
         '''
-        Loops through games in row_index and gets missing data for time to beat and Metacritic score.
+        Loops through games in row_i and gets missing data for time to beat and Metacritic score.
         '''
         time_to_beat_column_name = 'Time To Beat in Hours'
         metacritic_column_name = 'Metacritic Score'
         # creates checklist
         check_list = []
-        for game in self.excel.row_index:
+        for game in self.excel.row_i:
             play_status = self.excel.get_cell(game, 'Play Status')
             if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
                 continue
             if skip_filled:
                 time_to_beat = self.excel.get_cell(game, time_to_beat_column_name)
                 metacritic_score = self.excel.get_cell(game, metacritic_column_name)
-                if time_to_beat is None or metacritic_score is None:
+                if time_to_beat == 'None' or metacritic_score == 'None':
                     check_list.append(game)
             else:
                 check_list.append(game)
         missing_data = len(check_list)
-        if missing_data != 0:
+        if missing_data > 0:
             msg = f'\nSome data is missing for {missing_data} games.\nDo you want to retrieve it?\n'
             if not input(msg) in ['yes', 'y']:
                 return
@@ -259,7 +279,8 @@ class Tracker:
                 if time_to_beat != None:
                     self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
                 # metacritic score check
-                metacritic_score = self.get_metacritic_score(game_name)
+                platform = self.excel.get_cell(game_name, 'Platform')
+                metacritic_score = self.get_metacritic_score(game_name, platform)
                 if metacritic_score != None:
                     self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
         except KeyboardInterrupt:
@@ -287,7 +308,7 @@ class Tracker:
             self.removed_from_steams = []
             # checks for games that changed names
             # TODO switch to using appid
-            for game in self.excel.row_index.keys():
+            for game in self.excel.row_i.keys():
                 if self.excel.get_cell(game, 'Platform') == 'Steam':
                     self.removed_from_steams.append(str(game))
             self.total_games_updated = 0
@@ -310,7 +331,7 @@ class Tracker:
                 else:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
-                if game_name in self.excel.row_index.keys():
+                if game_name in self.excel.row_i.keys():
                     try:
                         self.removed_from_steams.remove(game_name)
                     except ValueError:
@@ -359,7 +380,7 @@ class Tracker:
 
     def add_game(self, game_name, playtime_forever, game_appid, play_status):
         '''
-        Appends new game to excel sheet into the correct columns using self.column_index.
+        Appends new game to excel sheet into the correct columns using self.column_i.
         Any columns that are inputted manually are left blank.
         '''
         if 'VR' in game_name.lower():
@@ -367,7 +388,7 @@ class Tracker:
         else:
             vr_support = ''
         time_to_beat = self.get_time_to_beat(game_name)
-        metacritic_score = self.get_metacritic_score(game_name)
+        metacritic_score = self.get_metacritic_score(game_name, 'Steam')
         column_info = {
             'My Rating':'',
             'Game Name':game_name,
@@ -376,6 +397,7 @@ class Tracker:
             'VR Support':vr_support,
             'Time To Beat in Hours':time_to_beat,
             'Metacritic Score':metacritic_score,
+            'Rating Comparison':'',
             # TODO add working formula that uses correct letters
             # 'Probable Completion':f'=IFERROR((G{1018}/60)/F{1018},0)',
             'Probable Completion':'',
@@ -385,27 +407,44 @@ class Tracker:
             'Last Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
             }
+        # TODO switch to only shows hours played after auto converting minutes
         self.excel.add_new_cell(column_info)
         self.total_games_added += 1
-        # adds game to row_index
-        self.excel.row_index[game_name] = self.excel.cur_workbook._current_row
+        # adds game to row_i
+        self.excel.row_i[game_name] = self.excel.cur_workbook._current_row
+
+
+    def output_completion_data(self):
+        '''
+        Shows total games added and updated games with info.
+        '''
+        if self.total_games_added > 0:
+            print(f'\nGames Added: {self.total_games_added}')
+            if len(self.added_games) > 0:
+                print(', '.join(self.added_games))
+        if self.total_games_updated > 0:
+            print(f'\nGames Updated: {self.total_games_updated}')
+        if self.excel.changes_made:
+            self.excel.save_excel_sheet()
+        else:
+            print('\nNo games were added or updated.')
 
 
     def pick_random_game(self):
         '''
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         '''
-        if input('\nDo you want to pick a random game with a specific play status?\n').lower() in ['yes', 'y', 'yeah']:
-            print('\nWhat play status do you want a random game picked from?')
-            play_status_choices = {
-                '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
-                '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
-            }
-            play_status = input(', '.join(play_status_choices.values()) + '\n')
+        print('\nWhat play status do you want a random game picked from?\nType No if want to skip.')
+        play_status_choices = {
+            '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
+            '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
+        }
+        play_status = input(', '.join(play_status_choices.values()) + '\n').lower()
+        if play_status not in ['no', 'n']:
             if len(play_status) == 1:
                 play_status = play_status_choices[play_status]
             choice_list = []
-            for game, index in self.excel.row_index.items():
+            for game, index in self.excel.row_i.items():
                 game_play_status = self.excel.get_cell(index, 'Play Status').lower()
                 if game_play_status == play_status.lower():
                     choice_list.append(game)
@@ -413,35 +452,46 @@ class Tracker:
             # TODO add improvements to output
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
             # allows getting another random pick
-            while not input('Press Enter to pick another and No for finish.').lower() in ['no', 'n']:
+            while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
                 picked_game = random.choice(choice_list)
                 print(f'\nPicked game with {play_status} status:\n{picked_game}')
+
+
+    def arg_func(self):
+        '''
+        ph
+        '''
+        arg = sys.argv[1].lower()
+        if arg == 'help':
+            print('Help:\nrefresh- refreshes steam games\nrandom- allows getting random picks from games based on play status')
+        elif arg == 'refresh':
+            print('Running refresh')
+            self.refresh_steam_games(self.steam_id)
+        elif arg == 'random':
+            self.pick_random_game()
+        else:
+            print('Invalid Argument Given.')
 
 
     def run(self):
         '''
         Main run function.
         '''
-        print('Starting Game Tracker')
-        if self.refresh_steam_games(self.steam_id):
-            # shows total games added and updated(includes info that was updated)
-            if self.total_games_added > 0:
-                print(f'\nGames Added: {self.total_games_added}')
-                if len(self.added_games) > 0:
-                    print(', '.join(self.added_games))
-            if self.total_games_updated > 0:
-                print(f'\nGames Updated: {self.total_games_updated}')
-            if self.total_games_updated > 0 or self.total_games_added > 0:  # skips save if nothing is new
-                self.excel.save_excel_sheet()
-            else:
-                print('\nNo games wered added or updated.')
-        try:
-            self.requests_loop()
-            self.pick_random_game()
-            input('\nPress Enter to open updated file in Excel.\n')
-            os.startfile(self.file_path)  # opens excel file if previous input is passed
-        except KeyboardInterrupt:
-            print('\nClosing')
+        # checks for arguements
+        if len(sys.argv) > 1:
+            self.arg_func()
+        else:
+            os.system('mode con cols=68 lines=40')
+            print('Starting Game Tracker')
+            if self.refresh_steam_games(self.steam_id):
+                self.output_completion_data()
+            try:
+                self.requests_loop()
+                self.pick_random_game()
+                input('\nPress Enter to open updated file in Excel.\n')
+                os.startfile(self.excel.file_path)  # opens excel file if previous input is passed
+            except KeyboardInterrupt:
+                print('\nClosing')
 
 
 if __name__ == "__main__":
