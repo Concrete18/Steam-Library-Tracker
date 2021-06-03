@@ -175,14 +175,11 @@ class Tracker:
 
 
     @staticmethod
-    def playtime_conv(playtime_forever):
+    def hours_played(playtime_forever):
         '''
-        Converts minutes to a written string of minutes(1) or hours(1.0).
+        Converts minutes played to a hours played in decimal form.
         '''
-        if playtime_forever <= 60:
-            return f'{playtime_forever} minutes'
-        else:
-            return f'{round(playtime_forever/60, 1)} hours'
+        return round(playtime_forever/60, 1)
 
 
     def get_time_to_beat(self, game_name, delay=2):
@@ -358,24 +355,23 @@ class Tracker:
         '''
         Updates the games playtime(if changed) and play status(if unset).
         '''
-        current_playtime = self.excel.get_cell(game_name, 'Minutes Played')
+        previous_hours_played = self.excel.get_cell(game_name, 'Hours Played')
+        current_hours_played = self.hours_played(playtime_forever)
         current_platform = self.excel.get_cell(game_name, 'Platform')
-        if current_playtime == 'Minutes Played' or current_platform != 'Steam':
+        if current_platform != 'Steam':  # prevents updating games that are owned on Steam and a console.
             return
-        elif current_playtime == None:
-            print(f'Missing current_playtime for {game_name}')
-            current_playtime = 0
+        elif previous_hours_played == None or previous_hours_played == 'None':
+            previous_hours_played = 0
         else:
-            current_playtime = int(current_playtime)
-        if playtime_forever > current_playtime:
-            self.excel.update_cell(game_name, 'Minutes Played', playtime_forever)
-            self.excel.update_cell(game_name, 'Converted Time Played', self.playtime_conv(playtime_forever))
+            previous_hours_played = float(previous_hours_played)
+        if current_hours_played > previous_hours_played:
+            self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
             self.excel.update_cell(game_name, 'Last Updated', dt.datetime.now().strftime(self.date_format))
             self.total_games_updated += 1
             if play_status == 'unset':
                 self.excel.update_cell(game_name, 'Play Status', 'Played')
-            added_time = self.playtime_conv(playtime_forever - current_playtime)
-            print(f'\n > {game_name} updated.\n   Added {added_time}.')
+            added_time = self.hours_played(current_hours_played - previous_hours_played)
+            print(f'\n > {game_name} updated.\n   Added {added_time} hours.')
 
 
     def add_game(self, game_name, playtime_forever, game_appid, play_status):
@@ -401,13 +397,11 @@ class Tracker:
             # TODO add working formula that uses correct letters
             # 'Probable Completion':f'=IFERROR((G{1018}/60)/F{1018},0)',
             'Probable Completion':'',
-            'Minutes Played':playtime_forever,
-            'Converted Time Played':self.playtime_conv(playtime_forever),
+            'Hours Played':self.hours_played(playtime_forever),
             'App ID':game_appid,
             'Last Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
             }
-        # TODO switch to only shows hours played after auto converting minutes
         self.excel.add_new_cell(column_info)
         self.total_games_added += 1
         # adds game to row_i
