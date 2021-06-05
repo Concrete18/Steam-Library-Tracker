@@ -179,7 +179,7 @@ class Tracker:
         '''
         Converts minutes played to a hours played in decimal form.
         '''
-        return round(playtime_forever/60, 1)
+        return round(playtime_forever/60, 4)
 
 
     def get_time_to_beat(self, game_name, delay=2):
@@ -365,13 +365,19 @@ class Tracker:
         else:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
+            print(game_name, current_hours_played, previous_hours_played)
             self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
             self.excel.update_cell(game_name, 'Last Updated', dt.datetime.now().strftime(self.date_format))
             self.total_games_updated += 1
             if play_status == 'unset':
                 self.excel.update_cell(game_name, 'Play Status', 'Played')
-            added_time = self.hours_played(current_hours_played - previous_hours_played)
-            print(f'\n > {game_name} updated.\n   Added {added_time} hours.')
+            unit = 'hours'
+            added_time = current_hours_played - previous_hours_played
+            if added_time < 1:
+                added_time = added_time * 60
+                unit = 'minutes'
+            added_time = round(added_time, 1)
+            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}.')
 
 
     def add_game(self, game_name, playtime_forever, game_appid, play_status):
@@ -428,13 +434,13 @@ class Tracker:
         '''
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         '''
-        print('\nWhat play status do you want a random game picked from?\nType No if want to skip.')
+        print('\nWhat play status do you want a random game picked from?\nPress Enter to skip.')
         play_status_choices = {
             '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
             '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
         }
         play_status = input(', '.join(play_status_choices.values()) + '\n').lower()
-        if play_status not in ['no', 'n']:
+        if play_status == 'in':
             if len(play_status) == 1:
                 play_status = play_status_choices[play_status]
             choice_list = []
