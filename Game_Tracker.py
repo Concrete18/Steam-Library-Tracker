@@ -386,9 +386,8 @@ class Tracker:
         save = 0
         if game_name == None:
             save = 1
-            response = input('Do you want to add a new game?\n')
-            if response.lower() in ['yes', 'y']:
-                game_name = input('\nWhat is the games name?\n')
+            game_name = input('Do you want to add a new game?\nIf Yes type the game name.\n')
+            if game_name != '':
                 platform = input('\nWhat is the platform is this on?\n')
                 platform_names = {
                     'playstation 5':'PS5',
@@ -397,11 +396,13 @@ class Tracker:
                     'ps4':'PS4',
                     'sw':'Switch',
                 }
-                if platform in platform_names:
+                if platform.lower() in platform_names:
                     platform = platform_names[platform.lower()]
                 hours_played = int(input('\nHow many hours have you played it?\n') or 0)
+                print('\nWhat Play Status should it have?')
                 play_status = self.play_status_picker() or 'Unset'
-                print(f'\nAdded Game:\n"{game_name}" on {platform}')
+                print('Added Game:')
+                print(f'"{game_name}" on {platform} with {hours_played} hours played and {play_status} play status')
             else:
                 return
         else:
