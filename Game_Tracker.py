@@ -299,12 +299,11 @@ class Tracker:
         try:
             data = requests.get(combinded_url)
         except requests.exceptions.ConnectionError:
-            print('Internet Error')
+            print("Connection Error: Internet can't be accessed")
             return False
         if data.status_code == requests.codes.ok:
             self.removed_from_steams = []
             # checks for games that changed names
-            # TODO switch to using appid
             for game in self.excel.row_i.keys():
                 if self.excel.get_cell(game, 'Platform') == 'Steam':
                     self.removed_from_steams.append(str(game))
@@ -338,8 +337,6 @@ class Tracker:
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
                     self.added_games.append(game_name)
-                # formats the added/updated cells to be sure it is set right
-                self.excel.format_cells(game['name'], do_not_center_list=self.do_not_center_list)
             if len(self.removed_from_steams) > 0:
                 print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steams)}')
             return True
@@ -378,13 +375,37 @@ class Tracker:
                 unit = 'minutes'
             added_time = round(added_time, 1)
             print(f'\n > {game_name} updated.\n   Added {added_time} {unit}.')
+        self.excel.format_cells(game_name, do_not_center_list=self.do_not_center_list)
 
 
-    def add_game(self, game_name, playtime_forever, game_appid, play_status):
+    def add_game(self, game_name=None, playtime_forever='', game_appid='', play_status='', platform='Steam'):
         '''
         Appends new game to excel sheet into the correct columns using self.column_i.
         Any columns that are inputted manually are left blank.
         '''
+        save = 0
+        if game_name == None:
+            save = 1
+            response = input('Do you want to add a new game?\n')
+            if response.lower() in ['yes', 'y']:
+                game_name = input('\nWhat is the games name?\n')
+                platform = input('\nWhat is the platform is this on?\n')
+                platform_names = {
+                    'playstation 5':'PS5',
+                    'ps5':'PS5',
+                    'playstation 4':'PS4',
+                    'ps4':'PS4',
+                    'sw':'Switch',
+                }
+                if platform in platform_names:
+                    platform = platform_names[platform.lower()]
+                hours_played = int(input('\nHow many hours have you played it?\n') or 0)
+                play_status = self.play_status_picker() or 'Unset'
+                print(f'\nAdded Game:\n"{game_name}" on {platform}')
+            else:
+                return
+        else:
+            hours_played = self.hours_played(playtime_forever)
         if 'VR' in game_name.lower():
             vr_support = 'Yes'
         else:
@@ -395,7 +416,7 @@ class Tracker:
             'My Rating':'',
             'Game Name':game_name,
             'Play Status':play_status,
-            'Platform':'Steam',
+            'Platform':platform,
             'VR Support':vr_support,
             'Time To Beat in Hours':time_to_beat,
             'Metacritic Score':metacritic_score,
@@ -403,7 +424,7 @@ class Tracker:
             # TODO add working formula that uses correct letters
             # 'Probable Completion':f'=IFERROR((G{1018}/60)/F{1018},0)',
             'Probable Completion':'',
-            'Hours Played':self.hours_played(playtime_forever),
+            'Hours Played':hours_played,
             'App ID':game_appid,
             'Last Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
@@ -412,6 +433,9 @@ class Tracker:
         self.total_games_added += 1
         # adds game to row_i
         self.excel.row_i[game_name] = self.excel.cur_workbook._current_row
+        self.excel.format_cells(game_name, do_not_center_list=self.do_not_center_list)
+        if save:
+            self.excel.save_excel_sheet()
 
 
     def output_completion_data(self):
@@ -430,37 +454,57 @@ class Tracker:
             print('\nNo games were added or updated.')
 
 
+    def play_status_picker(self):
+        '''
+        Shows a list of Play Status's to choose from.
+        Respond with the playstatus or numerical postion of the status from the list.
+        '''
+        play_status_choices = {
+            '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
+            '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
+        }
+        prompt = ', '.join(play_status_choices.values()) + '\n'
+        while True:
+            response = input(prompt).lower()
+            if len(response) == 1:
+                return play_status_choices[response]
+            elif response.title() in play_status_choices.values():
+                return response
+            elif response == '':
+                return None
+            else:
+                print('\nInvalid Response')
+                continue
+
+
     def pick_random_game(self):
         '''
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         '''
         print('\nWhat play status do you want a random game picked from?\nPress Enter to skip.')
-        play_status_choices = {
-            '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
-            '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
-        }
-        play_status = input(', '.join(play_status_choices.values()) + '\n').lower()
-        if play_status == 'in':
-            if len(play_status) == 1:
-                play_status = play_status_choices[play_status]
-            choice_list = []
-            for game, index in self.excel.row_i.items():
-                game_play_status = self.excel.get_cell(index, 'Play Status').lower()
-                if game_play_status == play_status.lower():
-                    choice_list.append(game)
+        play_status = self.play_status_picker()
+        if play_status == None:
+            return
+        choice_list = []
+        for game, index in self.excel.row_i.items():
+            game_play_status = self.excel.get_cell(index, 'Play Status').lower()
+            if game_play_status == play_status.lower():
+                choice_list.append(game)
+        picked_game = random.choice(choice_list)
+        # TODO add improvements to output
+        print(f'\nPicked game with {play_status} status:\n{picked_game}')
+        # allows getting another random pick
+        while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
             picked_game = random.choice(choice_list)
-            # TODO add improvements to output
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
-            # allows getting another random pick
-            while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
-                picked_game = random.choice(choice_list)
-                print(f'\nPicked game with {play_status} status:\n{picked_game}')
 
 
     def arg_func(self):
         '''
-        ph
+        Checks if any arguments were given and runs commands.
         '''
+        if len(sys.argv) == 1:
+            return
         arg = sys.argv[1].lower()
         if arg == 'help':
             print('Help:\nrefresh- refreshes steam games\nrandom- allows getting random picks from games based on play status')
@@ -471,27 +515,27 @@ class Tracker:
             self.pick_random_game()
         else:
             print('Invalid Argument Given.')
+        input()
+        exit()
 
 
     def run(self):
         '''
         Main run function.
         '''
-        # checks for arguements
-        if len(sys.argv) > 1:
-            self.arg_func()
-        else:
-            os.system('mode con cols=68 lines=40')
-            print('Starting Game Tracker')
-            if self.refresh_steam_games(self.steam_id):
-                self.output_completion_data()
-            try:
-                self.requests_loop()
-                self.pick_random_game()
-                input('\nPress Enter to open updated file in Excel.\n')
-                os.startfile(self.excel.file_path)  # opens excel file if previous input is passed
-            except KeyboardInterrupt:
-                print('\nClosing')
+        self.arg_func()
+        os.system('mode con cols=68 lines=40')
+        print('Starting Game Tracker')
+        if self.refresh_steam_games(self.steam_id):
+            self.output_completion_data()
+        try:
+            self.requests_loop()
+            self.pick_random_game()
+            self.add_game()
+            input('\nPress Enter to open updated file in Excel.\n')
+            os.startfile(self.excel.file_path)  # opens excel file if previous input is passed
+        except KeyboardInterrupt:
+            print('\nClosing')
 
 
 if __name__ == "__main__":
