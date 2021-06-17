@@ -229,6 +229,7 @@ class Tracker:
         url = f'https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}'
         user_agent = {'User-agent': 'Mozilla/5.0'}
         source = requests.get(url, headers=user_agent)
+        review_score = ''
         if source.status_code == requests.codes.ok:
             soup = BeautifulSoup(source.text, 'html.parser')
             review_score = soup.find(itemprop="ratingValue")
@@ -239,10 +240,11 @@ class Tracker:
             return review_score
         else:
             # print(source.status_code)
-            return 'Page Error'
+            review_score = 'Page Error'
+        return review_score
 
 
-    def requests_loop(self, skip_filled=1):
+    def requests_loop(self, skip_filled=1, check_status=0):
         '''
         Loops through games in row_i and gets missing data for time to beat and Metacritic score.
         '''
@@ -252,8 +254,9 @@ class Tracker:
         check_list = []
         for game in self.excel.row_i:
             play_status = self.excel.get_cell(game, 'Play Status')
-            if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
-                continue
+            if check_status:
+                if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
+                    continue
             if skip_filled:
                 time_to_beat = self.excel.get_cell(game, time_to_beat_column_name)
                 metacritic_score = self.excel.get_cell(game, metacritic_column_name)
@@ -362,7 +365,6 @@ class Tracker:
         else:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
-            print(game_name, current_hours_played, previous_hours_played)
             self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
             self.excel.update_cell(game_name, 'Last Updated', dt.datetime.now().strftime(self.date_format))
             self.total_games_updated += 1
@@ -388,6 +390,8 @@ class Tracker:
             save = 1
             game_name = input('Do you want to add a new game?\nIf Yes type the game name.\n')
             if game_name != '':
+                if game_name.lower() in ['yes', 'y']:
+                    game_name = input('\nWhat is the name of the game?\n')
                 platform = input('\nWhat is the platform is this on?\n')
                 platform_names = {
                     'playstation 5':'PS5',
@@ -401,8 +405,8 @@ class Tracker:
                 hours_played = int(input('\nHow many hours have you played it?\n') or 0)
                 print('\nWhat Play Status should it have?')
                 play_status = self.play_status_picker() or 'Unset'
-                print('Added Game:')
-                print(f'"{game_name}" on {platform} with {hours_played} hours played and {play_status} play status')
+                print('\nAdded Game:')
+                print(f'{game_name}\nPlatform: {platform}\nHours Played: {hours_played}\nPlay Status:{play_status}')
             else:
                 return
         else:
@@ -492,7 +496,6 @@ class Tracker:
             if game_play_status == play_status.lower():
                 choice_list.append(game)
         picked_game = random.choice(choice_list)
-        # TODO add improvements to output
         print(f'\nPicked game with {play_status} status:\n{picked_game}')
         # allows getting another random pick
         while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
