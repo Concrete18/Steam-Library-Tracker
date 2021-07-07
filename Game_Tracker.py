@@ -68,6 +68,8 @@ class Indexer:
                 self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).alignment = align
             if cell not in do_not_border_list:
                 self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).border = border
+        # TODO add decimal point setting
+        # cell.number_format = "0.0000" # 4 decimal places
 
 
     def get_cell(self, row_value, column_value):
@@ -248,9 +250,9 @@ class Tracker:
         '''
         Loops through games in row_i and gets missing data for time to beat and Metacritic score.
         '''
+        # creates checklist
         time_to_beat_column_name = 'Time To Beat in Hours'
         metacritic_column_name = 'Metacritic Score'
-        # creates checklist
         check_list = []
         for game in self.excel.row_i:
             play_status = self.excel.get_cell(game, 'Play Status')
@@ -264,14 +266,19 @@ class Tracker:
                     check_list.append(game)
             else:
                 check_list.append(game)
+        # checks if data should be updated
         missing_data = len(check_list)
-        if missing_data > 0:
+        auto_update = 6
+        if 0 < missing_data <= auto_update:
+            print(f'\nMissing data is within auto update threshold of {auto_update}.')
+        elif missing_data > auto_update:
             msg = f'\nSome data is missing for {missing_data} games.\nDo you want to retrieve it?\n'
             if not input(msg) in ['yes', 'y']:
                 return
         else:
             return
         try:
+        # updates missing data
             print('\nStarting Time To Beat and Metacritic Score check.')
             for game_name in tqdm(iterable=check_list, ascii=True, unit='games', dynamic_ncols=True):
                 # How long to beat check
@@ -305,11 +312,11 @@ class Tracker:
             print("Connection Error: Internet can't be accessed")
             return False
         if data.status_code == requests.codes.ok:
-            self.removed_from_steams = []
+            self.removed_from_steam = []
             # checks for games that changed names
             for game in self.excel.row_i.keys():
                 if self.excel.get_cell(game, 'Platform') == 'Steam':
-                    self.removed_from_steams.append(str(game))
+                    self.removed_from_steam.append(str(game))
             self.total_games_updated = 0
             self.total_games_added = 0
             self.added_games = []
@@ -332,7 +339,7 @@ class Tracker:
                 # Updates game if it is in the index or adds if it is not.
                 if game_name in self.excel.row_i.keys():
                     try:
-                        self.removed_from_steams.remove(game_name)
+                        self.removed_from_steam.remove(game_name)
                     except ValueError:
                         # This is for ignoring duplicates that should not exist.
                         pass
@@ -340,8 +347,10 @@ class Tracker:
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
                     self.added_games.append(game_name)
-            if len(self.removed_from_steams) > 0:
-                print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steams)}')
+            if len(self.removed_from_steam) > 0:
+                print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}')
+                for item in self.removed_from_steam:
+                    self.excel.update_cell(item, 'Play Status', 'Removed')
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -376,7 +385,8 @@ class Tracker:
                 added_time = added_time * 60
                 unit = 'minutes'
             added_time = round(added_time, 1)
-            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}.')
+            total_hours = round(current_hours_played, 1)
+            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total {total_hours} hours.')
         self.excel.format_cells(game_name, do_not_center_list=self.do_not_center_list)
 
 
