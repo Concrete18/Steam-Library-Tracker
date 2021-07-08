@@ -505,11 +505,17 @@ class Tracker:
             game_play_status = self.excel.get_cell(index, 'Play Status').lower()
             if game_play_status == play_status.lower():
                 choice_list.append(game)
+        # picks random game then removes it from the choice list so it wont show up again during this session
         picked_game = random.choice(choice_list)
+        choice_list.pop(choice_list.index(picked_game))
         print(f'\nPicked game with {play_status} status:\n{picked_game}')
         # allows getting another random pick
         while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
+            if len(choice_list) == 0:
+                print(f'All games with {play_status} have already been picked.\n')
+                return
             picked_game = random.choice(choice_list)
+            choice_list.pop(choice_list.index(picked_game))
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
 
 
