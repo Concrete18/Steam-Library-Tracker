@@ -25,9 +25,8 @@ class Tracker:
         excel_filename=excel_filename,
         workbook_name='Games',
         column_name='Game Name',
-        column_letter='B')
-    do_not_center_list = ['Game Name']
-    do_not_border_list = []
+        column_letter='B',
+        script_dir=script_dir)
     # misc
     applist = None
 
@@ -87,7 +86,7 @@ class Tracker:
             platform = 'playstation-4'
         elif platform == 'PS5':
             platform = 'playstation-5'
-        elif platform in ['Steam', 'Uplay', 'Origin']:
+        elif platform in ['Steam', 'Uplay', 'Origin', 'MS Store']:
             platform = 'pc'
         replace_dict = {
             ':':'',
@@ -200,6 +199,7 @@ class Tracker:
             self.excel.save_excel_sheet()
 
 
+
     def refresh_steam_games(self, steam_id):
         '''
         Gets games owned by the entered Steam ID amd runs excel update/add functions.
@@ -243,11 +243,8 @@ class Tracker:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
                 if game_name in self.excel.row_i.keys():
-                    try:
+                    if game_name in self.removed_from_steam:
                         self.removed_from_steam.remove(game_name)
-                    except ValueError:
-                        # This is for ignoring duplicates that should not exist.
-                        pass
                     self.update_game(game_name, playtime_forever, play_status)
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
@@ -292,7 +289,7 @@ class Tracker:
             added_time = round(added_time, 1)
             total_hours = round(current_hours_played, 1)
             print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total {total_hours} hours.')
-        self.excel.format_cells(game_name, do_not_center_list=self.do_not_center_list)
+        self.excel.format_cells(game_name)
 
 
     def add_game(self, game_name=None, playtime_forever='', game_appid='', play_status='', platform='Steam'):
@@ -314,6 +311,10 @@ class Tracker:
                     'playstation 4':'PS4',
                     'ps4':'PS4',
                     'sw':'Switch',
+                    'uplay':'Uplay',
+                    'gog':'GOG',
+                    'ms store':'MS Store',
+                    'microsoft':'MS Store',
                 }
                 if platform.lower() in platform_names:
                     platform = platform_names[platform.lower()]
@@ -321,7 +322,7 @@ class Tracker:
                 print('\nWhat Play Status should it have?')
                 play_status = self.play_status_picker() or 'Unset'
                 print('\nAdded Game:')
-                print(f'{game_name}\nPlatform: {platform}\nHours Played: {hours_played}\nPlay Status:{play_status}')
+                print(f'{game_name}\nPlatform: {platform}\nHours Played: {hours_played}\nPlay Status: {play_status}')
             else:
                 return
         else:
@@ -353,7 +354,7 @@ class Tracker:
         self.total_games_added += 1
         # adds game to row_i
         self.excel.row_i[game_name] = self.excel.cur_workbook._current_row
-        self.excel.format_cells(game_name, do_not_center_list=self.do_not_center_list)
+        self.excel.format_cells(game_name)
         if save:
             self.excel.save_excel_sheet()
 

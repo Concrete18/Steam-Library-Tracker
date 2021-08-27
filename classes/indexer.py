@@ -5,16 +5,17 @@ from time import sleep
 
 class Indexer:
 
-    script_dir = os.path.dirname(os.path.abspath(__file__))
     changes_made = 0
 
 
-    def __init__(self, excel_filename, workbook_name, column_name, column_letter):
+    def __init__(self, excel_filename, workbook_name, column_name, column_letter, script_dir):
         '''
         Class object init.
         '''
         self.excel_filename = excel_filename
-        self.file_path = os.path.join(os.getcwd(), excel_filename + '.xlsx')
+        # TODO simplify 
+        self.script_dir = script_dir
+        self.file_path = os.path.join(script_dir, excel_filename + '.xlsx')
         self.wb = openpyxl.load_workbook(self.file_path)
         self.cur_workbook = self.wb[workbook_name]
         self.column_name = column_name
@@ -48,7 +49,7 @@ class Indexer:
         return row_i
 
 
-    def format_cells(self, game_name, do_not_center_list=[], do_not_border_list=[]):
+    def format_cells(self, game_name):
         '''
         Aligns specific columns to center and adds border to cells.
         '''
@@ -57,13 +58,23 @@ class Indexer:
         border = openpyxl.styles.borders.Border(
             left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
             diagonal=None, outline=True, start=None, end=None)
-        for cell in self.column_i.keys():
-            if cell not in do_not_center_list:
-                self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).alignment = align
-            if cell not in do_not_border_list:
-                self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[cell]).border = border
-        # TODO add decimal point setting
-        # cell.number_format = "0.0000" # 4 decimal places
+        for column in self.column_i.keys():
+            cell = self.cur_workbook.cell(row=self.row_i[game_name], column=self.column_i[column])
+            # Percent
+            if column in ['Review Percent', 'Discount']:
+                cell.style = 'Percent'
+            # 1 decimal place
+            if column in ['Hours Played']:
+                cell.number_format = '#,#0.0'
+            # currency
+            elif column in ['Price']:
+                cell.style = 'Currency'
+            # centering
+            if column not in ['Name', 'Tags', 'Game Name']:
+                cell.alignment = align
+            # border
+            if column not in []:
+                cell.border = border
 
 
     def get_cell(self, row_value, column_value):
