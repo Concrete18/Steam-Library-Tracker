@@ -43,7 +43,7 @@ class Tracker:
             api_key = ''
             with open(os.path.join(self.script_dir, 'api_key.txt'), 'w') as f:
                 while len(api_key) != 32:
-                    api_key = input('Enter your Steam API Key.\n')
+                    api_key = input('Enter your Steam API Key.\n:')
                 f.write(api_key)
             return api_key
 
@@ -175,7 +175,7 @@ class Tracker:
         if 0 < missing_data <= auto_update:
             print(f'\nMissing data is within auto update threshold of {auto_update}.')
         elif missing_data > auto_update:
-            msg = f'\nSome data is missing for {missing_data} games.\nDo you want to retrieve it?\n'
+            msg = f'\nSome data is missing for {missing_data} games.\nDo you want to retrieve it?\n:'
             if not input(msg) in ['yes', 'y']:
                 return
         else:
@@ -206,7 +206,7 @@ class Tracker:
         '''
         # asks for a steam id if the given one is invalid
         if len(steam_id) != 17:
-            steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n')
+            steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
         url_var = f'?key={self.get_api_key()}&steamid={steam_id}'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
@@ -252,7 +252,8 @@ class Tracker:
             if len(self.removed_from_steam) > 0:
                 print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}')
                 for item in self.removed_from_steam:
-                    self.excel.update_cell(item, 'Play Status', 'Removed')
+                    status = self.excel.get_cell(item, 'Play Status')
+                    self.excel.update_cell(item, 'Play Status', f'Removed | {status}')
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -300,11 +301,11 @@ class Tracker:
         save = 0
         if game_name == None:
             save = 1
-            game_name = input('Do you want to add a new game?\nIf Yes type the game name.\n')
+            game_name = input('Do you want to add a new game?\nIf Yes type the game name.\n:')
             if game_name != '':
                 if game_name.lower() in ['yes', 'y']:
-                    game_name = input('\nWhat is the name of the game?\n')
-                platform = input('\nWhat is the platform is this on?\n')
+                    game_name = input('\nWhat is the name of the game?\n:')
+                platform = input('\nWhat is the platform is this on?\n:')
                 platform_names = {
                     'playstation 5':'PS5',
                     'ps5':'PS5',
@@ -318,7 +319,7 @@ class Tracker:
                 }
                 if platform.lower() in platform_names:
                     platform = platform_names[platform.lower()]
-                hours_played = int(input('\nHow many hours have you played it?\n') or 0)
+                hours_played = int(input('\nHow many hours have you played it?\n:') or 0)
                 print('\nWhat Play Status should it have?')
                 play_status = self.play_status_picker() or 'Unset'
                 print('\nAdded Game:')
@@ -384,7 +385,7 @@ class Tracker:
             '1':'Played', '2':'Playing', '3':'Waiting', '4':'Finished',
             '5':'Quit', '6':'Unplayed', '7':'Ignore', '8':'Demo'
         }
-        prompt = ', '.join(play_status_choices.values()) + '\n'
+        prompt = ', '.join(play_status_choices.values()) + '\n:'
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
@@ -416,7 +417,7 @@ class Tracker:
         choice_list.pop(choice_list.index(picked_game))
         print(f'\nPicked game with {play_status} status:\n{picked_game}')
         # allows getting another random pick
-        while not input('Press Enter to pick another and No for finish.\n').lower() in ['no', 'n']:
+        while not input('Press Enter to pick another and No for finish.\n:').lower() in ['no', 'n']:
             if len(choice_list) == 0:
                 print(f'All games with {play_status} have already been picked.\n')
                 return
@@ -458,7 +459,7 @@ class Tracker:
             self.requests_loop()
             self.pick_random_game()
             self.add_game()
-            input('\nPress Enter to open updated file in Excel.\n')
+            input('\nPress Enter to open updated file in Excel.\n:')
             os.startfile(self.excel.file_path)  # opens excel file if previous input is passed
         except KeyboardInterrupt:
             print('\nClosing')
