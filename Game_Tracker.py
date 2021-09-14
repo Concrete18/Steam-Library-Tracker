@@ -134,6 +134,28 @@ class Tracker:
         return None
 
 
+    def get_game_info(app_id):
+        '''
+        Fets game info with steam api using a `app_id`.
+        '''
+        def get_json_desc(data):
+            result = []
+            for item in data:
+                result.append(item['description'])
+            return result
+
+        url = f'https://store.steampowered.com/api/appdetails?appids={app_id}'
+        data = requests.get(url).json()
+        info_dict = {}
+        info_dict['developers'] = ', '.join(data['1252330']['data']['developers'])
+        info_dict['publishers'] = ', '.join(data['1252330']['data']['publishers'])
+        info_dict['genres'] = ', '.join(get_json_desc(data['1252330']['data']['genres']))
+        info_dict['categories'] = ', '.join(get_json_desc(data['1252330']['data']['categories']))
+        info_dict['drm_notice'] = data['1252330']['data']['drm_notice']
+        info_dict['ext_user_account_notice']  = data['1252330']['data']['ext_user_account_notice']
+        return info_dict
+
+
     def get_linux_compat(self, game):
         '''
         Get games compatability score from Protondb for running on proton.
@@ -156,6 +178,7 @@ class Tracker:
         # creates checklist
         time_to_beat_column_name = 'Time To Beat in Hours'
         metacritic_column_name = 'Metacritic Score'
+        genre_column_name = 'Genre'
         check_list = []
         for game in self.excel.row_i:
             play_status = self.excel.get_cell(game, 'Play Status')
@@ -165,7 +188,9 @@ class Tracker:
             if skip_filled:
                 time_to_beat = self.excel.get_cell(game, time_to_beat_column_name)
                 metacritic_score = self.excel.get_cell(game, metacritic_column_name)
-                if time_to_beat == 'None' or metacritic_score == 'None':
+                # TODO add new data
+                genres = self.excel.get_cell(game, genre_column_name)
+                if time_to_beat == 'None' or metacritic_score == 'None' or genres == 'None':
                     check_list.append(game)
             else:
                 check_list.append(game)
@@ -193,6 +218,10 @@ class Tracker:
                 metacritic_score = self.get_metacritic_score(game_name, platform)
                 if metacritic_score != None:
                     self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
+                # genre
+                time_to_beat = self.get_time_to_beat(game_name)
+                if time_to_beat != None:
+                    self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
         except KeyboardInterrupt:
             print('\nCancelled')
         finally:
@@ -315,6 +344,7 @@ class Tracker:
                     'uplay':'Uplay',
                     'gog':'GOG',
                     'ms store':'MS Store',
+                    'ms':'MS Store',
                     'microsoft':'MS Store',
                 }
                 if platform.lower() in platform_names:
