@@ -53,8 +53,10 @@ class Indexer:
         '''
         Aligns specific columns to center and adds border to cells.
         '''
-        align = openpyxl.styles.alignment.Alignment(
+        center = openpyxl.styles.alignment.Alignment(
             horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
+        left = openpyxl.styles.alignment.Alignment(
+            horizontal='left', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
         border = openpyxl.styles.borders.Border(
             left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
             diagonal=None, outline=True, start=None, end=None)
@@ -70,8 +72,10 @@ class Indexer:
             elif column in ['Price']:
                 cell.style = 'Currency'
             # centering
-            if column not in ['Name', 'Tags', 'Game Name']:
-                cell.alignment = align
+            if column not in ['Name', 'Tags', 'Game Name', 'Developers', 'Publishers', 'Genre']:
+                cell.alignment = center
+            else:
+                cell.alignment = left
             # border
             if column not in []:
                 cell.border = border
