@@ -117,7 +117,7 @@ class Indexer:
         self.changes_made = 1
 
 
-    def save_excel_sheet(self):
+    def save_excel_sheet(self, show_print=True):
         '''
         Backs up the excel file before saving the changes.
         It will keep trying to save until it completes in case of permission errors caused by the file being open.
@@ -126,18 +126,22 @@ class Indexer:
             # backups the file before saving.
             shutil.copy(self.file_path, os.path.join(self.script_dir, self.excel_filename + '.bak'))
             # saves the file once it is closed
-            print('\nSaving...')
+            if show_print:
+                print('\nSaving...')
             first_run = 1
             while True:
                 try:
                     self.wb.save(self.excel_filename + '.xlsx')
-                    print('Save Complete.                                  ')
+                    if show_print:
+                        print('Save Complete.                                  ')
                     break
                 except PermissionError:
                     if first_run:
-                        print('Make sure the excel sheet is closed.', end='\r')
+                        if show_print:
+                            print('Make sure the excel sheet is closed.', end='\r')
                         first_run = 0
                     sleep(.1)
         except KeyboardInterrupt:
-            print('\nCancelling Save')
+            if show_print:
+                print('\nCancelling Save')
             exit()
