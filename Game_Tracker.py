@@ -134,9 +134,10 @@ class Tracker:
         return None
 
 
+    @staticmethod
     def get_game_info(app_id):
         '''
-        Fets game info with steam api using a `app_id`.
+        Gets game info with steam api using a `app_id`.
         '''
         def get_json_desc(data):
             result = []
@@ -145,15 +146,33 @@ class Tracker:
             return result
 
         url = f'https://store.steampowered.com/api/appdetails?appids={app_id}'
-        data = requests.get(url).json()
-        info_dict = {}
-        info_dict['developers'] = ', '.join(data['1252330']['data']['developers'])
-        info_dict['publishers'] = ', '.join(data['1252330']['data']['publishers'])
-        info_dict['genres'] = ', '.join(get_json_desc(data['1252330']['data']['genres']))
-        info_dict['categories'] = ', '.join(get_json_desc(data['1252330']['data']['categories']))
-        info_dict['drm_notice'] = data['1252330']['data']['drm_notice']
-        info_dict['ext_user_account_notice']  = data['1252330']['data']['ext_user_account_notice']
-        return info_dict
+        data = requests.get(url)
+        if data == None:
+            return False
+        if data.status_code == requests.codes.ok:
+            info_dict = {}
+            data = data.json()
+            if 'data' in data[str(app_id)].keys():
+                # get developer
+                if 'developers' in data[str(app_id)]['data'].keys():
+                    info_dict['developers'] = ', '.join(data[str(app_id)]['data']['developers'])
+                else:
+                    info_dict['developers'] = False
+                # get publishers
+                if 'publishers' in data[str(app_id)]['data'].keys():
+                    info_dict['publishers'] = ', '.join(data[str(app_id)]['data']['publishers'])
+                else:
+                    info_dict['publishers'] = False
+                #  get genre
+                if 'genres' in data[str(app_id)]['data'].keys():
+                    info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
+                else:
+                    info_dict['genre'] = False
+                # info_dict['categories'] = ', '.join(get_json_desc(data[str(app_id)]['data']['categories']))
+                # info_dict['drm_notice'] = data[str(app_id)]['data']['drm_notice']
+                # info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
+                return info_dict
+        return False
 
 
     def get_linux_compat(self, game):
@@ -167,7 +186,6 @@ class Tracker:
         if data.status_code == requests.codes.ok:
             soup = BeautifulSoup(data.text, 'html.parser')
             score = soup.find(class_="Summary__GrowingSpan-sc-18cac2b-1 BJNpc")
-            print(score)
             return score
 
 
@@ -207,7 +225,9 @@ class Tracker:
             return
         try:
         # updates missing data
-            print('\nStarting Time To Beat and Metacritic Score check.')
+            print('\nStarting Time To Beat, Metacritic Score and other steam data check.')
+            save_interval = 15
+            running_interval = save_interval
             for game_name in tqdm(iterable=check_list, ascii=True, unit='games', dynamic_ncols=True):
                 # How long to beat check
                 time_to_beat = self.get_time_to_beat(game_name)
@@ -219,14 +239,21 @@ class Tracker:
                 if metacritic_score != None:
                     self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
                 # genre
-                time_to_beat = self.get_time_to_beat(game_name)
-                if time_to_beat != None:
-                    self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
+                genre = self.excel.get_cell(game_name, 'Genre')
+                if genre != None:
+                    app_id = self.get_appid(game_name)
+                    steam_info = self.get_game_info(app_id)
+                    if steam_info is not False:
+                        if steam_info['genre'] is not False:
+                            self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
+                running_interval -= 1
+                if running_interval == 0:
+                    running_interval = save_interval
+                    self.excel.save_excel_sheet(show_print=False)
         except KeyboardInterrupt:
             print('\nCancelled')
         finally:
             self.excel.save_excel_sheet()
-
 
 
     def refresh_steam_games(self, steam_id):
@@ -250,7 +277,7 @@ class Tracker:
             for game in self.excel.row_i.keys():
                 if self.excel.get_cell(game, 'Platform') == 'Steam':
                     self.removed_from_steam.append(str(game))
-            self.total_games_updated = 0
+            self.total_games_updated = 0  
             self.total_games_added = 0
             self.added_games = []
             for game in data.json()['response']['games']:
