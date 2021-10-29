@@ -36,7 +36,6 @@ class Indexer:
                 column_i[title] = i
         return column_i
 
-
     def create_row_index(self, column_name):
         '''
         Creates the row index.
@@ -47,7 +46,6 @@ class Indexer:
             if title is not None:
                 row_i[title] = i+1
         return row_i
-
 
     def format_cells(self, game_name):
         '''
@@ -80,7 +78,6 @@ class Indexer:
             if column not in []:
                 cell.border = border
 
-
     def get_cell(self, row_value, column_value):
         '''
         Gets the cell value based on the row and column
@@ -92,7 +89,6 @@ class Indexer:
             value = str(self.cur_workbook.cell(row=row_value, column=self.column_i[column_value]).value)
             return value
 
-
     def update_cell(self, row_value, column_value, string):
         '''
         Updates the given cell based on row and column to the given value.
@@ -103,7 +99,6 @@ class Indexer:
         else:
             self.cur_workbook.cell(row=row_value, column=self.column_i[column_value]).value = string
         self.changes_made = 1
-
 
     def add_new_cell(self, cell_dict):
         '''
@@ -119,7 +114,6 @@ class Indexer:
                 print(f'Missing data for {column}.')
         self.cur_workbook.append(append_list)
         self.changes_made = 1
-
 
     def save_excel_sheet(self, show_print=True):
         '''

@@ -1,10 +1,10 @@
 from classes.indexer import Indexer
-import requests, random, json, os, re, sys
-from time import sleep
+import requests, random, time, json, os, re, sys
 import datetime as dt
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from tqdm import tqdm
+
 
 class Tracker:
 
@@ -30,7 +30,6 @@ class Tracker:
     # misc
     applist = None
 
-
     def get_api_key(self):
         '''
         Checks for an api_key.txt so it can retrieve the key. If it does not exists,
@@ -47,7 +46,6 @@ class Tracker:
                 f.write(api_key)
             return api_key
 
-
     @staticmethod
     def hours_played(playtime_forever):
         '''
@@ -55,13 +53,19 @@ class Tracker:
         '''
         return round(playtime_forever/60, 4)
 
+    @staticmethod
+    def days_played(playtime_forever):
+        '''
+        Converts minutes played to a hours played in decimal form.
+        '''
+        return round(playtime_forever/60, 4)
 
     def get_time_to_beat(self, game_name, delay=2):
         '''
         Uses howlongtobeatpy to get the time to beat for entered game.
         '''
         if delay > 0:
-            sleep(delay)
+            time.sleep(delay)
         results = HowLongToBeat().search(game_name)
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
@@ -76,12 +80,11 @@ class Tracker:
         else:
             return 'Not Found'
 
-
     def get_metacritic_score(self, game_name, platform, delay=1):
         '''
         Uses requests to get the metacritic review score for the entered game.
         '''
-        sleep(delay)
+        time.sleep(delay)
         if platform == 'PS4':
             platform = 'playstation-4'
         elif platform == 'PS5':
@@ -117,7 +120,6 @@ class Tracker:
             review_score = 'Page Error'
         return review_score
 
-
     def get_appid(self, game):
         '''
         Checks the Steam App list for a game and returns its app id if it exists as entered.
@@ -133,17 +135,14 @@ class Tracker:
                 return item['appid']
         return None
 
-
     @staticmethod
     def get_game_info(app_id):
         '''
         Gets game info with steam api using a `app_id`.
         '''
+
         def get_json_desc(data):
-            result = []
-            for item in data:
-                result.append(item['description'])
-            return result
+            return [item['description'] for item in data]
 
         url = f'https://store.steampowered.com/api/appdetails?appids={app_id}'
         data = requests.get(url)
@@ -174,7 +173,6 @@ class Tracker:
                 return info_dict
         return False
 
-
     def get_linux_compat(self, game):
         '''
         Get games compatability score from Protondb for running on proton.
@@ -187,7 +185,6 @@ class Tracker:
             soup = BeautifulSoup(data.text, 'html.parser')
             score = soup.find(class_="Summary__GrowingSpan-sc-18cac2b-1 BJNpc")
             return score
-
 
     def requests_loop(self, skip_filled=1, check_status=0):
         '''
@@ -244,8 +241,25 @@ class Tracker:
                     app_id = self.get_appid(game_name)
                     steam_info = self.get_game_info(app_id)
                     if steam_info is not False:
+                        # genre
                         if steam_info['genre'] is not False:
                             self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
+                        else:
+                            self.excel.update_cell(game_name, genre_column_name, 'No Genre')
+                        # developer
+                        if steam_info['developers'] is not False:
+                            self.excel.update_cell(game_name, 'Developers', steam_info['developers'])
+                        else:
+                            self.excel.update_cell(game_name, genre_column_name, 'No Developer')
+                        # publishers
+                        if steam_info['publishers'] is not False:
+                            self.excel.update_cell(game_name, 'Publishers', steam_info['publishers'])
+                        else:
+                            self.excel.update_cell(game_name, genre_column_name, 'No Publisher')
+                    else:
+                        self.excel.update_cell(game_name, genre_column_name, 'No Data')
+                        self.excel.update_cell(game_name, 'Developers', 'No Data')
+                        self.excel.update_cell(game_name, 'Publishers', 'No Data')
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -254,7 +268,6 @@ class Tracker:
             print('\nCancelled')
         finally:
             self.excel.save_excel_sheet()
-
 
     def refresh_steam_games(self, steam_id):
         '''
@@ -272,11 +285,8 @@ class Tracker:
             print("Connection Error: Internet can't be accessed")
             return False
         if data.status_code == requests.codes.ok:
-            self.removed_from_steam = []
             # checks for games that changed names
-            for game in self.excel.row_i.keys():
-                if self.excel.get_cell(game, 'Platform') == 'Steam':
-                    self.removed_from_steam.append(str(game))
+            self.removed_from_steam = [str(game) for game in self.excel.row_i.keys() if self.excel.get_cell(game, 'Platform') == 'Steam']
             self.total_games_updated = 0  
             self.total_games_added = 0
             self.added_games = []
@@ -309,7 +319,8 @@ class Tracker:
                 print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}')
                 for item in self.removed_from_steam:
                     status = self.excel.get_cell(item, 'Play Status')
-                    self.excel.update_cell(item, 'Play Status', f'Removed | {status}')
+                    if 'Removed' not in status:
+                        self.excel.update_cell(item, 'Play Status', f'Removed | {status}')
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -317,7 +328,6 @@ class Tracker:
             print('\nFailed to connect to Steam API:\nCheck your internet.')
             print(data.status_code)
             return False
-
 
     def update_game(self, game_name, playtime_forever, play_status):
         '''
@@ -345,9 +355,9 @@ class Tracker:
                 unit = 'minutes'
             added_time = round(added_time, 1)
             total_hours = round(current_hours_played, 1)
-            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total {total_hours} hours.')
+            total_days = round(total_hours/24, 1)
+            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total Playtime: {total_hours} hours | {total_days} days.')
         self.excel.format_cells(game_name)
-
 
     def add_game(self, game_name=None, playtime_forever='', game_appid='', play_status='', platform='Steam'):
         '''
@@ -357,7 +367,7 @@ class Tracker:
         save = 0
         if game_name == None:
             save = 1
-            game_name = input('Do you want to add a new game?\nIf Yes type the game name.\n:')
+            game_name = input('\nDo you want to add a new game?\nIf Yes type the game name.\n:')
             if game_name != '':
                 if game_name.lower() in ['yes', 'y']:
                     game_name = input('\nWhat is the name of the game?\n:')
@@ -408,6 +418,8 @@ class Tracker:
             'Last Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
             }
+        # TODO add data with get_game_info
+        # column_info['Genre'] = 
         self.excel.add_new_cell(column_info)
         self.total_games_added += 1
         # adds game to row_i
@@ -415,7 +427,6 @@ class Tracker:
         self.excel.format_cells(game_name)
         if save:
             self.excel.save_excel_sheet()
-
 
     def output_completion_data(self):
         '''
@@ -431,7 +442,6 @@ class Tracker:
             self.excel.save_excel_sheet()
         else:
             print('\nNo games were added or updated.')
-
 
     def play_status_picker(self):
         '''
@@ -454,7 +464,6 @@ class Tracker:
             else:
                 print('\nInvalid Response')
                 continue
-
 
     def pick_random_game(self):
         '''
@@ -482,7 +491,6 @@ class Tracker:
             choice_list.pop(choice_list.index(picked_game))
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
 
-
     def arg_func(self):
         '''
         Checks if any arguments were given and runs commands.
@@ -501,7 +509,6 @@ class Tracker:
             print('Invalid Argument Given.')
         input()
         exit()
-
 
     def run(self):
         '''
