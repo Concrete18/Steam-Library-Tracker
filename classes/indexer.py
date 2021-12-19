@@ -1,9 +1,9 @@
 from openpyxl.styles.borders import Side
+from classes.logger import Logger
 import openpyxl, os, shutil
 from time import sleep
 
-
-class Indexer:
+class Indexer(Logger):
 
     changes_made = 0
 
@@ -69,6 +69,9 @@ class Indexer:
             # currency
             elif column in ['Price']:
                 cell.style = 'Currency'
+                # date
+            elif 'Date' in column:
+                cell.number_format = "MM/DD/YYYY"
             # centering
             if column not in ['Name', 'Tags', 'Game Name', 'Developers', 'Publishers', 'Genre']:
                 cell.alignment = center
@@ -111,7 +114,7 @@ class Indexer:
                 append_list.append(cell_dict[column])
             else:
                 append_list.append('')
-                print(f'Missing data for {column}.')
+                self.logger.info(f'Missing {column} for {cell_dict[self.column_name]}.')
         self.cur_workbook.append(append_list)
         self.changes_made = 1
 
