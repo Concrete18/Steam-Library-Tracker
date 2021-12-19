@@ -1,12 +1,16 @@
 from classes.indexer import Indexer
-import requests, random, time, json, os, re, sys
+from classes.logger import Logger
+import requests, random, time, json, os, re, sys, hashlib, webbrowser
+
 import datetime as dt
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
+from pathlib import Path
 from tqdm import tqdm
 
 
-class Tracker:
+class Tracker(Logger):
+
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -16,6 +20,7 @@ class Tracker:
         data = json.load(file)
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
+    blacklist = data['blacklist']
     # var init
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -26,9 +31,13 @@ class Tracker:
         workbook_name='Games',
         column_name='Game Name',
         column_letter='B',
-        script_dir=script_dir)
+        script_dir=script_dir
+        )
     # misc
     applist = None
+    # env loading
+    STEAM_API_KEY = os.getenv('STEAM_API_KEY')
+
 
     def get_api_key(self):
         '''
@@ -48,13 +57,6 @@ class Tracker:
 
     @staticmethod
     def hours_played(playtime_forever):
-        '''
-        Converts minutes played to a hours played in decimal form.
-        '''
-        return round(playtime_forever/60, 4)
-
-    @staticmethod
-    def days_played(playtime_forever):
         '''
         Converts minutes played to a hours played in decimal form.
         '''
@@ -167,6 +169,11 @@ class Tracker:
                     info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
                 else:
                     info_dict['genre'] = False
+                # get linux compat
+                if 'platforms' in data[str(app_id)]['data'].keys():
+                    info_dict['linux_compat'] = data[str(app_id)]['data']['platforms']['linux']
+                else:
+                    info_dict['linux_compat'] = False
                 # info_dict['categories'] = ', '.join(get_json_desc(data[str(app_id)]['data']['categories']))
                 # info_dict['drm_notice'] = data[str(app_id)]['data']['drm_notice']
                 # info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
@@ -250,12 +257,17 @@ class Tracker:
                         if steam_info['developers'] is not False:
                             self.excel.update_cell(game_name, 'Developers', steam_info['developers'])
                         else:
-                            self.excel.update_cell(game_name, genre_column_name, 'No Developer')
+                            self.excel.update_cell(game_name, 'Developers', 'No Developer')
                         # publishers
                         if steam_info['publishers'] is not False:
                             self.excel.update_cell(game_name, 'Publishers', steam_info['publishers'])
                         else:
-                            self.excel.update_cell(game_name, genre_column_name, 'No Publisher')
+                            self.excel.update_cell(game_name, 'Publishers', 'No Publisher')
+                        # linux compatability
+                        if steam_info['linux_compat'] is not False:
+                            linux_compat = self.excel.get_cell(game_name, 'Steam Deck Viable')
+                            if linux_compat == 'None':
+                                self.excel.update_cell(game_name, 'Steam Deck Viable', 'Native')
                     else:
                         self.excel.update_cell(game_name, genre_column_name, 'No Data')
                         self.excel.update_cell(game_name, 'Developers', 'No Data')
@@ -287,11 +299,13 @@ class Tracker:
         if data.status_code == requests.codes.ok:
             # checks for games that changed names
             self.removed_from_steam = [str(game) for game in self.excel.row_i.keys() if self.excel.get_cell(game, 'Platform') == 'Steam']
-            self.total_games_updated = 0  
+            self.total_games_updated = 0 
             self.total_games_added = 0
             self.added_games = []
             for game in data.json()['response']['games']:
                 game_name = game['name']
+                if game_name in self.blacklist:
+                    continue
                 # TODO include linux playtime
                 playtime_forever = game['playtime_forever']
                 game_appid = game['appid']
@@ -329,6 +343,75 @@ class Tracker:
             print(data.status_code)
             return False
 
+    @staticmethod
+    def hash_file(file_path):
+        '''
+        Creates a hash for the given `file_path`.
+        '''
+        BUF_SIZE = 65536
+        md5 = hashlib.md5()
+        with open(file_path, 'rb') as f:
+            while True:
+                data = f.read(BUF_SIZE)
+                if not data:
+                    break
+                md5.update(data)
+        return md5.hexdigest()
+    
+    def check_for_changes(self, json_path):
+        '''
+        Checks for changes to the json file.
+        '''
+        with open('ps_hash.txt', 'r+') as f:
+            previous_hash = f.read().strip()
+            new_hash = self.hash_file(json_path)
+            if new_hash == previous_hash:
+                print('Skipped PlayStation Json Check.')
+                return False
+            else:
+                f.write(new_hash)
+        return True
+
+    @staticmethod
+    def ignore_list_checker(name):
+        '''
+        Returns False if anything is found in the string is found in the `ignore_list`.
+        '''
+        ignore_list = ['demo', 'beta', 'test']
+        name = name.lower()
+        for string in ignore_list:
+            if re.search(rf'\b{string}\b', name):
+                return False
+        return True
+
+    def check_playstation_json(self, path):
+        '''
+        ph
+        '''
+        # checks if json exists
+        json_path = Path(path)
+        if not json_path.exists:
+            print('PlayStation Json does not exist.')
+            webbrowser.open_new('https://web.np.playstation.com/api/graphql/v1/op?operationName=getPurchasedGameList&variables=%7B%22isActive%22:true,%22platform%22:%5B%22ps4%22,%22ps5%22%5D,%22size%22:300,%22start%22:0,%22sortBy%22:%22TITLE_NAME%22,%22sortDirection%22:%22desc%22,%22subscriptionService%22:%22NONE%22%7D&extensions=%7B%22persistedQuery%22:%7B%22version%22:1,%22sha256Hash%22:%222c045408b0a4d0264bb5a3edfed4efd49fb4749cf8d216be9043768adff905e2%22%7D%7D')
+            return None
+        # create hash file if it does not exist
+        if not json_path.exists:
+            json_path.touch()
+        if not self.check_for_changes(json_path):
+            return None
+        with open(json_path) as file:
+            data = json.load(file)
+        # dict setup
+        games_dict = {}
+        games = data['data']['purchasedTitlesRetrieve']['games']
+        for game in games:
+            if not self.ignore_list_checker(game['name']):
+                continue
+            if game['name'] not in games_dict.keys():
+                games_dict[game['name']] = game['platform']
+        print(f'Found {len(games_dict.values())} PS4/PS5 Games.')
+        return games_dict
+
     def update_game(self, game_name, playtime_forever, play_status):
         '''
         Updates the games playtime(if changed) and play status(if unset).
@@ -344,7 +427,7 @@ class Tracker:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
             self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
-            self.excel.update_cell(game_name, 'Last Updated', dt.datetime.now().strftime(self.date_format))
+            self.excel.update_cell(game_name, 'Date Updated', dt.datetime.now().strftime(self.date_format))
             self.total_games_updated += 1
             if play_status == 'unset':
                 self.excel.update_cell(game_name, 'Play Status', 'Played')
@@ -356,7 +439,10 @@ class Tracker:
             added_time = round(added_time, 1)
             total_hours = round(current_hours_played, 1)
             total_days = round(total_hours/24, 1)
-            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total Playtime: {total_hours} hours | {total_days} days.')
+            days_string = ''
+            if total_days >= 1:
+                days_string = f' | {total_days} days'
+            print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total Playtime: {total_hours} hours{days_string}.')
         self.excel.format_cells(game_name)
 
     def add_game(self, game_name=None, playtime_forever='', game_appid='', play_status='', platform='Steam'):
@@ -415,7 +501,7 @@ class Tracker:
             'Probable Completion':'',
             'Hours Played':hours_played,
             'App ID':game_appid,
-            'Last Updated':dt.datetime.now().strftime(self.date_format),
+            'Date Updated':dt.datetime.now().strftime(self.date_format),
             'Date Added':dt.datetime.now().strftime(self.date_format),
             }
         # TODO add data with get_game_info
@@ -534,4 +620,5 @@ if __name__ == "__main__":
     # Tracker().get_linux_compat('Monster Hunter: World')
     # Tracker().get_linux_compat('Factorio')
     # exit()
-    Tracker().run()
+    # Tracker().run()
+    print(Tracker().check_playstation_json('playstation_games.json'))
