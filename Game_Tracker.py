@@ -1,12 +1,13 @@
-from classes.indexer import Indexer
-from classes.logger import Logger
-import requests, random, time, json, os, re, sys, hashlib, webbrowser
 
-import datetime as dt
+import requests, random, time, json, os, re, sys, hashlib, webbrowser, unicodedata
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
 from tqdm import tqdm
+import datetime as dt
+# classes
+from classes.indexer import Indexer
+from classes.logger import Logger
 
 
 class Tracker(Logger):
@@ -32,7 +33,7 @@ class Tracker(Logger):
         column_name='Game Name',
         column_letter='B',
         script_dir=script_dir
-        )
+    )
     # misc
     applist = None
     # env loading
@@ -102,7 +103,7 @@ class Tracker(Logger):
             '™':'',
             '_':'-',
             ' ':'-'
-            }
+        }
         for string, replace in replace_dict.items():
             game_name = game_name.replace(string, replace)
         url = f'https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}'
@@ -328,7 +329,6 @@ class Tracker(Logger):
                     self.update_game(game_name, playtime_forever, play_status)
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
-                    self.added_games.append(game_name)
             if len(self.removed_from_steam) > 0:
                 print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}')
                 for item in self.removed_from_steam:
@@ -366,30 +366,86 @@ class Tracker(Logger):
             previous_hash = f.read().strip()
             new_hash = self.hash_file(json_path)
             if new_hash == previous_hash:
-                print('Skipped PlayStation Json Check.')
+                print('\nSkipped PlayStation Json Check.')
                 return False
             else:
                 f.write(new_hash)
         return True
 
     @staticmethod
-    def ignore_list_checker(name):
+    def should_ignore(name):
         '''
-        Returns False if anything is found in the string is found in the `ignore_list`.
+        Returns True if any keywords are found or it is in the `ignore_list`.
         '''
-        ignore_list = ['demo', 'beta', 'test']
+        # keyword check
+        ignore_list = [
+            'demo',
+            'beta',
+            'test',
+            'Soundtrack',
+            'Pre-Order',
+            'Bonus Content'
+        ]
         name = name.lower()
         for string in ignore_list:
-            if re.search(rf'\b{string}\b', name):
-                return False
-        return True
+            if re.search(rf'\b{string}\b', name, re.IGNORECASE):
+                return True
+        # ignore list
+        ingore_game_list = [
+            'youtube',
+            'media player',
+            'amazon prime video',
+            'spotify',
+            'netflix',
+            'playStationvue'
+            'hbo go',
+            'hulu',
+            'loremipsum27',
+            'littlebigplanet3',
+            'CODE VEIN Trial Edition'
+        ]
+        if name.lower() in ingore_game_list:
+            return True
+        return False
 
-    def check_playstation_json(self, path):
+    @staticmethod
+    def unicode_fix(string):
+        inicode_dict = {
+            'â€':"'",
+            '®':'',
+            '™':'',
+            'â„¢':'',
+            'Â':'',
+            'Ã›':'u'
+        }
+        for char, replace in inicode_dict.items():
+            string = string.replace(char, replace)
+        return string.strip()
+
+    def add_playstation_games(self, games):
+        added_games = []
+        for game in tqdm(iterable=games, ascii=True, unit='games', dynamic_ncols=True):
+            game_name = self.unicode_fix(game['name'])
+            # skip if it should be ignored or was added this session
+            if self.should_ignore(game_name) or game_name in added_games:
+                continue
+            # skip if it already exist
+            if game_name in self.excel.row_i.keys() or f'{game_name} - Console' in self.excel.row_i.keys():
+                continue
+            # adds the game
+            added_games.append(game_name)
+            self.add_game(game_name=game_name, platform=game['platform'])
+        total_games_added = len(added_games)
+        print(f'Added {total_games_added} PS4/PS5 Games.')
+        if total_games_added > 0:
+            self.excel.save_excel_sheet()
+
+    def check_playstation_json(self):
         '''
         ph
         '''
         # checks if json exists
-        json_path = Path(path)
+        json_path = Path('playstation_games.json')
         if not json_path.exists:
             print('PlayStation Json does not exist.')
             webbrowser.open_new('https://web.np.playstation.com/api/graphql/v1/op?operationName=getPurchasedGameList&variables=%7B%22isActive%22:true,%22platform%22:%5B%22ps4%22,%22ps5%22%5D,%22size%22:300,%22start%22:0,%22sortBy%22:%22TITLE_NAME%22,%22sortDirection%22:%22desc%22,%22subscriptionService%22:%22NONE%22%7D&extensions=%7B%22persistedQuery%22:%7B%22version%22:1,%22sha256Hash%22:%222c045408b0a4d0264bb5a3edfed4efd49fb4749cf8d216be9043768adff905e2%22%7D%7D')
@@ -401,16 +457,9 @@ class Tracker(Logger):
             return None
         with open(json_path) as file:
             data = json.load(file)
-        # dict setup
-        games_dict = {}
+        print('\nChecking for new games for PS4 or PS5.')
         games = data['data']['purchasedTitlesRetrieve']['games']
-        for game in games:
-            if not self.ignore_list_checker(game['name']):
-                continue
-            if game['name'] not in games_dict.keys():
-                games_dict[game['name']] = game['platform']
-        print(f'Found {len(games_dict.values())} PS4/PS5 Games.')
-        return games_dict
+        self.add_playstation_games(games)
 
     def update_game(self, game_name, playtime_forever, play_status):
         '''
@@ -480,38 +529,44 @@ class Tracker(Logger):
             else:
                 return
         else:
-            hours_played = self.hours_played(playtime_forever)
+            if playtime_forever:
+                hours_played = self.hours_played(playtime_forever)
+            else:
+                hours_played = ''
         if 'VR' in game_name.lower():
             vr_support = 'Yes'
+        elif platform in ['PS5', 'PS4']:
+            vr_support = 'No'
         else:
             vr_support = ''
-        time_to_beat = self.get_time_to_beat(game_name)
-        metacritic_score = self.get_metacritic_score(game_name, 'Steam')
+        # time_to_beat = self.get_time_to_beat(game_name)
+        # metacritic_score = self.get_metacritic_score(game_name, 'Steam')
+
+        time_to_beat = ''
+        metacritic_score = ''
         column_info = {
-            'My Rating':'',
-            'Game Name':game_name,
-            'Play Status':play_status,
-            'Platform':platform,
-            'VR Support':vr_support,
-            'Time To Beat in Hours':time_to_beat,
-            'Metacritic Score':metacritic_score,
+            'My Rating': '',
+            'Game Name': game_name,
+            'Play Status': play_status,
+            'Platform': platform,
+            'VR Support': vr_support,
+            'Time To Beat in Hours': time_to_beat,
+            'Metacritic Score': metacritic_score,
             'Rating Comparison':'',
-            # TODO add working formula that uses correct letters
-            # 'Probable Completion':f'=IFERROR((G{1018}/60)/F{1018},0)',
             'Probable Completion':'',
-            'Hours Played':hours_played,
-            'App ID':game_appid,
-            'Date Updated':dt.datetime.now().strftime(self.date_format),
-            'Date Added':dt.datetime.now().strftime(self.date_format),
+            'Hours Played': hours_played,
+            'App ID': game_appid,
+            'Date Updated': dt.datetime.now().strftime(self.date_format),
+            'Date Added': dt.datetime.now().strftime(self.date_format),
             }
-        # TODO add data with get_game_info
-        # column_info['Genre'] = 
         self.excel.add_new_cell(column_info)
+        self.added_games.append(game_name)
         self.total_games_added += 1
         # adds game to row_i
         self.excel.row_i[game_name] = self.excel.cur_workbook._current_row
         self.excel.format_cells(game_name)
         if save:
+            print('saved')
             self.excel.save_excel_sheet()
 
     def output_completion_data(self):
@@ -527,7 +582,7 @@ class Tracker(Logger):
         if self.excel.changes_made:
             self.excel.save_excel_sheet()
         else:
-            print('\nNo games were added or updated.')
+            print('\nNo Steam games were added or updated.')
 
     def play_status_picker(self):
         '''
@@ -603,8 +658,9 @@ class Tracker(Logger):
         self.arg_func()
         os.system('mode con cols=68 lines=40')
         print('Starting Game Tracker')
-        if self.refresh_steam_games(self.steam_id):
-            self.output_completion_data()
+        self.refresh_steam_games(self.steam_id)
+        self.check_playstation_json()
+        self.output_completion_data()
         try:
             self.requests_loop()
             self.pick_random_game()
@@ -616,9 +672,4 @@ class Tracker(Logger):
 
 
 if __name__ == "__main__":
-    # Tracker().get_linux_compat('Hades')
-    # Tracker().get_linux_compat('Monster Hunter: World')
-    # Tracker().get_linux_compat('Factorio')
-    # exit()
-    # Tracker().run()
-    print(Tracker().check_playstation_json('playstation_games.json'))
+    Tracker().run()
