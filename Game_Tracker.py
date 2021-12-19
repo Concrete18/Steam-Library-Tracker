@@ -20,7 +20,7 @@ class Tracker(Logger):
         data = json.load(file)
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
-    blacklist = data['blacklist']
+    ignore_list = data['ignore_list']
     # var init
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -304,7 +304,7 @@ class Tracker(Logger):
             self.added_games = []
             for game in data.json()['response']['games']:
                 game_name = game['name']
-                if game_name in self.blacklist:
+                if game_name in self.ignore_list:
                     continue
                 # TODO include linux playtime
                 playtime_forever = game['playtime_forever']
