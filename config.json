@@ -4,22 +4,25 @@
         "excel_filename": "Excel Game Sheet"
     },
     "ignore_list": [
-        "DEATHLOOP - PreOrder",
         "Steam Deck Deposit",
         "Hellsweeper VR Playtest",
         "House Flipper - Workshop Exporter",
-        "Hunt: Showdown (Test Server)",
-        "Warhammer: Vermintide 2 Closed Test",
-        "Tom Clancy's Rainbow Six Siege - Test Server",
-        "For Honor - Public Test",
-        "Battlerite Public Test",
         "Deformers Open Beta",
         "Bigscreen Beta",
         "Overload Multiplayer Beta",
         "Serious Sam Fusion 2017 (beta)",
         "Magicka 2: Spell Balance Beta",
         "Evolve Stage 2",
-        "YouTube VR"
-
+        "littlebigplanet3",
+        "Youtube",
+        "Media Player",
+        "Amazon Prime Video",
+        "Spotify",
+        "Netflix",
+        "PlayStationVue",
+        "HBO GO",
+        "Hulu",
+        "loremipsum27",
+        "Plex"
     ]
 }

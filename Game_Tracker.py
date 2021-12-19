@@ -21,7 +21,7 @@ class Tracker(Logger):
         data = json.load(file)
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
-    ignore_list = data['ignore_list']
+    ignore_list = [string.lower() for string in data['ignore_list']]
     # var init
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -305,7 +305,7 @@ class Tracker(Logger):
             self.added_games = []
             for game in data.json()['response']['games']:
                 game_name = game['name']
-                if game_name in self.ignore_list:
+                if self.should_ignore(game_name):
                     continue
                 # TODO include linux playtime
                 playtime_forever = game['playtime_forever']
@@ -372,39 +372,30 @@ class Tracker(Logger):
                 f.write(new_hash)
         return True
 
-    @staticmethod
-    def should_ignore(name):
+    def should_ignore(self, name):
         '''
         Returns True if any keywords are found or it is in the `ignore_list`.
         '''
         # keyword check
-        ignore_list = [
+        keyword_ignore_list = [
             'demo',
             'beta',
-            'test',
-            'Soundtrack',
+            'Youtube'
+            'PreOrder',
             'Pre-Order',
-            'Bonus Content'
+            'Soundtrack',
+            'Closed Test',
+            'Public Test',
+            'Test Server',
+            'Bonus Content',
+            'Trial Edition',
         ]
         name = name.lower()
-        for string in ignore_list:
-            if re.search(rf'\b{string}\b', name, re.IGNORECASE):
+        for string in keyword_ignore_list:
+            if re.search(rf'\b{string.lower()}\b', name):
                 return True
         # ignore list
-        ingore_game_list = [
-            'youtube',
-            'media player',
-            'amazon prime video',
-            'spotify',
-            'netflix',
-            'playStationvue'
-            'hbo go',
-            'hulu',
-            'loremipsum27',
-            'littlebigplanet3',
-            'CODE VEIN Trial Edition'
-        ]
-        if name.lower() in ingore_game_list:
+        if name in self.ignore_list:
             return True
         return False
 
@@ -539,11 +530,8 @@ class Tracker(Logger):
             vr_support = 'No'
         else:
             vr_support = ''
-        # time_to_beat = self.get_time_to_beat(game_name)
-        # metacritic_score = self.get_metacritic_score(game_name, 'Steam')
-
-        time_to_beat = ''
-        metacritic_score = ''
+        time_to_beat = self.get_time_to_beat(game_name)
+        metacritic_score = self.get_metacritic_score(game_name, 'Steam')
         column_info = {
             'My Rating': '',
             'Game Name': game_name,
