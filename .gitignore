@@ -135,3 +135,7 @@ api_key.txt
 *.bak
 *.xml
 *.png
+.vscode/
+playstation_games.json
+classes/PS.py
+ps_hash.txt
