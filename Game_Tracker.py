@@ -1,5 +1,5 @@
 
-import requests, random, time, json, os, re, sys, hashlib, webbrowser, unicodedata
+import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -21,6 +21,7 @@ class Tracker(Logger):
         data = json.load(file)
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
+    playstation_data_link = data['settings']['playstation_data_link']
     ignore_list = [string.lower() for string in data['ignore_list']]
     # var init
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -287,8 +288,9 @@ class Tracker(Logger):
         Gets games owned by the entered Steam ID amd runs excel update/add functions.
         '''
         # asks for a steam id if the given one is invalid
-        if len(steam_id) != 17:
+        while len(steam_id) != 17:
             steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:')
+        print('\nStarting Steam Game Check')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
         url_var = f'?key={self.get_api_key()}&steamid={steam_id}'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
@@ -366,7 +368,7 @@ class Tracker(Logger):
             previous_hash = f.read().strip()
             new_hash = self.hash_file(json_path)
             if new_hash == previous_hash:
-                print('\nSkipped PlayStation Json Check.')
+                print('\nNo PlayStation games were added or updated.')
                 return False
             else:
                 f.write(new_hash)
@@ -407,7 +409,7 @@ class Tracker(Logger):
             '™':'',
             'â„¢':'',
             'Â':'',
-            'Ã›':'u'
+            'Ã›':'U'
         }
         for char, replace in inicode_dict.items():
             string = string.replace(char, replace)
@@ -425,7 +427,7 @@ class Tracker(Logger):
                 continue
             # adds the game
             added_games.append(game_name)
-            self.add_game(game_name=game_name, platform=game['platform'])
+            self.add_game(game_name=game_name, play_status='Unplayed', platform=game['platform'])
         total_games_added = len(added_games)
         print(f'Added {total_games_added} PS4/PS5 Games.')
         if total_games_added > 0:
@@ -433,13 +435,13 @@ class Tracker(Logger):
 
     def check_playstation_json(self):
         '''
-        ph
+        Checks `playstation_games.json` to find out if it is newly updated so it can add the new games to the sheet.
         '''
         # checks if json exists
         json_path = Path('playstation_games.json')
         if not json_path.exists:
             print('PlayStation Json does not exist.')
-            webbrowser.open_new('https://web.np.playstation.com/api/graphql/v1/op?operationName=getPurchasedGameList&variables=%7B%22isActive%22:true,%22platform%22:%5B%22ps4%22,%22ps5%22%5D,%22size%22:300,%22start%22:0,%22sortBy%22:%22TITLE_NAME%22,%22sortDirection%22:%22desc%22,%22subscriptionService%22:%22NONE%22%7D&extensions=%7B%22persistedQuery%22:%7B%22version%22:1,%22sha256Hash%22:%222c045408b0a4d0264bb5a3edfed4efd49fb4749cf8d216be9043768adff905e2%22%7D%7D')
+            webbrowser.open_new(self.playstation_data_link)
             return None
         # create hash file if it does not exist
         if not json_path.exists:
@@ -653,8 +655,13 @@ class Tracker(Logger):
             self.requests_loop()
             self.pick_random_game()
             self.add_game()
+            # ask about opening the playstation json and data webbage
+            if input('\nDo you want to update the playstation data?\n:').lower() in ['yes', 'y']:
+                subprocess.Popen(f'notepad "playstation_games.json"')
+                webbrowser.open(self.playstation_data_link)
+            # opens excel file if previous input is passed
             input('\nPress Enter to open updated file in Excel.\n:')
-            os.startfile(self.excel.file_path)  # opens excel file if previous input is passed
+            os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
             print('\nClosing')
 
