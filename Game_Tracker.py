@@ -1,4 +1,5 @@
 
+from typing import Awaitable
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
@@ -181,6 +182,15 @@ class Tracker(Logger):
                 # info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
                 return info_dict
         return False
+
+    @staticmethod
+    def string_url_convert(string):
+        return re.sub(r'\W+', '', string.replace(' ', '_'))
+
+    def get_store_link(self, game_name, app_id):
+        if not app_id or app_id == 'None':
+            return ''
+        return f'https://store.steampowered.com/app/{app_id}/{self.string_url_convert(game_name)}/'
 
     def get_linux_compat(self, game):
         '''
@@ -532,20 +542,19 @@ class Tracker(Logger):
             vr_support = 'No'
         else:
             vr_support = ''
-        time_to_beat = self.get_time_to_beat(game_name)
-        metacritic_score = self.get_metacritic_score(game_name, 'Steam')
         column_info = {
             'My Rating': '',
             'Game Name': game_name,
             'Play Status': play_status,
             'Platform': platform,
             'VR Support': vr_support,
-            'Time To Beat in Hours': time_to_beat,
-            'Metacritic Score': metacritic_score,
+            'Time To Beat in Hours': self.get_time_to_beat(game_name),
+            'Metacritic Score': self.get_metacritic_score(game_name, 'Steam'),
             'Rating Comparison':'',
             'Probable Completion':'',
             'Hours Played': hours_played,
             'App ID': game_appid,
+            'Store Link': f'=HYPERLINK("{self.get_store_link(game_name, game_appid)}","Store Link")',
             'Date Updated': dt.datetime.now().strftime(self.date_format),
             'Date Added': dt.datetime.now().strftime(self.date_format),
             }
