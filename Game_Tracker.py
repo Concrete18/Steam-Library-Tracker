@@ -40,6 +40,9 @@ class Tracker(Logger):
     applist = None
     # env loading
     STEAM_API_KEY = os.getenv('STEAM_API_KEY')
+    # current date and time setup
+    cur_date = dt.datetime.now()
+    excel_date = f'=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)'
 
 
     def get_api_key(self):
@@ -479,7 +482,7 @@ class Tracker(Logger):
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
             self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
-            self.excel.update_cell(game_name, 'Date Updated', dt.datetime.now().strftime(self.date_format))
+            self.excel.update_cell(game_name, 'Date Updated', self.excel_date)
             self.total_games_updated += 1
             if play_status == 'unset':
                 self.excel.update_cell(game_name, 'Play Status', 'Played')
@@ -536,9 +539,10 @@ class Tracker(Logger):
                 hours_played = self.hours_played(playtime_forever)
             else:
                 hours_played = ''
-        if 'VR' in game_name.lower():
+        # sets vr support value
+        if re.search(r'\bVR\b', game_name):
             vr_support = 'Yes'
-        elif platform in ['PS5', 'PS4']:
+        elif platform in ['PS5', 'PS4', 'Switch']:
             vr_support = 'No'
         else:
             vr_support = ''
@@ -555,8 +559,8 @@ class Tracker(Logger):
             'Hours Played': hours_played,
             'App ID': game_appid,
             'Store Link': f'=HYPERLINK("{self.get_store_link(game_name, game_appid)}","Store Link")',
-            'Date Updated': dt.datetime.now().strftime(self.date_format),
-            'Date Added': dt.datetime.now().strftime(self.date_format),
+            'Date Updated': self.excel_date,
+            'Date Added': self.excel_date
             }
         self.excel.add_new_cell(column_info)
         self.added_games.append(game_name)

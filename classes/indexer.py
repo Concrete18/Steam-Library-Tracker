@@ -78,8 +78,7 @@ class Indexer(Logger):
             else:
                 cell.alignment = left
             # border
-            if column not in []:
-                cell.border = border
+            cell.border = border
 
     def get_cell(self, row_value, column_value):
         '''
