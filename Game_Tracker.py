@@ -1,5 +1,4 @@
 
-from typing import Awaitable
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
@@ -24,10 +23,6 @@ class Tracker(Logger):
     excel_filename = data['settings']['excel_filename']
     playstation_data_link = data['settings']['playstation_data_link']
     ignore_list = [string.lower() for string in data['ignore_list']]
-    # var init
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
-    date_format = '%m/%d/%Y'
     # Indexer init
     excel = Indexer(
         excel_filename=excel_filename,
@@ -210,14 +205,14 @@ class Tracker(Logger):
 
     def requests_loop(self, skip_filled=1, check_status=0):
         '''
-        Loops through games in row_i and gets missing data for time to beat and Metacritic score.
+        Loops through games in row_index and gets missing data for time to beat and Metacritic score.
         '''
         # creates checklist
         time_to_beat_column_name = 'Time To Beat in Hours'
         metacritic_column_name = 'Metacritic Score'
         genre_column_name = 'Genre'
         check_list = []
-        for game in self.excel.row_i:
+        for game in self.excel.row_index:
             play_status = self.excel.get_cell(game, 'Play Status')
             if check_status:
                 if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
@@ -314,7 +309,7 @@ class Tracker(Logger):
             return False
         if data.status_code == requests.codes.ok:
             # checks for games that changed names
-            self.removed_from_steam = [str(game) for game in self.excel.row_i.keys() if self.excel.get_cell(game, 'Platform') == 'Steam']
+            self.removed_from_steam = [str(game) for game in self.excel.row_index.keys() if self.excel.get_cell(game, 'Platform') == 'Steam']
             self.total_games_updated = 0 
             self.total_games_added = 0
             self.added_games = []
@@ -338,7 +333,7 @@ class Tracker(Logger):
                 else:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
-                if game_name in self.excel.row_i.keys():
+                if game_name in self.excel.row_index.keys():
                     if game_name in self.removed_from_steam:
                         self.removed_from_steam.remove(game_name)
                     self.update_game(game_name, playtime_forever, play_status)
@@ -436,7 +431,7 @@ class Tracker(Logger):
             if self.should_ignore(game_name) or game_name in added_games:
                 continue
             # skip if it already exist
-            if game_name in self.excel.row_i.keys() or f'{game_name} - Console' in self.excel.row_i.keys():
+            if game_name in self.excel.row_index.keys() or f'{game_name} - Console' in self.excel.row_index.keys():
                 continue
             # adds the game
             added_games.append(game_name)
@@ -565,8 +560,8 @@ class Tracker(Logger):
         self.excel.add_new_cell(column_info)
         self.added_games.append(game_name)
         self.total_games_added += 1
-        # adds game to row_i
-        self.excel.row_i[game_name] = self.excel.cur_workbook._current_row
+        # adds game to row_index
+        self.excel.row_index[game_name] = self.excel.cur_workbook._current_row
         self.excel.format_cells(game_name)
         if save:
             print('saved')
@@ -618,7 +613,7 @@ class Tracker(Logger):
         if play_status == None:
             return
         choice_list = []
-        for game, index in self.excel.row_i.items():
+        for game, index in self.excel.row_index.items():
             game_play_status = self.excel.get_cell(index, 'Play Status').lower()
             if game_play_status == play_status.lower():
                 choice_list.append(game)
