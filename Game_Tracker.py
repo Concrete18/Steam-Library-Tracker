@@ -17,7 +17,7 @@ class Tracker(Logger):
     os.chdir(script_dir)
 
     # config init
-    with open('config.json') as file:
+    with open('configs\config.json') as file:
         data = json.load(file)
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
@@ -45,12 +45,13 @@ class Tracker(Logger):
         Checks for an api_key.txt so it can retrieve the key. If it does not exists,
         it will ask for an API key so it can create an api_key.txt file.
         '''
-        if os.path.isfile('api_key.txt'):
-            with open('api_key.txt') as f:
+        api_path = 'configs/api_key.txt'
+        if os.path.isfile(api_path):
+            with open(api_path) as f:
                 return f.read()
         else:
             api_key = ''
-            with open(os.path.join(self.script_dir, 'api_key.txt'), 'w') as f:
+            with open(os.path.join(self.script_dir, api_path), 'w') as f:
                 while len(api_key) != 32:
                     api_key = input('Enter your Steam API Key.\n:')
                 f.write(api_key)
@@ -372,7 +373,7 @@ class Tracker(Logger):
         '''
         Checks for changes to the json file.
         '''
-        with open('ps_hash.txt', 'r+') as f:
+        with open('configs\ps_hash.txt', 'r+') as f:
             previous_hash = f.read().strip()
             new_hash = self.hash_file(json_path)
             if new_hash == previous_hash:
@@ -447,7 +448,7 @@ class Tracker(Logger):
         Checks `playstation_games.json` to find out if it is newly updated so it can add the new games to the sheet.
         '''
         # checks if json exists
-        json_path = Path('playstation_games.json')
+        json_path = Path('configs\playstation_games.json')
         if not json_path.exists:
             print('PlayStation Json does not exist.')
             webbrowser.open_new(self.playstation_data_link)
@@ -671,7 +672,7 @@ class Tracker(Logger):
             self.add_game()
             # ask about opening the playstation json and data webbage
             if input('\nDo you want to update the playstation data?\n:').lower() in ['yes', 'y']:
-                subprocess.Popen(f'notepad "playstation_games.json"')
+                subprocess.Popen(f'notepad "configs\playstation_games.json"')
                 webbrowser.open(self.playstation_data_link)
                 webbrowser.open(r'https://store.playstation.com/')
             # opens excel file if previous input is passed
