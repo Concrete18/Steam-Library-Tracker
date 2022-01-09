@@ -379,6 +379,7 @@ class Tracker(Logger):
                 print('\nNo PlayStation games were added or updated.')
                 return False
             else:
+                f.truncate(0)
                 f.write(new_hash)
         return True
 
@@ -534,6 +535,11 @@ class Tracker(Logger):
                 hours_played = self.hours_played(playtime_forever)
             else:
                 hours_played = ''
+        # store link setup
+        store_link_hyperlink = ''
+        store_link = self.get_store_link(game_name, game_appid)
+        if store_link:
+            store_link_hyperlink = f'=HYPERLINK("{store_link}","Store Link")'
         # sets vr support value
         if re.search(r'\bVR\b', game_name):
             vr_support = 'Yes'
@@ -553,7 +559,7 @@ class Tracker(Logger):
             'Probable Completion':'',
             'Hours Played': hours_played,
             'App ID': game_appid,
-            'Store Link': f'=HYPERLINK("{self.get_store_link(game_name, game_appid)}","Store Link")',
+            'Store Link': store_link_hyperlink,
             'Date Updated': self.excel_date,
             'Date Added': self.excel_date
             }
@@ -667,6 +673,7 @@ class Tracker(Logger):
             if input('\nDo you want to update the playstation data?\n:').lower() in ['yes', 'y']:
                 subprocess.Popen(f'notepad "playstation_games.json"')
                 webbrowser.open(self.playstation_data_link)
+                webbrowser.open(r'https://store.playstation.com/')
             # opens excel file if previous input is passed
             input('\nPress Enter to open updated file in Excel.\n:')
             os.startfile(self.excel.file_path)
