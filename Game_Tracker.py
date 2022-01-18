@@ -1,4 +1,5 @@
 
+from asyncio.log import logger
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
@@ -38,6 +39,9 @@ class Tracker(Logger):
     # current date and time setup
     cur_date = dt.datetime.now()
     excel_date = f'=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)'
+    # api call logger
+    api_calls = {}
+    invalid_months = []
 
 
     def get_api_key(self):
@@ -63,6 +67,17 @@ class Tracker(Logger):
         Converts minutes played to a hours played in decimal form.
         '''
         return round(playtime_forever/60, 4)
+    
+    def api_sleeper(self, api):
+        '''
+        Delays delays for a set period of time if the api was run too recently
+        '''
+        sleep_length = .5
+        cur_datetime = dt.datetime.now()
+        if api in self.api_calls.keys():
+            if self.api_calls[api] + dt.timedelta(seconds=sleep_length) > cur_datetime:
+                time.sleep(sleep_length)
+        self.api_calls[api] = cur_datetime
 
     def get_time_to_beat(self, game_name, delay=2):
         '''
@@ -70,6 +85,7 @@ class Tracker(Logger):
         '''
         if delay > 0:
             time.sleep(delay)
+        self.api_sleeper('time_to_beat')
         results = HowLongToBeat().search(game_name)
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
@@ -109,6 +125,7 @@ class Tracker(Logger):
             game_name = game_name.replace(string, replace)
         url = f'https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}'
         user_agent = {'User-agent': 'Mozilla/5.0'}
+        self.api_sleeper('metacritic')
         source = requests.get(url, headers=user_agent)
         review_score = ''
         if source.status_code == requests.codes.ok:
@@ -120,7 +137,6 @@ class Tracker(Logger):
                 review_score = 'No Data'
             return review_score
         else:
-            # print(source.status_code)
             review_score = 'Page Error'
         return review_score
 
@@ -130,6 +146,7 @@ class Tracker(Logger):
         '''
         if self.applist == None:
             applist = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/'
+            self.api_sleeper('get_appid')
             data = requests.get(applist)
             if data.status_code != requests.codes.ok:
                 return None
@@ -139,8 +156,7 @@ class Tracker(Logger):
                 return item['appid']
         return None
 
-    @staticmethod
-    def get_game_info(app_id):
+    def get_game_info(self, app_id):
         '''
         Gets game info with steam api using a `app_id`.
         '''
@@ -149,6 +165,7 @@ class Tracker(Logger):
             return [item['description'] for item in data]
 
         url = f'https://store.steampowered.com/api/appdetails?appids={app_id}'
+        self.api_sleeper('steam_app_details')
         data = requests.get(url)
         if data == None:
             return False
@@ -171,6 +188,35 @@ class Tracker(Logger):
                     info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
                 else:
                     info_dict['genre'] = False
+                # get release date
+                if 'release_date' in data[str(app_id)]['data'].keys():
+                    release_date = data[str(app_id)]['data']['release_date']['date']
+                    monthh_translations = {
+                        'фев': 'Feb',
+                        'мая': 'Mar',
+                        'апр': 'Apr',
+                        'Mai': 'May',
+                        'авг': 'Aug',
+                        'сен.': 'Sep',
+                        'Okt': 'Oct',
+                        'ноя': 'Nov',
+                        'DIC': 'Dec',
+                    }
+                    for russian, english in monthh_translations.items():
+                        release_date.lower().replace(russian.lower(), english)
+                    # checks for invalid month
+                    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                    not_in_month = 0
+                    for month in months:
+                        if month not in release_date:
+                            not_in_month += 1
+                    if not_in_month == 12:
+                        self.invalid_months.append(release_date)
+                        info_dict['release_date'] = 'Invalid Release Date'
+                    else:
+                        info_dict['release_date'] = release_date
+                else:
+                    info_dict['release_date'] = False
                 # get linux compat
                 if 'platforms' in data[str(app_id)]['data'].keys():
                     info_dict['linux_compat'] = data[str(app_id)]['data']['platforms']['linux']
@@ -198,6 +244,7 @@ class Tracker(Logger):
         # TODO gain linux compat info javascript likely causing issues
         app_id = self.get_appid(game)
         url = f'https://www.protondb.com/app/{app_id}'
+        self.api_sleeper('proton')
         data = requests.get(url)
         if data.status_code == requests.codes.ok:
             soup = BeautifulSoup(data.text, 'html.parser')
@@ -209,22 +256,29 @@ class Tracker(Logger):
         Loops through games in row_index and gets missing data for time to beat and Metacritic score.
         '''
         # creates checklist
-        time_to_beat_column_name = 'Time To Beat in Hours'
-        metacritic_column_name = 'Metacritic Score'
-        genre_column_name = 'Genre'
         check_list = []
+        # TODO add auto check for empty columns in to_check
+        # time_to_beat_column_name = 'Time To Beat in Hours'
+        # metacritic_column_name = 'Metacritic Score'
+        to_check = [
+            'Developers',
+            'Publishers',
+            'Genre',
+            metacritic_column_name := 'Metacritic Score',
+            time_to_beat_column_name := 'Time To Beat in Hours',
+            'Release Date'
+        ]
         for game in self.excel.row_index:
             play_status = self.excel.get_cell(game, 'Play Status')
             if check_status:
                 if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
                     continue
             if skip_filled:
-                time_to_beat = self.excel.get_cell(game, time_to_beat_column_name)
-                metacritic_score = self.excel.get_cell(game, metacritic_column_name)
-                # TODO add new data
-                genres = self.excel.get_cell(game, genre_column_name)
-                if time_to_beat == 'None' or metacritic_score == 'None' or genres == 'None':
-                    check_list.append(game)
+                for column in to_check:
+                    cell = self.excel.get_cell(game, column)
+                    if cell == None and game not in check_list:
+                        check_list.append(game)
+                        continue
             else:
                 check_list.append(game)
         # checks if data should be updated
@@ -239,50 +293,58 @@ class Tracker(Logger):
         else:
             return
         try:
-        # updates missing data
+            # updates missing data
             print('\nStarting Time To Beat, Metacritic Score and other steam data check.')
             save_interval = 15
             running_interval = save_interval
             for game_name in tqdm(iterable=check_list, ascii=True, unit='games', dynamic_ncols=True):
                 # How long to beat check
-                time_to_beat = self.get_time_to_beat(game_name)
-                if time_to_beat != None:
-                    self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
+                if not self.excel.get_cell(game_name, time_to_beat_column_name):
+                    time_to_beat = self.get_time_to_beat(game_name)
+                    if time_to_beat != None:
+                        self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
                 # metacritic score check
+                if not self.excel.get_cell(game_name, metacritic_column_name):
+                    platform = self.excel.get_cell(game_name, 'Platform')
+                    metacritic_score = self.get_metacritic_score(game_name, platform)
+                    if metacritic_score != None:
+                        self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
+                # gets steam info if an app id exists for the entry and the platform is Steam
+                app_id = self.get_appid(game_name)
+                steam_info = self.get_game_info(app_id)
                 platform = self.excel.get_cell(game_name, 'Platform')
-                metacritic_score = self.get_metacritic_score(game_name, platform)
-                if metacritic_score != None:
-                    self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
-                # genre
-                genre = self.excel.get_cell(game_name, 'Genre')
-                if genre != None:
-                    app_id = self.get_appid(game_name)
-                    steam_info = self.get_game_info(app_id)
-                    if steam_info is not False:
-                        # genre
-                        if steam_info['genre'] is not False:
-                            self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
-                        else:
-                            self.excel.update_cell(game_name, genre_column_name, 'No Genre')
-                        # developer
-                        if steam_info['developers'] is not False:
-                            self.excel.update_cell(game_name, 'Developers', steam_info['developers'])
-                        else:
-                            self.excel.update_cell(game_name, 'Developers', 'No Developer')
-                        # publishers
-                        if steam_info['publishers'] is not False:
-                            self.excel.update_cell(game_name, 'Publishers', steam_info['publishers'])
-                        else:
-                            self.excel.update_cell(game_name, 'Publishers', 'No Publisher')
-                        # linux compatability
-                        if steam_info['linux_compat'] is not False:
-                            linux_compat = self.excel.get_cell(game_name, 'Steam Deck Viable')
-                            if linux_compat == 'None':
-                                self.excel.update_cell(game_name, 'Steam Deck Viable', 'Native')
+                if steam_info and platform == 'Steam':
+                    # genre
+                    if steam_info['genre']:
+                        self.excel.update_cell(game_name, 'Genre', steam_info['genre'])
                     else:
-                        self.excel.update_cell(game_name, genre_column_name, 'No Data')
-                        self.excel.update_cell(game_name, 'Developers', 'No Data')
-                        self.excel.update_cell(game_name, 'Publishers', 'No Data')
+                        self.excel.update_cell(game_name, 'Genre', 'No Genre')
+                    # release date
+                    if steam_info['release_date']:
+                        self.excel.update_cell(game_name, 'Release Date', steam_info['release_date'])
+                    else:
+                        self.excel.update_cell(game_name, 'Release Date', 'No Release Date')
+                    # developer
+                    if steam_info['developers']:
+                        self.excel.update_cell(game_name, 'Developers', steam_info['developers'])
+                    else:
+                        self.excel.update_cell(game_name, 'Developers', 'No Developer')
+                    # publishers
+                    if steam_info['publishers']:
+                        self.excel.update_cell(game_name, 'Publishers', steam_info['publishers'])
+                    else:
+                        self.excel.update_cell(game_name, 'Publishers', 'No Publisher')
+                    # linux compatability
+                    if steam_info['linux_compat']:
+                        linux_compat = self.excel.get_cell(game_name, 'Steam Deck Viable')
+                        if linux_compat == 'None':
+                            self.excel.update_cell(game_name, 'Steam Deck Viable', 'Native')
+                    time.sleep(.2)
+                else:
+                    self.excel.update_cell(game_name, 'Release Date', 'No Release Date')
+                    self.excel.update_cell(game_name, 'Genre', 'No Data')
+                    self.excel.update_cell(game_name, 'Developers', 'No Data')
+                    self.excel.update_cell(game_name, 'Publishers', 'No Data')
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -304,6 +366,7 @@ class Tracker(Logger):
         url_var = f'?key={self.get_api_key()}&steamid={steam_id}'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
         try:
+            self.api_sleeper('steam_owned_games')
             data = requests.get(combinded_url)
         except requests.exceptions.ConnectionError:
             print("Connection Error: Internet can't be accessed")
@@ -584,10 +647,28 @@ class Tracker(Logger):
                 print(', '.join(self.added_games))
         if self.total_games_updated > 0:
             print(f'\nGames Updated: {self.total_games_updated}')
+        if len(self.invalid_months) > 0:
+            print(self.invalid_months)
         if self.excel.changes_made:
             self.excel.save_excel_sheet()
         else:
             print('\nNo Steam games were added or updated.')
+    
+    @staticmethod
+    def save_json_output(data, filename):
+        '''
+        Saves data into json format with the given filename.
+        '''
+        json_object = json.dumps(data, indent = 4)
+        with open(filename, "w") as outfile:
+            outfile.write(json_object)
+
+    def create_game_json(self):
+        '''
+        ph
+        '''
+        my_game_data = []
+        self.save_json_output(my_game_data, 'my_game_data.json')
 
     def play_status_picker(self):
         '''
@@ -666,6 +747,7 @@ class Tracker(Logger):
         self.refresh_steam_games(self.steam_id)
         self.check_playstation_json()
         self.output_completion_data()
+        self.create_game_json()
         try:
             self.requests_loop()
             self.pick_random_game()
@@ -683,4 +765,7 @@ class Tracker(Logger):
 
 
 if __name__ == "__main__":
-    Tracker().run()
+    App = Tracker()
+    App.run()
+
+    # App.get_game_info(1092790)
