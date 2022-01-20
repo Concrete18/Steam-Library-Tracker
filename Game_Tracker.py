@@ -1,5 +1,3 @@
-
-from asyncio.log import logger
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
@@ -9,9 +7,15 @@ import datetime as dt
 # classes
 from classes.indexer import Indexer
 from classes.logger import Logger
+from classes.scrape import Scraper
+from classes.helper import Helper
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.expected_conditions import presence_of_element_located
 
 
-class Tracker(Logger):
+class Tracker(Logger, Helper):
 
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -32,8 +36,6 @@ class Tracker(Logger):
         column_letter='B',
         script_dir=script_dir
     )
-    # misc
-    applist = None
     # env loading
     STEAM_API_KEY = os.getenv('STEAM_API_KEY')
     # current date and time setup
@@ -67,17 +69,6 @@ class Tracker(Logger):
         Converts minutes played to a hours played in decimal form.
         '''
         return round(playtime_forever/60, 4)
-    
-    def api_sleeper(self, api):
-        '''
-        Delays delays for a set period of time if the api was run too recently
-        '''
-        sleep_length = .5
-        cur_datetime = dt.datetime.now()
-        if api in self.api_calls.keys():
-            if self.api_calls[api] + dt.timedelta(seconds=sleep_length) > cur_datetime:
-                time.sleep(sleep_length)
-        self.api_calls[api] = cur_datetime
 
     def get_time_to_beat(self, game_name, delay=2):
         '''
@@ -140,21 +131,67 @@ class Tracker(Logger):
             review_score = 'Page Error'
         return review_score
 
-    def get_appid(self, game):
+    def get_app_id(self, game, app_list={}):
         '''
         Checks the Steam App list for a game and returns its app id if it exists as entered.
         '''
-        if self.applist == None:
-            applist = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/'
-            self.api_sleeper('get_appid')
-            data = requests.get(applist)
+        # sets up app_list if it does not exist
+        if app_list == {}:
+            url = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/'
+            data = requests.get(url)
             if data.status_code != requests.codes.ok:
                 return None
-            self.applist = data.json()['applist']['apps']
-        for item in self.applist:
+            app_list = data.json()['applist']['apps']
+        # searches for game
+        for item in app_list:
             if item["name"] == game:
                 return item['appid']
         return None
+    
+    def standardize_date(self, date):
+        '''
+        ph
+        '''
+        # translation fix for weird dates from steam
+        month_translations = {
+            'фев': 'Feb',
+            'мая': 'Mar',
+            'апр': 'Apr',
+            'Mai': 'May',
+            'авг': 'Aug',
+            'сен.': 'Sep',
+            'Okt': 'Oct',
+            'ноя': 'Nov',
+            'DIC': 'Dec',
+        }
+        for russian, english in month_translations.items():
+            date.lower().replace(russian.lower(), english)
+        # TODO set date to same order
+        day, month, year = '', '', ''
+        for string in date.split(' '):
+            string = string.replace(',', '')
+            if year == '' and len(string) == 4:
+                year = string
+            if month == '' and len(string) == 3:
+                month = string
+            if day == '' and len(string) == 2:
+                day = string
+        date = f'{month} {day}, {year}'
+        # checks for invalid month
+        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        not_in_month = 0
+        for month in months:
+            if month not in date:
+                not_in_month += 1
+        if not_in_month == 12:
+            self.invalid_months.append(date)
+            year = re.search(r'[0-9]{4}', date)
+            if year:
+                return year.group(0)
+            else:
+                return 'Invalid Release Date'
+        else:
+            return date
 
     def get_game_info(self, app_id):
         '''
@@ -191,30 +228,8 @@ class Tracker(Logger):
                 # get release date
                 if 'release_date' in data[str(app_id)]['data'].keys():
                     release_date = data[str(app_id)]['data']['release_date']['date']
-                    monthh_translations = {
-                        'фев': 'Feb',
-                        'мая': 'Mar',
-                        'апр': 'Apr',
-                        'Mai': 'May',
-                        'авг': 'Aug',
-                        'сен.': 'Sep',
-                        'Okt': 'Oct',
-                        'ноя': 'Nov',
-                        'DIC': 'Dec',
-                    }
-                    for russian, english in monthh_translations.items():
-                        release_date.lower().replace(russian.lower(), english)
-                    # checks for invalid month
-                    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-                    not_in_month = 0
-                    for month in months:
-                        if month not in release_date:
-                            not_in_month += 1
-                    if not_in_month == 12:
-                        self.invalid_months.append(release_date)
-                        info_dict['release_date'] = 'Invalid Release Date'
-                    else:
-                        info_dict['release_date'] = release_date
+                    release_date = self.standardize_date(release_date)
+                    info_dict['release_date'] = release_date
                 else:
                     info_dict['release_date'] = False
                 # get linux compat
@@ -230,7 +245,7 @@ class Tracker(Logger):
 
     @staticmethod
     def string_url_convert(string):
-        return re.sub(r'\W+', '', string.replace(' ', '_'))
+        return re.sub(r'\W+', '', string.replace(' ', '_')).lower()
 
     def get_store_link(self, game_name, app_id):
         if not app_id or app_id == 'None':
@@ -242,14 +257,41 @@ class Tracker(Logger):
         Get games compatability score from Protondb for running on proton.
         '''
         # TODO gain linux compat info javascript likely causing issues
-        app_id = self.get_appid(game)
+        app_id = self.get_app_id(game)
         url = f'https://www.protondb.com/app/{app_id}'
         self.api_sleeper('proton')
         data = requests.get(url)
         if data.status_code == requests.codes.ok:
             soup = BeautifulSoup(data.text, 'html.parser')
-            score = soup.find(class_="Summary__GrowingSpan-sc-18cac2b-1 BJNpc")
+            if 'You need to enable JavaScript to run this app.' in soup:
+                print('You need to enable JavaScript to run this app.')
+                return False
+            score = soup.find(class_="Summary__ExpandingSpan-sc-18cac2b-1 bRWxzY")
             return score
+        else:
+            return 'Unknown'
+    
+    def get_proton_rating(self, game):
+        app_id = self.get_app_id(game)
+        if app_id is None:
+            return 'Not Found'
+        if not hasattr(self, 'scraper') and app_id is not None:
+            self.scraper = Scraper()
+            self.scraper.get_web_driver(headless=True)
+        self.api_sleeper('proton')
+        url = f'https://www.protondb.com/app/{app_id}'
+        class_name = 'Summary__ExpandingSpan-sc-18cac2b-1 bRWxzY'
+        self.scraper.driver.get(url)
+        wait = WebDriverWait(self.scraper.driver, 10)
+        wait.until(presence_of_element_located((By.ID, "quotesList")))
+        try:
+            items = self.scraper.driver.find_element_by_class_name(class_name)
+        except self.scraper.driver.common.exceptions.NoSuchElementException:
+            print('No element found.')
+            return
+        print(items.text)
+        self.scraper.driver.quit()
+        return items
 
     def requests_loop(self, skip_filled=1, check_status=0):
         '''
@@ -257,16 +299,14 @@ class Tracker(Logger):
         '''
         # creates checklist
         check_list = []
-        # TODO add auto check for empty columns in to_check
-        # time_to_beat_column_name = 'Time To Beat in Hours'
-        # metacritic_column_name = 'Metacritic Score'
         to_check = [
-            'Developers',
-            'Publishers',
-            'Genre',
+            genre_column_name := 'Genre',
+            publishers_column_name := 'Publishers',
+            developers_column_name := 'Developers',
             metacritic_column_name := 'Metacritic Score',
             time_to_beat_column_name := 'Time To Beat in Hours',
-            'Release Date'
+            # steam_deck_viable_column_name := 'Steam Deck Viable',
+            release_date_column_name := 'Release Date',
         ]
         for game in self.excel.row_index:
             play_status = self.excel.get_cell(game, 'Play Status')
@@ -310,41 +350,40 @@ class Tracker(Logger):
                     if metacritic_score != None:
                         self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
                 # gets steam info if an app id exists for the entry and the platform is Steam
-                app_id = self.get_appid(game_name)
+                app_id = self.get_app_id(game_name)
                 steam_info = self.get_game_info(app_id)
                 platform = self.excel.get_cell(game_name, 'Platform')
                 if steam_info and platform == 'Steam':
                     # genre
                     if steam_info['genre']:
-                        self.excel.update_cell(game_name, 'Genre', steam_info['genre'])
+                        self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
                     else:
-                        self.excel.update_cell(game_name, 'Genre', 'No Genre')
+                        self.excel.update_cell(game_name, genre_column_name, 'No Genre')
                     # release date
                     if steam_info['release_date']:
-                        self.excel.update_cell(game_name, 'Release Date', steam_info['release_date'])
+                        self.excel.update_cell(game_name, release_date_column_name, steam_info['release_date'])
                     else:
-                        self.excel.update_cell(game_name, 'Release Date', 'No Release Date')
+                        self.excel.update_cell(game_name, release_date_column_name, 'No Release Date')
                     # developer
                     if steam_info['developers']:
-                        self.excel.update_cell(game_name, 'Developers', steam_info['developers'])
+                        self.excel.update_cell(game_name, developers_column_name, steam_info['developers'])
                     else:
-                        self.excel.update_cell(game_name, 'Developers', 'No Developer')
+                        self.excel.update_cell(game_name, developers_column_name, 'No Developer')
                     # publishers
                     if steam_info['publishers']:
-                        self.excel.update_cell(game_name, 'Publishers', steam_info['publishers'])
+                        self.excel.update_cell(game_name, publishers_column_name, steam_info['publishers'])
                     else:
-                        self.excel.update_cell(game_name, 'Publishers', 'No Publisher')
+                        self.excel.update_cell(game_name, publishers_column_name, 'No Publisher')
                     # linux compatability
-                    if steam_info['linux_compat']:
-                        linux_compat = self.excel.get_cell(game_name, 'Steam Deck Viable')
-                        if linux_compat == 'None':
-                            self.excel.update_cell(game_name, 'Steam Deck Viable', 'Native')
-                    time.sleep(.2)
+                    # if steam_info['linux_compat']:
+                    #     linux_compat = self.excel.get_cell(game_name, steam_deck_viable_column_name)
+                    #     if linux_compat == 'None':
+                    #         self.excel.update_cell(game_name, steam_deck_viable_column_name, 'Native')
                 else:
-                    self.excel.update_cell(game_name, 'Release Date', 'No Release Date')
-                    self.excel.update_cell(game_name, 'Genre', 'No Data')
-                    self.excel.update_cell(game_name, 'Developers', 'No Data')
-                    self.excel.update_cell(game_name, 'Publishers', 'No Data')
+                    self.excel.update_cell(game_name, release_date_column_name, 'No Release Date')
+                    self.excel.update_cell(game_name, genre_column_name, 'No Data')
+                    self.excel.update_cell(game_name, developers_column_name, 'No Data')
+                    self.excel.update_cell(game_name, publishers_column_name, 'No Data')
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
