@@ -10,10 +10,6 @@ from classes.logger import Logger
 from classes.scrape import Scraper
 from classes.helper import Helper
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support.expected_conditions import presence_of_element_located
-
 
 class Tracker(Logger, Helper):
 
@@ -36,13 +32,10 @@ class Tracker(Logger, Helper):
         column_letter='B',
         script_dir=script_dir
     )
-    # env loading
-    STEAM_API_KEY = os.getenv('STEAM_API_KEY')
     # current date and time setup
     cur_date = dt.datetime.now()
     excel_date = f'=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)'
     # api call logger
-    api_calls = {}
     invalid_months = []
 
 
@@ -91,11 +84,10 @@ class Tracker(Logger, Helper):
         else:
             return 'Not Found'
 
-    def get_metacritic_score(self, game_name, platform, delay=1):
+    def get_metacritic_score(self, game_name, platform):
         '''
         Uses requests to get the metacritic review score for the entered game.
         '''
-        time.sleep(delay)
         if platform == 'PS4':
             platform = 'playstation-4'
         elif platform == 'PS5':
@@ -148,50 +140,15 @@ class Tracker(Logger, Helper):
                 return item['appid']
         return None
     
-    def standardize_date(self, date):
+    def get_year(self, date):
         '''
-        ph
+        Takes the given `date` and changes it to this format, "Sep 14, 2016".
         '''
-        # translation fix for weird dates from steam
-        month_translations = {
-            'фев': 'Feb',
-            'мая': 'Mar',
-            'апр': 'Apr',
-            'Mai': 'May',
-            'авг': 'Aug',
-            'сен.': 'Sep',
-            'Okt': 'Oct',
-            'ноя': 'Nov',
-            'DIC': 'Dec',
-        }
-        for russian, english in month_translations.items():
-            date.lower().replace(russian.lower(), english)
-        # TODO set date to same order
-        day, month, year = '', '', ''
-        for string in date.split(' '):
-            string = string.replace(',', '')
-            if year == '' and len(string) == 4:
-                year = string
-            if month == '' and len(string) == 3:
-                month = string
-            if day == '' and len(string) == 2:
-                day = string
-        date = f'{month} {day}, {year}'
-        # checks for invalid month
-        months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-        not_in_month = 0
-        for month in months:
-            if month not in date:
-                not_in_month += 1
-        if not_in_month == 12:
-            self.invalid_months.append(date)
-            year = re.search(r'[0-9]{4}', date)
-            if year:
-                return year.group(0)
-            else:
-                return 'Invalid Release Date'
+        year = re.search(r'[0-9]{4}', date)
+        if year:
+            return year.group(0)
         else:
-            return date
+            return 'Invalid Date'
 
     def get_game_info(self, app_id):
         '''
@@ -225,12 +182,18 @@ class Tracker(Logger, Helper):
                     info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
                 else:
                     info_dict['genre'] = False
-                # get release date
+                #  get metacritic
+                if 'metacritic' in data[str(app_id)]['data'].keys():
+                    info_dict['metacritic'] = data[str(app_id)]['data']['metacritic']['score']
+                else:
+                    info_dict['metacritic'] = False
+                # get release year
                 if 'release_date' in data[str(app_id)]['data'].keys():
                     release_date = data[str(app_id)]['data']['release_date']['date']
-                    release_date = self.standardize_date(release_date)
+                    release_date = self.get_year(release_date)
                     info_dict['release_date'] = release_date
                 else:
+                    print(data[str(app_id)]['data']['release_date']['date'])
                     info_dict['release_date'] = False
                 # get linux compat
                 if 'platforms' in data[str(app_id)]['data'].keys():
@@ -282,8 +245,6 @@ class Tracker(Logger, Helper):
         url = f'https://www.protondb.com/app/{app_id}'
         class_name = 'Summary__ExpandingSpan-sc-18cac2b-1 bRWxzY'
         self.scraper.driver.get(url)
-        wait = WebDriverWait(self.scraper.driver, 10)
-        wait.until(presence_of_element_located((By.ID, "quotesList")))
         try:
             items = self.scraper.driver.find_element_by_class_name(class_name)
         except self.scraper.driver.common.exceptions.NoSuchElementException:
@@ -305,8 +266,8 @@ class Tracker(Logger, Helper):
             developers_column_name := 'Developers',
             metacritic_column_name := 'Metacritic Score',
             time_to_beat_column_name := 'Time To Beat in Hours',
+            release_year_column_name := 'Release Year',
             # steam_deck_viable_column_name := 'Steam Deck Viable',
-            release_date_column_name := 'Release Date',
         ]
         for game in self.excel.row_index:
             play_status = self.excel.get_cell(game, 'Play Status')
@@ -323,7 +284,7 @@ class Tracker(Logger, Helper):
                 check_list.append(game)
         # checks if data should be updated
         missing_data = len(check_list)
-        auto_update = 6
+        auto_update = 10
         if 0 < missing_data <= auto_update:
             print(f'\nMissing data is within auto update threshold of {auto_update}.')
         elif missing_data > auto_update:
@@ -350,7 +311,9 @@ class Tracker(Logger, Helper):
                     if metacritic_score != None:
                         self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
                 # gets steam info if an app id exists for the entry and the platform is Steam
-                app_id = self.get_app_id(game_name)
+                app_id = self.excel.get_cell(game_name, 'App ID')
+                if not app_id:
+                    app_id = self.get_app_id(game_name)
                 steam_info = self.get_game_info(app_id)
                 platform = self.excel.get_cell(game_name, 'Platform')
                 if steam_info and platform == 'Steam':
@@ -359,11 +322,11 @@ class Tracker(Logger, Helper):
                         self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
                     else:
                         self.excel.update_cell(game_name, genre_column_name, 'No Genre')
-                    # release date
+                    # release year
                     if steam_info['release_date']:
-                        self.excel.update_cell(game_name, release_date_column_name, steam_info['release_date'])
+                        self.excel.update_cell(game_name, release_year_column_name, steam_info['release_date'])
                     else:
-                        self.excel.update_cell(game_name, release_date_column_name, 'No Release Date')
+                        self.excel.update_cell(game_name, release_year_column_name, 'No Release Year')
                     # developer
                     if steam_info['developers']:
                         self.excel.update_cell(game_name, developers_column_name, steam_info['developers'])
@@ -374,13 +337,19 @@ class Tracker(Logger, Helper):
                         self.excel.update_cell(game_name, publishers_column_name, steam_info['publishers'])
                     else:
                         self.excel.update_cell(game_name, publishers_column_name, 'No Publisher')
+                    # metacritic
+                    if steam_info['metacritic']:
+                            self.excel.update_cell(game_name, metacritic_column_name, steam_info['metacritic'])
+                    else:
+                        if not self.excel.get_cell(game_name, metacritic_column_name):
+                            self.excel.update_cell(game_name, metacritic_column_name, 'No Score')
                     # linux compatability
                     # if steam_info['linux_compat']:
                     #     linux_compat = self.excel.get_cell(game_name, steam_deck_viable_column_name)
                     #     if linux_compat == 'None':
                     #         self.excel.update_cell(game_name, steam_deck_viable_column_name, 'Native')
                 else:
-                    self.excel.update_cell(game_name, release_date_column_name, 'No Release Date')
+                    self.excel.update_cell(game_name, release_year_column_name, 'No Release Year')
                     self.excel.update_cell(game_name, genre_column_name, 'No Data')
                     self.excel.update_cell(game_name, developers_column_name, 'No Data')
                     self.excel.update_cell(game_name, publishers_column_name, 'No Data')

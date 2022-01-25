@@ -9,18 +9,31 @@ from classes.helper import Helper
 class TestStringMethods(unittest.TestCase):
 
 
-    def test_standardize_date(self):
-        print('\n', 'standardize_date')
+    def test_get_year(self):
+        print('\n', 'get_year')
         test = Tracker()
         date_tests = {
-            'this is not a date': 'Invalid Release Date',
-            'Sep 14, 2016': 'Sep 14, 2016',
-            '25 Apr, 1991': 'Apr 25, 1991',
-            '16 Nov, 2009': 'Nov 16, 2009',
+            'this is not a date': 'Invalid Date',
+            'Sep 14, 2016': '2016',
+            '25 Apr, 1991': '1991',
+            '16 Nov, 2009': '2009',
             'Mai 25, 1991': '1991',
+            'Apr , 2015': '2015'
         }
         for date, bool in date_tests.items():
-            self.assertEqual(test.standardize_date(date), bool)
+            self.assertEqual(test.get_year(date), bool)
+
+    def test_get_metacritic_score(self):
+        print('\n', 'get_metacritic_score')  
+        test = Tracker()
+        metacritic_tests = {
+            'Dishonored 2': 86,
+            'Deep Rock Galactic': 85,
+            'Inscryption': 85,
+            'Not a Real Game': 'Page Error',
+        }
+        for name, answer in metacritic_tests.items():
+            self.assertEqual(test.get_metacritic_score(name, 'pc'), answer)
 
     def test_get_app_id(self):
         print('\n', 'get_app_id')  
@@ -54,7 +67,7 @@ class TestStringMethods(unittest.TestCase):
     #     for name, answer in string_tests.items():
     #         self.assertEqual(test.get_proton_rating(name), answer)
 
-    # def test_standardize_date(self):
+    # def test_get_year(self):
     #     print('\n', 'api_sleeper')
     #     test = Helper()
     #     cur_time = dt.datetime.now()
