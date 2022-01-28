@@ -117,7 +117,7 @@ class Tracker(Logger, Helper):
             if review_score != None:
                 review_score = int(review_score.text)
             else:
-                review_score = 'No Data'
+                review_score = 'No Score'
             return review_score
         else:
             review_score = 'Page Error'
@@ -207,10 +207,15 @@ class Tracker(Logger, Helper):
         return False
 
     @staticmethod
-    def string_url_convert(string):
+    def string_url_convert(string) -> str:
+        '''
+        Converts given `string` into a url ready string and returns it.
+        '''
         return re.sub(r'\W+', '', string.replace(' ', '_')).lower()
 
     def get_store_link(self, game_name, app_id):
+        '''
+        Generates a likely link to the games store page using `game_name` and `app_id`.'''
         if not app_id or app_id == 'None':
             return ''
         return f'https://store.steampowered.com/app/{app_id}/{self.string_url_convert(game_name)}/'
@@ -235,6 +240,10 @@ class Tracker(Logger, Helper):
             return 'Unknown'
     
     def get_proton_rating(self, game):
+        '''
+        WIP
+        Gets the proton rating for the given `game`.
+        '''
         app_id = self.get_app_id(game)
         if app_id is None:
             return 'Not Found'
@@ -284,7 +293,7 @@ class Tracker(Logger, Helper):
                 check_list.append(game)
         # checks if data should be updated
         missing_data = len(check_list)
-        auto_update = 10
+        auto_update = 50
         if 0 < missing_data <= auto_update:
             print(f'\nMissing data is within auto update threshold of {auto_update}.')
         elif missing_data > auto_update:
@@ -484,6 +493,9 @@ class Tracker(Logger, Helper):
 
     @staticmethod
     def unicode_fix(string):
+        '''
+        Basic unicode cleaner.
+        '''
         inicode_dict = {
             'â€':"'",
             '®':'',
@@ -497,6 +509,9 @@ class Tracker(Logger, Helper):
         return string.strip()
 
     def add_playstation_games(self, games):
+        '''
+        Adds playstation games to excel using the given `games` variable.
+        '''
         added_games = []
         for game in tqdm(iterable=games, ascii=True, unit='games', dynamic_ncols=True):
             game_name = self.unicode_fix(game['name'])
@@ -671,13 +686,6 @@ class Tracker(Logger, Helper):
         with open(filename, "w") as outfile:
             outfile.write(json_object)
 
-    def create_game_json(self):
-        '''
-        ph
-        '''
-        my_game_data = []
-        self.save_json_output(my_game_data, 'my_game_data.json')
-
     def play_status_picker(self):
         '''
         Shows a list of Play Status's to choose from.
@@ -725,6 +733,9 @@ class Tracker(Logger, Helper):
             picked_game = random.choice(choice_list)
             choice_list.pop(choice_list.index(picked_game))
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
+    
+    def get_favorite_games_sales(self):
+        pass
 
     def arg_func(self):
         '''
@@ -744,6 +755,31 @@ class Tracker(Logger, Helper):
             print('Invalid Argument Given.')
         input()
         exit()
+    
+    def pick_task(self):
+        '''
+        Allows picking a task to do next using a matching number.
+        '''
+        print('\nWhat do you want to do next?\n')
+        choices = [
+            'Pick Random Game',
+            'Add Game Game',
+            'Update the Playstation Data',
+            'Check for Favorite Games Sales.'
+        ]
+        for count, choice in enumerate(choices):
+            print(f'{count+1}. {choice}')
+        res = input('\nPress Enter without a number to open the excel sheet.\n')
+        if res == '1':
+            self.pick_random_game()
+        elif res == '2':
+            self.add_game()
+        elif res == '3':
+            subprocess.Popen(f'notepad "configs\playstation_games.json"')
+            webbrowser.open(self.playstation_data_link)
+            webbrowser.open(r'https://store.playstation.com/')
+        elif res == '4':
+            self.get_favorite_games_sales()
 
     def run(self):
         '''
@@ -752,19 +788,13 @@ class Tracker(Logger, Helper):
         self.arg_func()
         os.system('mode con cols=68 lines=40')
         print('Starting Game Tracker')
-        self.refresh_steam_games(self.steam_id)
-        self.check_playstation_json()
-        self.output_completion_data()
-        self.create_game_json()
+        # starts function run with CTRL Exit being possible without causing an error
         try:
+            self.refresh_steam_games(self.steam_id)
+            self.check_playstation_json()
+            self.output_completion_data()
             self.requests_loop()
-            self.pick_random_game()
-            self.add_game()
-            # ask about opening the playstation json and data webbage
-            if input('\nDo you want to update the playstation data?\n:').lower() in ['yes', 'y']:
-                subprocess.Popen(f'notepad "configs\playstation_games.json"')
-                webbrowser.open(self.playstation_data_link)
-                webbrowser.open(r'https://store.playstation.com/')
+            self.pick_task()
             # opens excel file if previous input is passed
             input('\nPress Enter to open updated file in Excel.\n:')
             os.startfile(self.excel.file_path)
@@ -775,5 +805,3 @@ class Tracker(Logger, Helper):
 if __name__ == "__main__":
     App = Tracker()
     App.run()
-
-    # App.get_game_info(1092790)
