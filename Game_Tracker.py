@@ -158,45 +158,59 @@ class Tracker(Logger, Helper):
         def get_json_desc(data):
             return [item['description'] for item in data]
 
-        url = f'https://store.steampowered.com/api/appdetails?appids={app_id}'
+        url = f'https://store.steampowered.com/api/appdetails?appids={app_id}&l=english'
         self.api_sleeper('steam_app_details')
         data = requests.get(url)
         if data == None:
             return False
+        # TODO make it retrygi
         if data.status_code == requests.codes.ok:
             info_dict = {}
             data = data.json()
             if 'data' in data[str(app_id)].keys():
+                keys = data[str(app_id)]['data'].keys()
+                info_dict['name'] = data[str(app_id)]['data']['name']
                 # get developer
-                if 'developers' in data[str(app_id)]['data'].keys():
+                if 'developers' in keys:
                     info_dict['developers'] = ', '.join(data[str(app_id)]['data']['developers'])
                 else:
                     info_dict['developers'] = False
                 # get publishers
-                if 'publishers' in data[str(app_id)]['data'].keys():
+                if 'publishers' in keys:
                     info_dict['publishers'] = ', '.join(data[str(app_id)]['data']['publishers'])
                 else:
                     info_dict['publishers'] = False
                 #  get genre
-                if 'genres' in data[str(app_id)]['data'].keys():
+                if 'genres' in keys:
                     info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
                 else:
                     info_dict['genre'] = False
                 #  get metacritic
-                if 'metacritic' in data[str(app_id)]['data'].keys():
+                if 'metacritic' in keys:
                     info_dict['metacritic'] = data[str(app_id)]['data']['metacritic']['score']
                 else:
                     info_dict['metacritic'] = False
                 # get release year
-                if 'release_date' in data[str(app_id)]['data'].keys():
+                if 'release_date' in keys:
                     release_date = data[str(app_id)]['data']['release_date']['date']
                     release_date = self.get_year(release_date)
                     info_dict['release_date'] = release_date
                 else:
-                    print(data[str(app_id)]['data']['release_date']['date'])
                     info_dict['release_date'] = False
+                # get price_info
+                if 'price_overview' in keys:
+                    price = data[str(app_id)]['data']['price_overview']['final_formatted']
+                    discount = data[str(app_id)]['data']['price_overview']['discount_percent']
+                    on_sale = data[str(app_id)]['data']['price_overview']['discount_percent'] > 0
+                    info_dict['price'] = price
+                    info_dict['discount'] = discount
+                    info_dict['on_sale'] = on_sale
+                else:
+                    info_dict['price'] = False
+                    info_dict['discount'] = False
+                    info_dict['on_sale'] = False
                 # get linux compat
-                if 'platforms' in data[str(app_id)]['data'].keys():
+                if 'platforms' in keys:
                     info_dict['linux_compat'] = data[str(app_id)]['data']['platforms']['linux']
                 else:
                     info_dict['linux_compat'] = False
@@ -733,9 +747,30 @@ class Tracker(Logger, Helper):
             picked_game = random.choice(choice_list)
             choice_list.pop(choice_list.index(picked_game))
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
-    
+
     def get_favorite_games_sales(self):
-        pass
+        # gets favorite games from excel file as a list of dicts
+        favorite_games = []
+        print('\nStarting Game Sale Check\n')
+        for game, index in tqdm(iterable=self.excel.row_index.items(), ascii=True, unit='games', dynamic_ncols=True):
+            my_rating = self.excel.get_cell(game, 'My Rating')
+            if my_rating == None:
+                continue
+            app_id = self.excel.get_cell(game, 'App ID')
+            if my_rating >= 8 and app_id:
+                game_dict = self.get_game_info(app_id)
+                if not game_dict:
+                    continue
+                if 'on_sale' in game_dict.keys():
+                    if game_dict['on_sale']:
+                        favorite_games.append(game_dict)
+        favorite_games = sorted(favorite_games, key = lambda i: i['discount'], reverse=True)
+        print('\nFavorite Game Deals in Descending Order:\n')
+        for game in favorite_games:
+            print(f'{game["name"]} - {game["price"]}')
+        # save into file
+        self.save_json_output(favorite_games, 'config/favorite_games.json')
+        self.open_excel_input()
 
     def arg_func(self):
         '''
@@ -755,6 +790,16 @@ class Tracker(Logger, Helper):
             print('Invalid Argument Given.')
         input()
         exit()
+
+    def open_excel_input(self, other_option=False):
+        '''
+        Opens excel file if previous input is passed.
+        '''
+        if not other_option:
+            input('\nPress Enter to open the excel sheet.\n')
+        else:
+            input('\nPress Enter to open the excel sheet.\n')
+        os.startfile(self.excel.file_path)
     
     def pick_task(self):
         '''
@@ -795,9 +840,6 @@ class Tracker(Logger, Helper):
             self.output_completion_data()
             self.requests_loop()
             self.pick_task()
-            # opens excel file if previous input is passed
-            input('\nPress Enter to open updated file in Excel.\n:')
-            os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
             print('\nClosing')
 
