@@ -1,4 +1,4 @@
-with open('ingore_maker\data.txt') as f:
+with open('ignore_maker\data.txt') as f:
     games = f.read().splitlines()
 
 def prep_for_ignore_list():
@@ -14,5 +14,5 @@ def order_and_dupe_remover():
     for game in found:
         print(game)
 
-# prep_for_ignore_list()
-order_and_dupe_remover()
+prep_for_ignore_list()
+# order_and_dupe_remover()
