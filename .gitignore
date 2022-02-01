@@ -142,3 +142,4 @@ my_game_data.json
 *.pkl
 config.json
 favorite_games.json
+output.txt
