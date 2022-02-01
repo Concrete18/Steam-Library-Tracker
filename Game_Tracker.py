@@ -1,6 +1,7 @@
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
+import pandas as pd
 from pathlib import Path
 from tqdm import tqdm
 import datetime as dt
@@ -129,7 +130,7 @@ class Tracker(Logger, Helper):
         '''
         # sets up app_list if it does not exist
         if app_list == {}:
-            url = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/'
+            url = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/?l=english'
             data = requests.get(url)
             if data.status_code != requests.codes.ok:
                 return None
@@ -162,8 +163,8 @@ class Tracker(Logger, Helper):
         self.api_sleeper('steam_app_details')
         data = requests.get(url)
         if data == None:
-            return False
-        # TODO make it retrygi
+            return None
+        # TODO make it retry
         if data.status_code == requests.codes.ok:
             info_dict = {}
             data = data.json()
@@ -174,29 +175,32 @@ class Tracker(Logger, Helper):
                 if 'developers' in keys:
                     info_dict['developers'] = ', '.join(data[str(app_id)]['data']['developers'])
                 else:
-                    info_dict['developers'] = False
+                    info_dict['developers'] = None
                 # get publishers
                 if 'publishers' in keys:
                     info_dict['publishers'] = ', '.join(data[str(app_id)]['data']['publishers'])
                 else:
-                    info_dict['publishers'] = False
+                    info_dict['publishers'] = None
                 #  get genre
                 if 'genres' in keys:
                     info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
                 else:
-                    info_dict['genre'] = False
+                    info_dict['genre'] = None
                 #  get metacritic
                 if 'metacritic' in keys:
                     info_dict['metacritic'] = data[str(app_id)]['data']['metacritic']['score']
                 else:
-                    info_dict['metacritic'] = False
+                    info_dict['metacritic'] = None
+                #  early access
+                if 'early_access' in keys:
+                    info_dict['early_access'] = data[str(app_id)]['data']['early_access']
                 # get release year
                 if 'release_date' in keys:
                     release_date = data[str(app_id)]['data']['release_date']['date']
                     release_date = self.get_year(release_date)
                     info_dict['release_date'] = release_date
                 else:
-                    info_dict['release_date'] = False
+                    info_dict['release_date'] = None
                 # get price_info
                 if 'price_overview' in keys:
                     price = data[str(app_id)]['data']['price_overview']['final_formatted']
@@ -206,18 +210,31 @@ class Tracker(Logger, Helper):
                     info_dict['discount'] = discount
                     info_dict['on_sale'] = on_sale
                 else:
-                    info_dict['price'] = False
-                    info_dict['discount'] = False
-                    info_dict['on_sale'] = False
+                    info_dict['price'] = None
+                    info_dict['discount'] = None
+                    info_dict['on_sale'] = None
                 # get linux compat
                 if 'platforms' in keys:
                     info_dict['linux_compat'] = data[str(app_id)]['data']['platforms']['linux']
                 else:
                     info_dict['linux_compat'] = False
-                # info_dict['categories'] = ', '.join(get_json_desc(data[str(app_id)]['data']['categories']))
-                # info_dict['drm_notice'] = data[str(app_id)]['data']['drm_notice']
-                # info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
-                return info_dict
+                if 'categories' in keys:
+                    info_dict['categories'] = ', '.join(get_json_desc(data[str(app_id)]['data']['categories']))
+                else:
+                    info_dict['categories'] = None
+                # drm info
+                if 'drm_notice' in keys:
+                    info_dict['drm_notice'] = data[str(app_id)]['data']['drm_notice']
+                else:
+                    info_dict['drm_notice'] = None
+                # external account
+                if 'ext_user_account_notice' in keys:
+                    info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
+                else:
+                    info_dict['ext_user_account_notice'] = None
+                # runs unicode remover on all values
+                final_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
+                return final_dict
         return False
 
     @staticmethod
@@ -394,7 +411,7 @@ class Tracker(Logger, Helper):
             steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:')
         print('\nStarting Steam Game Check')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
-        url_var = f'?key={self.get_api_key()}&steamid={steam_id}'
+        url_var = f'?key={self.get_api_key()}&steamid={steam_id}?l=english'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
         try:
             self.api_sleeper('steam_owned_games')
@@ -421,9 +438,9 @@ class Tracker(Logger, Helper):
                 # Unplayed
                 elif playtime_forever <= 20:
                     play_status = 'Unplayed'  # sets play_status to Unplayed if playtime_forever is 0-15
-                # Played
-                elif game['playtime_windows_forever'] > 10 * 60:  # hours multiplied by minutes in an hour
-                    play_status = 'Played'  # sets play_status to Played if playtime_forever is greater then 10 hours
+                # Playing
+                elif game['playtime_windows_forever'] > 60:
+                    play_status = 'Playing'  # sets play_status to Played if playtime_forever is greater then 1 hour
                 # Unset
                 else:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
@@ -467,15 +484,17 @@ class Tracker(Logger, Helper):
         '''
         Checks for changes to the json file.
         '''
-        with open('configs\ps_hash.txt', 'r+') as f:
-            previous_hash = f.read().strip()
-            new_hash = self.hash_file(json_path)
-            if new_hash == previous_hash:
-                print('\nNo PlayStation games were added or updated.')
-                return False
-            else:
-                f.truncate(0)
-                f.write(new_hash)
+        config = 'configs\config.json'
+        with open('configs\config.json') as file:
+            data = json.load(file)
+        previous_hash = data['settings']['playstation_hash']
+        new_hash = self.hash_file(json_path)
+        if new_hash == previous_hash:
+            print('\nNo PlayStation games were added or updated.')
+            return False
+        else:
+            data['settings']['playstation_hash'] = new_hash
+            self.save_json_output(data, config)
         return True
 
     def should_ignore(self, name):
@@ -696,7 +715,7 @@ class Tracker(Logger, Helper):
         '''
         Saves data into json format with the given filename.
         '''
-        json_object = json.dumps(data, indent = 4)
+        json_object = json.dumps(data, indent=4)
         with open(filename, "w") as outfile:
             outfile.write(json_object)
 
@@ -749,28 +768,60 @@ class Tracker(Logger, Helper):
             print(f'\nPicked game with {play_status} status:\n{picked_game}')
 
     def get_favorite_games_sales(self):
+        '''
+        Gets sale information for games that are at a minimun rating or higher.
+        Rating is set up using an input after running.
+        '''
         # gets favorite games from excel file as a list of dicts
         favorite_games = []
+        # sets minimum rating to and defaults to 8 if response is blank or invalid
+        rating_limit = input('What is the minimum rating for this search? (1-10)\n') or '8'
+        if rating_limit.isnumeric():
+            rating_limit = int(rating_limit)
+        else:
+            print('Invalid response - Using 8 instead.')
+            rating_limit = 8
+        # starts check with progress bar
         print('\nStarting Game Sale Check\n')
         for game, index in tqdm(iterable=self.excel.row_index.items(), ascii=True, unit='games', dynamic_ncols=True):
             my_rating = self.excel.get_cell(game, 'My Rating')
             if my_rating == None:
                 continue
             app_id = self.excel.get_cell(game, 'App ID')
-            if my_rating >= 8 and app_id:
+            if my_rating >= rating_limit and app_id:
                 game_dict = self.get_game_info(app_id)
                 if not game_dict:
                     continue
+                game_dict['my_rating'] = my_rating
                 if 'on_sale' in game_dict.keys():
                     if game_dict['on_sale']:
                         favorite_games.append(game_dict)
         favorite_games = sorted(favorite_games, key = lambda i: i['discount'], reverse=True)
-        print('\nFavorite Game Deals in Descending Order:\n')
+        print(f'\n{len(favorite_games)} Favorite Games with Current Deals in Descending Order:\n')
+        # TODO replace with better code for output
         for game in favorite_games:
             print(f'{game["name"]} - {game["price"]}')
         # save into file
-        self.save_json_output(favorite_games, 'config/favorite_games.json')
-        self.open_excel_input()
+        self.save_json_output(favorite_games, 'configs/favorite_games.json')
+
+    def view_favorite_games_sales(self):
+        '''
+        Allows viewing different formatted info on the games created during the last run of `get_favorite_games_sales`.
+        '''
+        df = pd.read_json('configs/favorite_games.json')
+        print('Do you want to output as (1)excel or (2)csv?')
+        output = input('\n')
+        if output == '1':
+            output  = 'excel'
+        elif output == '2':
+            output = 'csv'
+        if output == 'excel':
+            file_name = 'outputs/favorite_games_sales.xlsx'
+            df.to_excel(file_name)
+        elif output == 'csv':
+            filepath = 'outputs/favorite_games_sales.csv'
+            df.to_csv(filepath)  
+        os.startfile(file_name)
 
     def arg_func(self):
         '''
@@ -808,23 +859,30 @@ class Tracker(Logger, Helper):
         print('\nWhat do you want to do next?\n')
         choices = [
             'Pick Random Game',
-            'Add Game Game',
+            'Add Game',
             'Update the Playstation Data',
-            'Check for Favorite Games Sales.'
+            'Check for and view Favorite Games Sales',
+            'View Favorite Games Sales'
         ]
         for count, choice in enumerate(choices):
             print(f'{count+1}. {choice}')
         res = input('\nPress Enter without a number to open the excel sheet.\n')
         if res == '1':
             self.pick_random_game()
+            self.open_excel_input()
         elif res == '2':
             self.add_game()
+            self.open_excel_input()
         elif res == '3':
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
             webbrowser.open(r'https://store.playstation.com/')
         elif res == '4':
             self.get_favorite_games_sales()
+            self.open_excel_input()
+        elif res == '5':
+            self.view_favorite_games_sales()
+            self.open_excel_input()
 
     def run(self):
         '''
@@ -840,10 +898,13 @@ class Tracker(Logger, Helper):
             self.output_completion_data()
             self.requests_loop()
             self.pick_task()
+            os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
             print('\nClosing')
 
 
 if __name__ == "__main__":
     App = Tracker()
-    App.run()
+    # App.run()
+    App.view_favorite_games_sales()
+    # print(App.get_game_info(359550))
