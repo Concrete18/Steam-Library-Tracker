@@ -46,6 +46,12 @@ class TestStringMethods(unittest.TestCase):
         for name, answer in app_id_tests.items():
             self.assertEqual(test.get_app_id(name), answer)
 
+    def test_get_game_info(self):
+        print('\n', 'get_game_info')  
+        test = Tracker()
+        # Deep Rock Galactic
+        self.assertEqual(test.get_game_info(548430), 'answer')
+
     def test_string_url_convert(self):
         print('\n', 'string_url_convert')  
         test = Tracker()
