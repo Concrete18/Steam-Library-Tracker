@@ -151,7 +151,7 @@ class Tracker(Logger, Helper):
         else:
             return 'Invalid Date'
 
-    def get_game_info(self, app_id):
+    def get_game_info(self, app_id, debug=False):
         '''
         Gets game info with steam api using a `app_id`.
         '''
@@ -168,6 +168,9 @@ class Tracker(Logger, Helper):
         if data.status_code == requests.codes.ok:
             info_dict = {}
             data = data.json()
+            if debug:
+                print(data)
+                exit()
             if 'data' in data[str(app_id)].keys():
                 keys = data[str(app_id)]['data'].keys()
                 info_dict['name'] = data[str(app_id)]['data']['name']
@@ -809,19 +812,26 @@ class Tracker(Logger, Helper):
         Allows viewing different formatted info on the games created during the last run of `get_favorite_games_sales`.
         '''
         df = pd.read_json('configs/favorite_games.json')
-        print('Do you want to output as (1)excel or (2)csv?')
-        output = input('\n')
+        print('Do you want to output as excel(1) or csv(2)?')
+        output = input()
         if output == '1':
             output  = 'excel'
         elif output == '2':
             output = 'csv'
+        else:
+            return
+        Path('outputs').mkdir(exist_ok=True)
         if output == 'excel':
-            file_name = 'outputs/favorite_games_sales.xlsx'
-            df.to_excel(file_name)
+            file_path = 'outputs/favorite_games_sales.xlsx'
+            df.to_excel(file_path)
+            os.startfile(file_path)
         elif output == 'csv':
-            filepath = 'outputs/favorite_games_sales.csv'
-            df.to_csv(filepath)  
-        os.startfile(file_name)
+            df.to_csv('outputs/favorite_games_sales.csv')
+            folder = os.path.join(self.script_dir, 'outputs')
+            subprocess.Popen(f'explorer "{folder}"')
+        else:
+            print('Invalid Resposne')
+            return
 
     def arg_func(self):
         '''
@@ -905,6 +915,6 @@ class Tracker(Logger, Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.run()
-    App.view_favorite_games_sales()
-    # print(App.get_game_info(359550))
+    # print(App.get_game_info(1145360, debug=True))
+    # App.view_favorite_games_sales()
+    App.run()
