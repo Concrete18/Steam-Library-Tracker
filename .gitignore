@@ -143,3 +143,6 @@ my_game_data.json
 config.json
 favorite_games.json
 output.txt
+scrape.py
+configs/
+outputs/
