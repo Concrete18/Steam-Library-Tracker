@@ -30,7 +30,6 @@ class Tracker(Logger, Helper):
         excel_filename=excel_filename,
         workbook_name='Games',
         column_name='Game Name',
-        column_letter='B',
         script_dir=script_dir
     )
     # current date and time setup
