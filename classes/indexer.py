@@ -102,13 +102,22 @@ class Indexer(Logger):
         '''
         Gets the cell value based on the `row_value` and `column_value`.
         '''
-        if row_value not in self.row_index or column_value not in self.col_index:
-            return None
+        row_key, column_key = None, None
+        # row key setup
         if type(row_value) == str:
-            value = self.cur_workbook.cell(row=self.row_index[row_value], column=self.col_index[column_value]).value
+            row_key = self.row_index[row_value]
+        elif type(row_value) == int:
+            row_key = row_value
+        # column key setup
+        if type(column_value) == str:
+            column_key = self.col_index[column_value]
+        elif type(column_value) == int:
+            column_key = column_value
+        # gets the value
+        if row_key is not None and column_key is not None:
+            return self.cur_workbook.cell(row=row_key, column=column_key).value
         else:
-            value = self.cur_workbook.cell(row=row_value, column=self.col_index[column_value]).value
-        return value
+            return None
 
     def update_cell(self, row_value, column_value, string):
         '''
