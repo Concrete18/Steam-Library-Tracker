@@ -74,13 +74,13 @@ class Indexer(Logger):
             # Percent
             if self.list_in_string(['percent', 'discount'], column):
                 cell.style = 'Percent'
-            # 1 decimal place
-            if self.list_in_string(['hours played'], column):
-                cell.number_format = '#,#0.0'
             # currency
             elif self.list_in_string(['price', 'msrp'], column):
                 cell.style = 'Currency'
-                # date
+            # 1 decimal place
+            if self.list_in_string(['hours played'], column):
+                cell.number_format = '#,#0.0'
+            # date
             elif self.list_in_string(['last updated', 'date'], column):
                 cell.number_format = "MM/DD/YYYY"
             # centering
