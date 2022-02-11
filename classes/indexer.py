@@ -138,18 +138,23 @@ class Indexer(Logger):
         else:
             return None
 
-    def update_cell(self, row_value, column_value, value):
+    def update_cell(self, row_value, column_value, new_value, changes_made=True):
         '''
         Updates the given cell based on row and column to the given value.
         if row_value is not a string, it will be considered an exact index instead.
         '''
         row_key, column_key = self.get_row_col_index(row_value, column_value)
-        # updates value
         if row_key is not None and column_key is not None:
-            self.cur_workbook.cell(row=row_key, column=column_key).value = value
-            self.changes_made = True
-        else:
-            return None
+            current_value = self.cur_workbook.cell(row=row_key, column=column_key).value
+            # updates only if cell will actually be changed
+            if new_value == '':
+                new_value = None
+            if current_value != new_value:
+                self.cur_workbook.cell(row=row_key, column=column_key).value = new_value
+                if changes_made:
+                    self.changes_made = True
+                return True
+        return False
 
     def add_new_cell(self, cell_dict):
         '''
