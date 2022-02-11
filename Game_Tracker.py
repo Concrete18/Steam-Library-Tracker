@@ -19,11 +19,14 @@ class Tracker(Logger, Helper):
     os.chdir(script_dir)
 
     # config init
-    with open('configs\config.json') as file:
+    config = Path('configs\config.json')
+    with open(config) as file:
         data = json.load(file)
+
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
     playstation_data_link = data['settings']['playstation_data_link']
+    last_run = data['settings']['last_run']
     ignore_list = [string.lower() for string in data['ignore_list']]
     # Indexer init
     excel = Indexer(
@@ -44,6 +47,7 @@ class Tracker(Logger, Helper):
         Checks for an api_key.txt so it can retrieve the key. If it does not exists,
         it will ask for an API key so it can create an api_key.txt file.
         '''
+        # TODO use proper method for getting an api key
         api_path = 'configs/api_key.txt'
         if os.path.isfile(api_path):
             with open(api_path) as f:
@@ -55,6 +59,20 @@ class Tracker(Logger, Helper):
                     api_key = input('Enter your Steam API Key.\n:')
                 f.write(api_key)
             return api_key
+
+    def get_steam_id(self, vanity_url):
+        '''
+        Gets a users Steam ID via their `vanity_url`.
+        '''
+        base_url = r'https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/'
+        url = rf'{base_url}?key={self.get_api_key()}&vanityurl={vanity_url}'
+        response = requests.get(url)
+        if response.status_code == requests.codes.ok:
+            data = response.json()
+            steam_id = data['response']['steamid']
+            return steam_id
+        else:
+            return False
 
     @staticmethod
     def hours_played(playtime_forever):
@@ -486,8 +504,7 @@ class Tracker(Logger, Helper):
         '''
         Checks for changes to the json file.
         '''
-        config = 'configs\config.json'
-        with open('configs\config.json') as file:
+        with open(self.config) as file:
             data = json.load(file)
         previous_hash = data['settings']['playstation_hash']
         new_hash = self.hash_file(json_path)
@@ -496,7 +513,7 @@ class Tracker(Logger, Helper):
             return False
         else:
             data['settings']['playstation_hash'] = new_hash
-            self.save_json_output(data, config)
+            self.save_json_output(data, self.config)
         return True
 
     def should_ignore(self, name):
@@ -556,6 +573,8 @@ class Tracker(Logger, Helper):
             # skip if it already exist
             if game_name in self.excel.row_index.keys() or f'{game_name} - Console' in self.excel.row_index.keys():
                 continue
+            # TODO skip if the game exists with a playstation version already
+
             # adds the game
             added_games.append(game_name)
             self.add_game(game_name=game_name, play_status='Unplayed', platform=game['platform'])
@@ -563,6 +582,36 @@ class Tracker(Logger, Helper):
         print(f'Added {total_games_added} PS4/PS5 Games.')
         if total_games_added > 0:
             self.excel.save_excel_sheet()
+
+    def check_steam_deck_data(self, steam_id=76561197982626192, always_run=False):
+        '''
+        Checks steam_deck.txt and updates steam deck status with the info.
+        '''
+        seconds_since_last_run = time.time() - self.last_run
+        if seconds_since_last_run < 60*60*24 or always_run:
+            return
+        url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
+        user_agent = {'User-agent': 'Mozilla/5.0'}
+        source = requests.get(url, headers=user_agent)
+        if source.status_code == requests.codes.ok:
+            soup = BeautifulSoup(source.text, 'html.parser')
+            table1 = soup.find('table', id='deckCompatReportTable')
+            for entry in table1.find_all('tr')[1:]:
+                row_data = entry.find_all('td')
+                app_id, game_name, status = [i.text for i in row_data]
+                if self.excel.update_cell(game_name, 'Steam Deck Status', status):
+                    print(f'{game_name} was updated to {status.title()}')
+            print('Updated Steam Deck Data')
+            self.excel.save_excel_sheet(show_print=False)
+        else:
+            print('Failed to update Steam Deck Data')
+        # with open('configs\steam_deck.txt') as f:
+        #     lines = f.read().splitlines()
+        # for line in lines:
+        #     app_id, game_name, status = line.split('\t')
+        #     if self.excel.update_cell(game_name, 'Steam Deck Status', status):
+        #         print('failed on', game_name, status)
+        # self.excel.save_excel_sheet(show_print=True)
 
     def check_playstation_json(self):
         '''
@@ -669,6 +718,7 @@ class Tracker(Logger, Helper):
             vr_support = 'No'
         else:
             vr_support = ''
+        # TODO add more to column info
         column_info = {
             'My Rating': '',
             'Game Name': game_name,
@@ -851,6 +901,10 @@ class Tracker(Logger, Helper):
         input()
         exit()
 
+    def update_last_run(self):
+        self.data['settings']['last_run'] = time.time()
+        self.save_json_output(self.data, self.config)
+
     def open_excel_input(self, other_option=False):
         '''
         Opens excel file if previous input is passed.
@@ -903,17 +957,22 @@ class Tracker(Logger, Helper):
         # starts function run with CTRL Exit being possible without causing an error
         try:
             self.refresh_steam_games(self.steam_id)
+            self.check_steam_deck_data()
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
             self.pick_task()
+            self.update_last_run()
             os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
             print('\nClosing')
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     App = Tracker()
     # print(App.get_game_info(1145360, debug=True))
     # App.view_favorite_games_sales()
+    # print(App.get_steam_id('Varnock'))
+    # App.check_steam_deck_data()
+    # exit()
     App.run()
