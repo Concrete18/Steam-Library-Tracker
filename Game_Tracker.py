@@ -60,14 +60,27 @@ class Tracker(Logger, Helper):
                 f.write(api_key)
             return api_key
 
+    @staticmethod
+    def request_url(url, headers=None):
+        '''
+        Quick data request with check for success.
+        '''
+        response = requests.get(url, headers)
+        if response == None:
+            return False
+        elif response.status_code == requests.codes.ok:
+            return response
+        else:
+            return False
+
     def get_steam_id(self, vanity_url):
         '''
         Gets a users Steam ID via their `vanity_url`.
         '''
         base_url = r'https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/'
         url = rf'{base_url}?key={self.get_api_key()}&vanityurl={vanity_url}'
-        response = requests.get(url)
-        if response.status_code == requests.codes.ok:
+        response = self.request_url(url)
+        if response:
             data = response.json()
             steam_id = data['response']['steamid']
             return steam_id
@@ -127,10 +140,10 @@ class Tracker(Logger, Helper):
         url = f'https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}'
         user_agent = {'User-agent': 'Mozilla/5.0'}
         self.api_sleeper('metacritic')
-        source = requests.get(url, headers=user_agent)
         review_score = ''
-        if source.status_code == requests.codes.ok:
-            soup = BeautifulSoup(source.text, 'html.parser')
+        response = self.request_url(url, headers=user_agent)
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
             review_score = soup.find(itemprop="ratingValue")
             if review_score != None:
                 review_score = int(review_score.text)
@@ -148,10 +161,10 @@ class Tracker(Logger, Helper):
         # sets up app_list if it does not exist
         if app_list == {}:
             url = 'http://api.steampowered.com/ISteamApps/GetAppList/v0002/?l=english'
-            data = requests.get(url)
-            if data.status_code != requests.codes.ok:
+            response = self.request_url(url)
+            if not response:
                 return None
-            app_list = data.json()['applist']['apps']
+            app_list = response.json()['applist']['apps']
         # searches for game
         for item in app_list:
             if item["name"] == game:
@@ -178,54 +191,54 @@ class Tracker(Logger, Helper):
 
         url = f'https://store.steampowered.com/api/appdetails?appids={app_id}&l=english'
         self.api_sleeper('steam_app_details')
-        data = requests.get(url)
-        if data == None:
+        response = self.request_url(url)
+        if not response:
             return None
+        else:
         # TODO make it retry
-        if data.status_code == requests.codes.ok:
             info_dict = {}
-            data = data.json()
+            dict = response.json()
             if debug:
-                print(data)
+                print(dict)
                 exit()
-            if 'data' in data[str(app_id)].keys():
-                keys = data[str(app_id)]['data'].keys()
-                info_dict['name'] = data[str(app_id)]['data']['name']
+            if 'data' in dict[str(app_id)].keys():
+                keys = dict[str(app_id)]['data'].keys()
+                info_dict['name'] = dict[str(app_id)]['data']['name']
                 # get developer
                 if 'developers' in keys:
-                    info_dict['developers'] = ', '.join(data[str(app_id)]['data']['developers'])
+                    info_dict['developers'] = ', '.join(dict[str(app_id)]['data']['developers'])
                 else:
                     info_dict['developers'] = None
                 # get publishers
                 if 'publishers' in keys:
-                    info_dict['publishers'] = ', '.join(data[str(app_id)]['data']['publishers'])
+                    info_dict['publishers'] = ', '.join(dict[str(app_id)]['data']['publishers'])
                 else:
                     info_dict['publishers'] = None
                 #  get genre
                 if 'genres' in keys:
-                    info_dict['genre'] = ', '.join(get_json_desc(data[str(app_id)]['data']['genres']))
+                    info_dict['genre'] = ', '.join(get_json_desc(dict[str(app_id)]['data']['genres']))
                 else:
                     info_dict['genre'] = None
                 #  get metacritic
                 if 'metacritic' in keys:
-                    info_dict['metacritic'] = data[str(app_id)]['data']['metacritic']['score']
+                    info_dict['metacritic'] = dict[str(app_id)]['data']['metacritic']['score']
                 else:
                     info_dict['metacritic'] = None
                 #  early access
                 if 'early_access' in keys:
-                    info_dict['early_access'] = data[str(app_id)]['data']['early_access']
+                    info_dict['early_access'] = dict[str(app_id)]['data']['early_access']
                 # get release year
                 if 'release_date' in keys:
-                    release_date = data[str(app_id)]['data']['release_date']['date']
+                    release_date = dict[str(app_id)]['data']['release_date']['date']
                     release_date = self.get_year(release_date)
                     info_dict['release_date'] = release_date
                 else:
                     info_dict['release_date'] = None
                 # get price_info
                 if 'price_overview' in keys:
-                    price = data[str(app_id)]['data']['price_overview']['final_formatted']
-                    discount = data[str(app_id)]['data']['price_overview']['discount_percent']
-                    on_sale = data[str(app_id)]['data']['price_overview']['discount_percent'] > 0
+                    price = dict[str(app_id)]['data']['price_overview']['final_formatted']
+                    discount = dict[str(app_id)]['data']['price_overview']['discount_percent']
+                    on_sale = dict[str(app_id)]['data']['price_overview']['discount_percent'] > 0
                     info_dict['price'] = price
                     info_dict['discount'] = discount
                     info_dict['on_sale'] = on_sale
@@ -235,21 +248,21 @@ class Tracker(Logger, Helper):
                     info_dict['on_sale'] = None
                 # get linux compat
                 if 'platforms' in keys:
-                    info_dict['linux_compat'] = data[str(app_id)]['data']['platforms']['linux']
+                    info_dict['linux_compat'] = dict[str(app_id)]['data']['platforms']['linux']
                 else:
                     info_dict['linux_compat'] = False
                 if 'categories' in keys:
-                    info_dict['categories'] = ', '.join(get_json_desc(data[str(app_id)]['data']['categories']))
+                    info_dict['categories'] = ', '.join(get_json_desc(dict[str(app_id)]['data']['categories']))
                 else:
                     info_dict['categories'] = None
                 # drm info
                 if 'drm_notice' in keys:
-                    info_dict['drm_notice'] = data[str(app_id)]['data']['drm_notice']
+                    info_dict['drm_notice'] = dict[str(app_id)]['data']['drm_notice']
                 else:
                     info_dict['drm_notice'] = None
                 # external account
                 if 'ext_user_account_notice' in keys:
-                    info_dict['ext_user_account_notice']  = data[str(app_id)]['data']['ext_user_account_notice']
+                    info_dict['ext_user_account_notice']  = dict[str(app_id)]['data']['ext_user_account_notice']
                 else:
                     info_dict['ext_user_account_notice'] = None
                 # runs unicode remover on all values
@@ -279,9 +292,9 @@ class Tracker(Logger, Helper):
         app_id = self.get_app_id(game)
         url = f'https://www.protondb.com/app/{app_id}'
         self.api_sleeper('proton')
-        data = requests.get(url)
-        if data.status_code == requests.codes.ok:
-            soup = BeautifulSoup(data.text, 'html.parser')
+        response = self.request_url(url)
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
             if 'You need to enable JavaScript to run this app.' in soup:
                 print('You need to enable JavaScript to run this app.')
                 return False
@@ -588,30 +601,32 @@ class Tracker(Logger, Helper):
         Checks steam_deck.txt and updates steam deck status with the info.
         '''
         seconds_since_last_run = time.time() - self.last_run
-        if seconds_since_last_run < 60*60*24 or always_run:
+        if seconds_since_last_run < 60*60*12 or always_run:
             return
         url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
         user_agent = {'User-agent': 'Mozilla/5.0'}
-        source = requests.get(url, headers=user_agent)
-        if source.status_code == requests.codes.ok:
-            soup = BeautifulSoup(source.text, 'html.parser')
+        response = self.request_url(url, headers=user_agent)
+        if response:
+            soup = BeautifulSoup(response.text, 'html.parser')
             table1 = soup.find('table', id='deckCompatReportTable')
+            print('\nStarting Steam Deck Data')
             for entry in table1.find_all('tr')[1:]:
                 row_data = entry.find_all('td')
                 app_id, game_name, status = [i.text for i in row_data]
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                     print(f'{game_name} was updated to {status.title()}')
-            print('Updated Steam Deck Data')
             self.excel.save_excel_sheet(show_print=False)
         else:
             print('Failed to update Steam Deck Data')
-        # with open('configs\steam_deck.txt') as f:
-        #     lines = f.read().splitlines()
-        # for line in lines:
-        #     app_id, game_name, status = line.split('\t')
-        #     if self.excel.update_cell(game_name, 'Steam Deck Status', status):
-        #         print('failed on', game_name, status)
-        # self.excel.save_excel_sheet(show_print=True)
+
+    def check_steam_deck_data_file(self):
+        with open('configs\steam_deck.txt') as f:
+            lines = f.read().splitlines()
+        for line in lines:
+            app_id, game_name, status = line.split('\t')
+            if self.excel.update_cell(game_name, 'Steam Deck Status', status):
+                print('failed on', game_name, status)
+        self.excel.save_excel_sheet(show_print=True)
 
     def check_playstation_json(self):
         '''
@@ -902,6 +917,9 @@ class Tracker(Logger, Helper):
         exit()
 
     def update_last_run(self):
+        '''
+        Updates the last run time in seconds.
+        '''
         self.data['settings']['last_run'] = time.time()
         self.save_json_output(self.data, self.config)
 
@@ -961,8 +979,8 @@ class Tracker(Logger, Helper):
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
-            self.pick_task()
             self.update_last_run()
+            self.pick_task()
             os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
             print('\nClosing')
