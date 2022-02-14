@@ -442,7 +442,7 @@ class Tracker(Logger, Helper):
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
             steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:')
-        print('\nStarting Steam Game Check')
+        print('\nStarting Steam Library Tracking')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
         url_var = f'?key={self.get_api_key()}&steamid={steam_id}?l=english'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
@@ -596,20 +596,24 @@ class Tracker(Logger, Helper):
         if total_games_added > 0:
             self.excel.save_excel_sheet()
 
-    def check_steam_deck_data(self, steam_id=76561197982626192, always_run=False):
+    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=6, always_run=False):
         '''
         Checks steam_deck.txt and updates steam deck status with the info.
         '''
         seconds_since_last_run = time.time() - self.last_run
-        if seconds_since_last_run < 60*60*12 or always_run:
+        hours_since_last_run = round(seconds_since_last_run*0.000277778)
+        if not hours_since_last_run < hour_freq or not always_run:
+            print(f'Skipping Steam Deck Check due to last run being {hours_since_last_run} hours ago.')
             return
+        print('\nStarting Steam Deck Compatability Check')
         url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
         user_agent = {'User-agent': 'Mozilla/5.0'}
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, 'html.parser')
+            percent = soup.find(id='deckCompatChartPercent').text.split('%')[0]+'%'
+            print(f'{percent} of games are playable.')
             table1 = soup.find('table', id='deckCompatReportTable')
-            print('\nStarting Steam Deck Data')
             for entry in table1.find_all('tr')[1:]:
                 row_data = entry.find_all('td')
                 app_id, game_name, status = [i.text for i in row_data]
@@ -975,7 +979,7 @@ class Tracker(Logger, Helper):
         # starts function run with CTRL Exit being possible without causing an error
         try:
             self.refresh_steam_games(self.steam_id)
-            self.check_steam_deck_data()
+            self.steam_deck_check()
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
