@@ -596,13 +596,13 @@ class Tracker(Logger, Helper):
         if total_games_added > 0:
             self.excel.save_excel_sheet()
 
-    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=6, always_run=False):
+    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=6):
         '''
         Checks steam_deck.txt and updates steam deck status with the info.
         '''
         seconds_since_last_run = time.time() - self.last_run
         hours_since_last_run = round(seconds_since_last_run*0.000277778)
-        if not hours_since_last_run < hour_freq or not always_run:
+        if hours_since_last_run <= hour_freq:
             print(f'Skipping Steam Deck Check due to last run being {hours_since_last_run} hours ago.')
             return
         print('\nStarting Steam Deck Compatability Check')
@@ -618,7 +618,9 @@ class Tracker(Logger, Helper):
                 row_data = entry.find_all('td')
                 app_id, game_name, status = [i.text for i in row_data]
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
-                    print(f'{game_name} was updated to {status.title()}')
+                    info = f'{game_name} was updated to {status.title()}'
+                    self.logger.info(info)
+                    print(info)
             self.excel.save_excel_sheet(show_print=False)
         else:
             print('Failed to update Steam Deck Data')
@@ -937,6 +939,9 @@ class Tracker(Logger, Helper):
             input('\nPress Enter to open the excel sheet.\n')
         os.startfile(self.excel.file_path)
     
+    def open_logfile(self):
+        os.startfile('configs/tracker.log')
+    
     def pick_task(self):
         '''
         Allows picking a task to do next using a matching number.
@@ -947,7 +952,8 @@ class Tracker(Logger, Helper):
             'Add Game',
             'Update the Playstation Data',
             'Check for and view Favorite Games Sales',
-            'View Favorite Games Sales'
+            'View Favorite Games Sales',
+            'Open Log'
         ]
         for count, choice in enumerate(choices):
             print(f'{count+1}. {choice}')
@@ -968,6 +974,8 @@ class Tracker(Logger, Helper):
         elif res == '5':
             self.view_favorite_games_sales()
             self.open_excel_input()
+        elif res == '6':
+            self.open_logfile()
 
     def run(self):
         '''
