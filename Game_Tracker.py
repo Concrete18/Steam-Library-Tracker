@@ -605,7 +605,7 @@ class Tracker(Logger, Helper):
         if hours_since_last_run <= hour_freq:
             print(f'Skipping Steam Deck Check.\nNext check due in {hour_freq-hours_since_last_run} hours.')
             return
-        print('\nStarting Steam Deck Compatability Check')
+        print('\nStarting Steam Deck Compatibility Check')
         url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
         user_agent = {'User-agent': 'Mozilla/5.0'}
         response = self.request_url(url, headers=user_agent)
@@ -616,10 +616,11 @@ class Tracker(Logger, Helper):
             table1 = soup.find('table', id='deckCompatReportTable')
             for entry in table1.find_all('tr')[1:]:
                 row_data = entry.find_all('td')
-                try:
+                if len(row_data) == 4:
                     app_id, game_name, ignore, status = [i.text for i in row_data]
-                except ValueError:
-                    print('Tables seemed to have changed.')
+                else:
+                    print('Table seemed to have changed.')
+                    self.logger.error('Steam Deck Scraping may need to be updated.')
                     return
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                     info = f'{game_name} was updated to {status.title()}'
