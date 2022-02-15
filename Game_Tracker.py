@@ -603,7 +603,7 @@ class Tracker(Logger, Helper):
         seconds_since_last_run = time.time() - self.last_run
         hours_since_last_run = round(seconds_since_last_run*0.000277778)
         if hours_since_last_run <= hour_freq:
-            print(f'Skipping Steam Deck Check due to last run being {hours_since_last_run} hours ago.')
+            print(f'Skipping Steam Deck Check.\nNext check due in {hour_freq-hours_since_last_run} hours.')
             return
         print('\nStarting Steam Deck Compatability Check')
         url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
@@ -616,7 +616,11 @@ class Tracker(Logger, Helper):
             table1 = soup.find('table', id='deckCompatReportTable')
             for entry in table1.find_all('tr')[1:]:
                 row_data = entry.find_all('td')
-                app_id, game_name, status = [i.text for i in row_data]
+                try:
+                    app_id, game_name, ignore, status = [i.text for i in row_data]
+                except ValueError:
+                    print('Tables seemed to have changed.')
+                    return
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                     info = f'{game_name} was updated to {status.title()}'
                     self.logger.info(info)
@@ -629,7 +633,12 @@ class Tracker(Logger, Helper):
         with open('configs\steam_deck.txt') as f:
             lines = f.read().splitlines()
         for line in lines:
-            app_id, game_name, status = line.split('\t')
+            print(line.split('\t'))
+            values = line.split('\t')
+            if len(values) == 3:
+                app_id, game_name, status = line.split('\t')
+            elif len(values) == 4:
+                app_id, game_name, ignore, status = line.split('\t')
             if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                 print('failed on', game_name, status)
         self.excel.save_excel_sheet(show_print=True)
@@ -939,9 +948,6 @@ class Tracker(Logger, Helper):
             input('\nPress Enter to open the excel sheet.\n')
         os.startfile(self.excel.file_path)
     
-    def open_logfile(self):
-        os.startfile('configs/tracker.log')
-    
     def pick_task(self):
         '''
         Allows picking a task to do next using a matching number.
@@ -975,7 +981,7 @@ class Tracker(Logger, Helper):
             self.view_favorite_games_sales()
             self.open_excel_input()
         elif res == '6':
-            self.open_logfile()
+            webbrowser.open('configs/tracker.log')
 
     def run(self):
         '''
@@ -988,6 +994,7 @@ class Tracker(Logger, Helper):
         try:
             self.refresh_steam_games(self.steam_id)
             self.steam_deck_check()
+            # self.check_steam_deck_data_file()
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
