@@ -596,7 +596,7 @@ class Tracker(Logger, Helper):
         if total_games_added > 0:
             self.excel.save_excel_sheet()
 
-    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=6):
+    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=1):
         '''
         Checks steam_deck.txt and updates steam deck status with the info.
         '''
