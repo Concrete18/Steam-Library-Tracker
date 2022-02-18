@@ -616,11 +616,11 @@ class Tracker(Logger, Helper):
             table1 = soup.find('table', id='deckCompatReportTable')
             for entry in table1.find_all('tr')[1:]:
                 data = [i.text for i in entry.find_all('td')]
-                total_data = len(data)
                 # removes uneeded data
                 for item in data:
                     if not re.search('[a-zA-Z]', item):
                         data.remove(item)
+                total_data = len(data)
                 if total_data == 2:
                     game_name, status = data
                 if total_data == 3:
