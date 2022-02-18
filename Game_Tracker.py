@@ -615,18 +615,27 @@ class Tracker(Logger, Helper):
             print(f'{percent} of games are playable.')
             table1 = soup.find('table', id='deckCompatReportTable')
             for entry in table1.find_all('tr')[1:]:
-                row_data = entry.find_all('td')
-                if len(row_data) == 4:
-                    app_id, game_name, ignore, status = [i.text for i in row_data]
+                data = [i.text for i in entry.find_all('td')]
+                total_data = len(data)
+                # removes uneeded data
+                for item in data:
+                    if not re.search('[a-zA-Z]', item):
+                        data.remove(item)
+                if total_data == 2:
+                    game_name, status = data
+                if total_data == 3:
+                    app_id, game_name, status = data
                 else:
                     print('Table seemed to have changed.')
+                    print(f'Data is {total_data} long now.')
+                    print(data)
                     self.logger.error('Steam Deck Scraping may need to be updated.')
                     return
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                     info = f'{game_name} was updated to {status.title()}'
                     self.logger.info(info)
                     print(info)
-            self.excel.save_excel_sheet(show_print=False)
+            self.excel.save_excel_sheet()
         else:
             print('Failed to update Steam Deck Data')
 
