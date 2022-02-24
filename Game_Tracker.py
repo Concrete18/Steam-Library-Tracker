@@ -6,7 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 import datetime as dt
 # classes
-from classes.indexer import Excel, Sheet
+from classes.excel import Excel, Sheet
 from classes.logger import Logger
 from classes.scrape import Scraper
 from classes.helper import Helper
