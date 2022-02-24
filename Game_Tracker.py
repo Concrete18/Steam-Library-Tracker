@@ -23,6 +23,7 @@ class Tracker(Logger, Helper):
     with open(config) as file:
         data = json.load(file)
 
+    steam_api_key = data['settings']['steam_api_key']
     steam_id = str(data['settings']['steam_id'])
     excel_filename = data['settings']['excel_filename']
     playstation_data_link = data['settings']['playstation_data_link']
@@ -41,24 +42,17 @@ class Tracker(Logger, Helper):
     # api call logger
     invalid_months = []
 
-
-    def get_api_key(self):
+    def config_check(self):
         '''
-        Checks for an api_key.txt so it can retrieve the key. If it does not exists,
-        it will ask for an API key so it can create an api_key.txt file.
+        Checks to see if the config data is usable.
         '''
-        # TODO use proper method for getting an api key
-        api_path = 'configs/api_key.txt'
-        if os.path.isfile(api_path):
-            with open(api_path) as f:
-                return f.read()
+        errors = []
+        if len(self.steam_id) != 17:
+            errors.append('Steam ID is invalid.')
+        if len(errors) > 0:
+            return False, errors
         else:
-            api_key = ''
-            with open(os.path.join(self.script_dir, api_path), 'w') as f:
-                while len(api_key) != 32:
-                    api_key = input('Enter your Steam API Key.\n:')
-                f.write(api_key)
-            return api_key
+            return True, None
 
     @staticmethod
     def request_url(url, headers=None):
@@ -78,7 +72,7 @@ class Tracker(Logger, Helper):
         Gets a users Steam ID via their `vanity_url`.
         '''
         base_url = r'https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/'
-        url = rf'{base_url}?key={self.get_api_key()}&vanityurl={vanity_url}'
+        url = rf'{base_url}?key={self.steam_api_key}&vanityurl={vanity_url}'
         response = self.request_url(url)
         if response:
             data = response.json()
@@ -444,7 +438,7 @@ class Tracker(Logger, Helper):
             steam_id = input('\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:')
         print('\nStarting Steam Library Tracking')
         root_url = 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
-        url_var = f'?key={self.get_api_key()}&steamid={steam_id}?l=english'
+        url_var = f'?key={self.steam_api_key}&steamid={steam_id}?l=english'
         combinded_url = f'{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1'
         try:
             self.api_sleeper('steam_owned_games')
@@ -525,8 +519,12 @@ class Tracker(Logger, Helper):
             print('\nNo PlayStation games were added or updated.')
             return False
         else:
-            data['settings']['playstation_hash'] = new_hash
-            self.save_json_output(data, self.config)
+            print('prev', previous_hash)
+            print('new ', new_hash)
+            self.data['settings']['playstation_hash'] = new_hash
+            self.save_json_output(self.data, self.config)
+            with open(self.config) as file:
+                data = json.load(file)
         return True
 
     def should_ignore(self, name):
@@ -614,23 +612,24 @@ class Tracker(Logger, Helper):
             percent = soup.find(id='deckCompatChartPercent').text.split('%')[0]+'%'
             print(f'{percent} of games are playable.')
             table1 = soup.find('table', id='deckCompatReportTable')
-            for entry in table1.find_all('tr')[1:]:
-                data = [i.text for i in entry.find_all('td')]
-                # removes uneeded data
-                for item in data:
-                    if not re.search('[a-zA-Z]', item):
-                        data.remove(item)
-                total_data = len(data)
-                if total_data == 2:
-                    game_name, status = data
-                if total_data == 3:
-                    app_id, game_name, status = data
-                else:
-                    print('Table seemed to have changed.')
-                    print(f'Data is {total_data} long now.')
-                    print(data)
-                    self.logger.error('Steam Deck Scraping may need to be updated.')
-                    return
+            # finds headers
+            headers = []
+            for i in table1.find_all('th'):
+                title = i.text
+                headers.append(title)
+            # createsa and fills dataframe
+            df = pd.DataFrame(columns = headers)
+            for j in table1.find_all('tr')[1:]:
+                row_data = j.find_all('td')
+                row = [i.text for i in row_data]
+                length = len(df)
+                df.loc[length] = row
+            # loops through table using the dataframe
+            for index, row in df.iterrows():
+                # gets rid of possible new lines that could be added
+                last_updated = row['Last Change'].replace('\n', '')
+                game_name = row['Title'].replace('\n', '')
+                status = row['Status'].replace('\n', '')
                 if self.excel.update_cell(game_name, 'Steam Deck Status', status):
                     info = f'{game_name} was updated to {status.title()}'
                     self.logger.info(info)
@@ -801,15 +800,6 @@ class Tracker(Logger, Helper):
             self.excel.save_excel_sheet()
         else:
             print('\nNo Steam games were added or updated.')
-    
-    @staticmethod
-    def save_json_output(data, filename):
-        '''
-        Saves data into json format with the given filename.
-        '''
-        json_object = json.dumps(data, indent=4)
-        with open(filename, "w") as outfile:
-            outfile.write(json_object)
 
     def play_status_picker(self):
         '''
@@ -984,6 +974,8 @@ class Tracker(Logger, Helper):
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
             webbrowser.open(r'https://store.playstation.com/')
+            input('Press Enter when done.')
+            self.check_playstation_json()
         elif res == '4':
             self.get_favorite_games_sales()
             self.open_excel_input()
@@ -997,6 +989,7 @@ class Tracker(Logger, Helper):
         '''
         Main run function.
         '''
+        self.config_check()
         self.arg_func()
         os.system('mode con cols=68 lines=40')
         print('Starting Game Tracker')
@@ -1020,6 +1013,6 @@ if __name__ == "__main__":
     # print(App.get_game_info(1145360, debug=True))
     # App.view_favorite_games_sales()
     # print(App.get_steam_id('Varnock'))
-    # App.check_steam_deck_data()
+    # App.steam_deck_check()
     # exit()
     App.run()
