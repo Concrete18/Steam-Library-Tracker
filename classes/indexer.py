@@ -1,30 +1,87 @@
 from openpyxl.styles.borders import Side
-from classes.logger import Logger
-import openpyxl, os, shutil
+import openpyxl
 from pathlib import Path
 from time import sleep
 import datetime as dt
-
-class Indexer(Logger):
-
-    changes_made = 0
+import shutil
 
 
-    def __init__(self, excel_filename, workbook_name, column_name, script_dir):
+class Excel:
+
+    changes_made = False
+
+
+    def __init__(self, excel_filename):
         '''
-        Allows Retreiving, adding, updating, deleting and formatting cells within Excel.
+        Allows retreiving, adding, updating, deleting and formatting cells within Excel.
 
-        `excel_filename` is the relative path to the excel file.
+        `excel_filename` is the relative path to the excel file without .xlsx added to the end.
+        '''
+        # workbook setup
+        self.file_path = Path(excel_filename)
+        self.wb = openpyxl.load_workbook(self.file_path)
 
-        `workbook_name` Name of the workbook that use.
+
+    def save_excel_sheet(self, use_print=True, backup=True):
+        '''
+        Backs up the excel file before saving the changes if `backup` is True.
+
+        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+
+        `use_print` determines if info for the saving progress will be printed.
+        '''
+        # only saves if any changes were made
+        if self.changes_made:
+            try:
+                # backups the file before saving.
+                if backup:
+                    self.file_path
+                    shutil.copy(self.file_path, Path(self.file_path.name + '.bak'))
+                # saves the file once it is closed
+                if use_print:
+                    print('\nSaving...')
+                first_run = True
+                while True:
+                    try:
+                        self.wb.save(self.file_path)
+                        if use_print:
+                            print(f'Save Complete.{34*" "}')
+                            self.changes_made = False
+                        break
+                    except PermissionError:
+                        if first_run:
+                            if use_print:
+                                print('Make sure the excel sheet is closed.', end='\r')
+                            first_run = False
+                        sleep(1)
+            except KeyboardInterrupt:
+                if use_print:
+                    print('\nCancelling Save')
+                exit()
+
+class Sheet():
+
+    def __init__(self, excel_object, column_name, sheet_name=None) -> None:
+        '''
+        Allows interacting with any one sheet within the excel_object given.
+        
+        `excel_object` Excel object created using Excel class.
+
+        `sheet_name` Name of the sheet to use.
 
         `column_name` Name of the main column you intend to use for identifying rows.
         '''
-        self.script_dir = script_dir
-        self.excel_filename = excel_filename
-        self.file_path = os.path.join(script_dir, excel_filename + '.xlsx')
-        self.wb = openpyxl.load_workbook(self.file_path)
-        self.cur_workbook = self.wb[workbook_name]
+        self.wb = excel_object.wb
+        self.excel = excel_object
+        self.column_name = column_name
+        self.sheet_name = sheet_name
+        if sheet_name:
+            self.cur_sheet = self.wb[sheet_name]
+        else:
+            if len(self.wb.sheetnames) > 0:
+                self.cur_sheet = self.wb[self.wb.sheetnames[0]]
+            else:
+                raise 'No sheets exist.'
         self.column_name = column_name
         # column and row indexes
         self.col_index = self.create_column_index()
@@ -36,8 +93,8 @@ class Indexer(Logger):
         Creates the column index.
         '''
         col_index = {}
-        for i in range(1, len(self.cur_workbook['1'])+1):
-            title = self.cur_workbook.cell(row=1, column=i).value
+        for i in range(1, len(self.cur_sheet['1'])+1):
+            title = self.cur_sheet.cell(row=1, column=i).value
             if title is not None:
                 col_index[title] = i
         return col_index
@@ -47,9 +104,9 @@ class Indexer(Logger):
         Creates the row index based on `column_name`.
         '''
         row_index = {}
-        total_rows = len(self.cur_workbook['A'])
+        total_rows = len(self.cur_sheet['A'])
         for i in range(1, total_rows):
-            title = self.cur_workbook.cell(row=i+1, column=self.col_index[column_name]).value
+            title = self.cur_sheet.cell(row=i+1, column=self.col_index[column_name]).value
             if title is not None:
                 row_index[title] = i+1
         return row_index
@@ -59,7 +116,7 @@ class Indexer(Logger):
         
     def format_cells(self, game_name):
         '''
-        Aligns specific columns to center and adds border to cells.
+        Cell Formatter for Game Library Tracker.
         '''
         center = openpyxl.styles.alignment.Alignment(
             horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
@@ -69,7 +126,7 @@ class Indexer(Logger):
             left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
             diagonal=None, outline=True, start=None, end=None)
         for column in self.col_index.keys():
-            cell = self.cur_workbook.cell(row=self.row_index[game_name], column=self.col_index[column])
+            cell = self.cur_sheet.cell(row=self.row_index[game_name], column=self.col_index[column])
             column = column.lower()
             # Percent
             if self.list_in_string(['percent', 'discount'], column):
@@ -90,9 +147,8 @@ class Indexer(Logger):
                 cell.alignment = left
             # border
             cell.border = border
-
     @staticmethod
-    def create_excel_date(datetime=None):
+    def create_excel_date(datetime=None, date=True, time=True):
         '''
         creates an excel date from the givin `datetime` object using =DATE().
 
@@ -105,8 +161,14 @@ class Indexer(Logger):
         day = datetime.day
         hour = datetime.hour
         minute = datetime.minute
-        excel_date = f'=DATE({year}, {month}, {day})+TIME({hour},{minute},0)'
-        return excel_date
+        if date and time:
+            return f'=DATE({year}, {month}, {day})+TIME({hour},{minute},0)'
+        elif date:
+            return f'=DATE({year}, {month}, {day})'
+        elif time:
+            return f'=TIME({hour},{minute},0)'
+        else:
+            return None
 
     def get_row_col_index(self, row_value, column_value):
         '''
@@ -127,6 +189,15 @@ class Indexer(Logger):
             column_key = column_value
         return row_key, column_key
 
+    def get_row(self, column_value):
+        '''
+        WIP Shows row contents in a list.
+        '''
+        row = self.row_index[column_value]
+        data = list(self.cur_sheet.iter_rows()[row])
+        print(data)
+        return data
+
     def get_cell(self, row_value, column_value):
         '''
         Gets the cell value based on the `row_value` and `column_value`.
@@ -134,32 +205,42 @@ class Indexer(Logger):
         row_key, column_key = self.get_row_col_index(row_value, column_value)
         # gets the value
         if row_key is not None and column_key is not None:
-            return self.cur_workbook.cell(row=row_key, column=column_key).value
+            return self.cur_sheet.cell(row=row_key, column=column_key).value
         else:
             return None
 
     def update_cell(self, row_value, column_value, new_value, changes_made=True):
         '''
-        Updates the given cell based on row and column to the given value.
-        if row_value is not a string, it will be considered an exact index instead.
+        Updates the given cell based on row and column to the given `new_value`.
+        
+        Returns True if cell was updated and False if it was not updated. 
         '''
         row_key, column_key = self.get_row_col_index(row_value, column_value)
         if row_key is not None and column_key is not None:
-            current_value = self.cur_workbook.cell(row=row_key, column=column_key).value
+            current_value = self.cur_sheet.cell(row=row_key, column=column_key).value
             # updates only if cell will actually be changed
             if new_value == '':
                 new_value = None
             if current_value != new_value:
-                self.cur_workbook.cell(row=row_key, column=column_key).value = new_value
+                self.cur_sheet.cell(row=row_key, column=column_key).value = new_value
                 if changes_made:
-                    self.changes_made = True
+                    self.excel.changes_made = True
                 return True
         return False
 
-    def add_new_cell(self, cell_dict):
+    def update_index(self, column_key):
         '''
-        Adds the given dictionary onto a new line within the excel sheet.
+        ph
+        '''
+        self.row_index[column_key] = self.cur_sheet._current_row
+
+    def add_new_line(self, cell_dict, column_key, debug=False):
+        '''
+        Adds the given dictionary, as `cell_dict`, onto a new line within the excel sheet.
+
         If dictionary keys match existing columns within the set sheet, it will add the value to that column.
+
+        use `debug` to print info if a column in the `cell_dict` does not exist.
         '''
         append_list = []
         for column in self.col_index:
@@ -167,36 +248,31 @@ class Indexer(Logger):
                 append_list.append(cell_dict[column])
             else:
                 append_list.append('')
-                self.logger.info(f'Missing {column} for {cell_dict[self.column_name]}.')
-        self.cur_workbook.append(append_list)
-        self.changes_made = 1
+                if debug:
+                    print(f'Missing data for {column}.')
+        self.cur_sheet.append(append_list)
+        self.update_index(column_key)
+        self.excel.changes_made = True
+        return True
 
-    def save_excel_sheet(self, show_print=True):
+    def delete_by_row(self, column_value):
         '''
-        Backs up the excel file before saving the changes.
-        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+        Deletes row by `column_value`.
         '''
-        try:
-            # backups the file before saving.
-            shutil.copy(self.file_path, os.path.join(self.script_dir, self.excel_filename + '.bak'))
-            # saves the file once it is closed
-            if show_print:
-                print('\nSaving...')
-            first_run = True
-            while True:
-                try:
-                    self.wb.save(self.excel_filename + '.xlsx')
-                    if show_print:
-                        print('Save Complete.                                  ')
-                        self.changes_made = False
-                    break
-                except PermissionError:
-                    if first_run:
-                        if show_print:
-                            print('Make sure the excel sheet is closed.', end='\r')
-                        first_run = False
-                    sleep(.1)
-        except KeyboardInterrupt:
-            if show_print:
-                print('\nCancelling Save')
-            exit()
+        if column_value not in self.row_index:
+            return None
+        row = self.row_index[column_value]
+        self.cur_sheet.delete_rows(row)
+        self.excel.changes_made = True
+        return True
+
+    def delete_by_column(self, column_name):
+        '''
+        Deletes column by `column_name`.
+        '''
+        if column_name not in self.col_index:
+            return None
+        column = self.col_index[column_name]
+        self.cur_sheet.delete_column(column)
+        self.excel.changes_made = True
+        return True

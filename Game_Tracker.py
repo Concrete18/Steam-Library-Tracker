@@ -6,7 +6,7 @@ from pathlib import Path
 from tqdm import tqdm
 import datetime as dt
 # classes
-from classes.indexer import Indexer
+from classes.indexer import Excel, Sheet
 from classes.logger import Logger
 from classes.scrape import Scraper
 from classes.helper import Helper
@@ -29,13 +29,9 @@ class Tracker(Logger, Helper):
     playstation_data_link = data['settings']['playstation_data_link']
     last_run = data['settings']['last_run']
     ignore_list = [string.lower() for string in data['ignore_list']]
-    # Indexer init
-    excel = Indexer(
-        excel_filename=excel_filename,
-        workbook_name='Games',
-        column_name='Game Name',
-        script_dir=script_dir
-    )
+    # class init
+    excel = Excel('Excel Game Sheet.xlsx')
+    games = Sheet(excel, 'Game Name', sheet_name='Games')
     # current date and time setup
     cur_date = dt.datetime.now()
     excel_date = f'=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)'
@@ -336,14 +332,14 @@ class Tracker(Logger, Helper):
             release_year_column_name := 'Release Year',
             # steam_deck_viable_column_name := 'Steam Deck Viable',
         ]
-        for game in self.excel.row_index:
-            play_status = self.excel.get_cell(game, 'Play Status')
+        for game in self.games.row_index:
+            play_status = self.games.get_cell(game, 'Play Status')
             if check_status:
                 if play_status not in ['Unplayed', 'Playing', 'Played', 'Finished', 'Quit']:
                     continue
             if skip_filled:
                 for column in to_check:
-                    cell = self.excel.get_cell(game, column)
+                    cell = self.games.get_cell(game, column)
                     if cell == None and game not in check_list:
                         check_list.append(game)
                         continue
@@ -367,59 +363,59 @@ class Tracker(Logger, Helper):
             running_interval = save_interval
             for game_name in tqdm(iterable=check_list, ascii=True, unit='games', dynamic_ncols=True):
                 # How long to beat check
-                if not self.excel.get_cell(game_name, time_to_beat_column_name):
+                if not self.games.get_cell(game_name, time_to_beat_column_name):
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat != None:
-                        self.excel.update_cell(game_name, time_to_beat_column_name, time_to_beat)
+                        self.games.update_cell(game_name, time_to_beat_column_name, time_to_beat)
                 # metacritic score check
-                if not self.excel.get_cell(game_name, metacritic_column_name):
-                    platform = self.excel.get_cell(game_name, 'Platform')
+                if not self.games.get_cell(game_name, metacritic_column_name):
+                    platform = self.games.get_cell(game_name, 'Platform')
                     metacritic_score = self.get_metacritic_score(game_name, platform)
                     if metacritic_score != None:
-                        self.excel.update_cell(game_name, metacritic_column_name, metacritic_score)
+                        self.games.update_cell(game_name, metacritic_column_name, metacritic_score)
                 # gets steam info if an app id exists for the entry and the platform is Steam
-                app_id = self.excel.get_cell(game_name, 'App ID')
+                app_id = self.games.get_cell(game_name, 'App ID')
                 if not app_id:
                     app_id = self.get_app_id(game_name)
                 steam_info = self.get_game_info(app_id)
-                platform = self.excel.get_cell(game_name, 'Platform')
+                platform = self.games.get_cell(game_name, 'Platform')
                 if steam_info and platform == 'Steam':
                     # genre
                     if steam_info['genre']:
-                        self.excel.update_cell(game_name, genre_column_name, steam_info['genre'])
+                        self.games.update_cell(game_name, genre_column_name, steam_info['genre'])
                     else:
-                        self.excel.update_cell(game_name, genre_column_name, 'No Genre')
+                        self.games.update_cell(game_name, genre_column_name, 'No Genre')
                     # release year
                     if steam_info['release_date']:
-                        self.excel.update_cell(game_name, release_year_column_name, steam_info['release_date'])
+                        self.games.update_cell(game_name, release_year_column_name, steam_info['release_date'])
                     else:
-                        self.excel.update_cell(game_name, release_year_column_name, 'No Release Year')
+                        self.games.update_cell(game_name, release_year_column_name, 'No Release Year')
                     # developer
                     if steam_info['developers']:
-                        self.excel.update_cell(game_name, developers_column_name, steam_info['developers'])
+                        self.games.update_cell(game_name, developers_column_name, steam_info['developers'])
                     else:
-                        self.excel.update_cell(game_name, developers_column_name, 'No Developer')
+                        self.games.update_cell(game_name, developers_column_name, 'No Developer')
                     # publishers
                     if steam_info['publishers']:
-                        self.excel.update_cell(game_name, publishers_column_name, steam_info['publishers'])
+                        self.games.update_cell(game_name, publishers_column_name, steam_info['publishers'])
                     else:
-                        self.excel.update_cell(game_name, publishers_column_name, 'No Publisher')
+                        self.games.update_cell(game_name, publishers_column_name, 'No Publisher')
                     # metacritic
                     if steam_info['metacritic']:
-                            self.excel.update_cell(game_name, metacritic_column_name, steam_info['metacritic'])
+                            self.games.update_cell(game_name, metacritic_column_name, steam_info['metacritic'])
                     else:
-                        if not self.excel.get_cell(game_name, metacritic_column_name):
-                            self.excel.update_cell(game_name, metacritic_column_name, 'No Score')
+                        if not self.games.get_cell(game_name, metacritic_column_name):
+                            self.games.update_cell(game_name, metacritic_column_name, 'No Score')
                     # linux compatability
                     # if steam_info['linux_compat']:
-                    #     linux_compat = self.excel.get_cell(game_name, steam_deck_viable_column_name)
+                    #     linux_compat = self.games.get_cell(game_name, steam_deck_viable_column_name)
                     #     if linux_compat == 'None':
-                    #         self.excel.update_cell(game_name, steam_deck_viable_column_name, 'Native')
+                    #         self.games.update_cell(game_name, steam_deck_viable_column_name, 'Native')
                 else:
-                    self.excel.update_cell(game_name, release_year_column_name, 'No Release Year')
-                    self.excel.update_cell(game_name, genre_column_name, 'No Data')
-                    self.excel.update_cell(game_name, developers_column_name, 'No Data')
-                    self.excel.update_cell(game_name, publishers_column_name, 'No Data')
+                    self.games.update_cell(game_name, release_year_column_name, 'No Release Year')
+                    self.games.update_cell(game_name, genre_column_name, 'No Data')
+                    self.games.update_cell(game_name, developers_column_name, 'No Data')
+                    self.games.update_cell(game_name, publishers_column_name, 'No Data')
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -448,7 +444,7 @@ class Tracker(Logger, Helper):
             return False
         if data.status_code == requests.codes.ok:
             # checks for games that changed names
-            self.removed_from_steam = [str(game) for game in self.excel.row_index.keys() if self.excel.get_cell(game, 'Platform') == 'Steam']
+            self.removed_from_steam = [str(game) for game in self.games.row_index.keys() if self.games.get_cell(game, 'Platform') == 'Steam']
             self.total_games_updated = 0 
             self.total_games_added = 0
             self.added_games = []
@@ -472,7 +468,7 @@ class Tracker(Logger, Helper):
                 else:
                     play_status = 'Unset'  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
-                if game_name in self.excel.row_index.keys():
+                if game_name in self.games.row_index.keys():
                     if game_name in self.removed_from_steam:
                         self.removed_from_steam.remove(game_name)
                     self.update_game(game_name, playtime_forever, play_status)
@@ -481,9 +477,9 @@ class Tracker(Logger, Helper):
             if len(self.removed_from_steam) > 0:
                 print(f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}')
                 for item in self.removed_from_steam:
-                    status = self.excel.get_cell(item, 'Play Status')
+                    status = self.games.get_cell(item, 'Play Status')
                     if 'Removed' not in status:
-                        self.excel.update_cell(item, 'Play Status', f'Removed | {status}')
+                        self.games.update_cell(item, 'Play Status', f'Removed | {status}')
             return True
         if data.status_code == 500:
             print('Server Error: make sure your api key and steam id is valid.')
@@ -582,7 +578,7 @@ class Tracker(Logger, Helper):
             if self.should_ignore(game_name) or game_name in added_games:
                 continue
             # skip if it already exist
-            if game_name in self.excel.row_index.keys() or f'{game_name} - Console' in self.excel.row_index.keys():
+            if game_name in self.games.row_index.keys() or f'{game_name} - Console' in self.games.row_index.keys():
                 continue
             # TODO skip if the game exists with a playstation version already
 
@@ -630,7 +626,7 @@ class Tracker(Logger, Helper):
                 last_updated = row['Last Change'].replace('\n', '')
                 game_name = row['Title'].replace('\n', '')
                 status = row['Status'].replace('\n', '')
-                if self.excel.update_cell(game_name, 'Steam Deck Status', status):
+                if self.games.update_cell(game_name, 'Steam Deck Status', status):
                     info = f'{game_name} was updated to {status.title()}'
                     self.logger.info(info)
                     print(info)
@@ -648,7 +644,7 @@ class Tracker(Logger, Helper):
                 app_id, game_name, status = line.split('\t')
             elif len(values) == 4:
                 app_id, game_name, ignore, status = line.split('\t')
-            if self.excel.update_cell(game_name, 'Steam Deck Status', status):
+            if self.games.update_cell(game_name, 'Steam Deck Status', status):
                 print('failed on', game_name, status)
         self.excel.save_excel_sheet(show_print=True)
 
@@ -677,9 +673,9 @@ class Tracker(Logger, Helper):
         '''
         Updates the games playtime(if changed) and play status(if unset).
         '''
-        previous_hours_played = self.excel.get_cell(game_name, 'Hours Played')
+        previous_hours_played = self.games.get_cell(game_name, 'Hours Played')
         current_hours_played = self.hours_played(playtime_forever)
-        current_platform = self.excel.get_cell(game_name, 'Platform')
+        current_platform = self.games.get_cell(game_name, 'Platform')
         if current_platform != 'Steam':  # prevents updating games that are owned on Steam and a console.
             return
         elif previous_hours_played == None or previous_hours_played == 'None':
@@ -687,11 +683,11 @@ class Tracker(Logger, Helper):
         else:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
-            self.excel.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
-            self.excel.update_cell(game_name, 'Date Updated', self.excel_date)
+            self.games.update_cell(game_name, 'Hours Played', self.hours_played(playtime_forever))
+            self.games.update_cell(game_name, 'Date Updated', self.excel_date)
             self.total_games_updated += 1
             if play_status == 'unset':
-                self.excel.update_cell(game_name, 'Play Status', 'Played')
+                self.games.update_cell(game_name, 'Play Status', 'Played')
             unit = 'hours'
             added_time = current_hours_played - previous_hours_played
             if added_time < 1:
@@ -704,7 +700,7 @@ class Tracker(Logger, Helper):
             if total_days >= 1:
                 days_string = f' | {total_days} days'
             print(f'\n > {game_name} updated.\n   Added {added_time} {unit}\n   Total Playtime: {total_hours} hours{days_string}.')
-        self.excel.format_cells(game_name)
+        self.games.format_cells(game_name)
 
     def add_game(self, game_name=None, playtime_forever='', game_appid='', play_status='', platform='Steam'):
         '''
@@ -774,12 +770,10 @@ class Tracker(Logger, Helper):
             'Date Updated': self.excel_date,
             'Date Added': self.excel_date
             }
-        self.excel.add_new_cell(column_info)
+        self.games.add_new_line(column_info)
         self.added_games.append(game_name)
         self.total_games_added += 1
-        # adds game to row_index
-        self.excel.row_index[game_name] = self.excel.cur_workbook._current_row
-        self.excel.format_cells(game_name)
+        self.games.format_cells(game_name)
         if save:
             print('saved')
             self.excel.save_excel_sheet()
@@ -832,8 +826,8 @@ class Tracker(Logger, Helper):
         if play_status == None:
             return
         choice_list = []
-        for game, index in self.excel.row_index.items():
-            game_play_status = self.excel.get_cell(index, 'Play Status').lower()
+        for game, index in self.games.row_index.items():
+            game_play_status = self.games.get_cell(index, 'Play Status').lower()
             if game_play_status == play_status.lower():
                 choice_list.append(game)
         # picks random game then removes it from the choice list so it wont show up again during this session
@@ -865,11 +859,11 @@ class Tracker(Logger, Helper):
             rating_limit = 8
         # starts check with progress bar
         print('\nStarting Game Sale Check\n')
-        for game, index in tqdm(iterable=self.excel.row_index.items(), ascii=True, unit='games', dynamic_ncols=True):
-            my_rating = self.excel.get_cell(game, 'My Rating')
+        for game, index in tqdm(iterable=self.games.row_index.items(), ascii=True, unit='games', dynamic_ncols=True):
+            my_rating = self.games.get_cell(game, 'My Rating')
             if my_rating == None:
                 continue
-            app_id = self.excel.get_cell(game, 'App ID')
+            app_id = self.games.get_cell(game, 'App ID')
             if my_rating >= rating_limit and app_id:
                 game_dict = self.get_game_info(app_id)
                 if not game_dict:
