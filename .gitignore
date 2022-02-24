@@ -137,8 +137,6 @@ api_key.txt
 *.png
 .vscode/
 playstation_games.json
-ps_hash.txt
-my_game_data.json
 *.pkl
 config.json
 favorite_games.json
