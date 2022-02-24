@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # custom
-api_key.txt
 *.db
 *.xlsx
 *.bak
