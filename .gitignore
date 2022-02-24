@@ -128,18 +128,21 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# custom
+# custom filetypes
 *.db
 *.xlsx
 *.bak
 *.xml
 *.png
-.vscode/
-playstation_games.json
 *.pkl
+# custom files
 config.json
+playstation_games.json
 favorite_games.json
 output.txt
+testing.py
 scrape.py
+# custom paths
+.vscode/
 configs/
 outputs/
