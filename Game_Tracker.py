@@ -419,7 +419,7 @@ class Tracker(Logger, Helper):
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
-                    self.excel.save_excel_sheet(show_print=False)
+                    self.excel.save_excel_sheet()
         except KeyboardInterrupt:
             print('\nCancelled')
         finally:
@@ -646,7 +646,7 @@ class Tracker(Logger, Helper):
                 app_id, game_name, ignore, status = line.split('\t')
             if self.games.update_cell(game_name, 'Steam Deck Status', status):
                 print('failed on', game_name, status)
-        self.excel.save_excel_sheet(show_print=True)
+        self.excel.save_excel_sheet()
 
     def check_playstation_json(self):
         '''
@@ -985,9 +985,10 @@ class Tracker(Logger, Helper):
         '''
         self.config_check()
         self.arg_func()
-        os.system('mode con cols=68 lines=40')
+        if sys.stdout.isatty():
+            os.system('mode con cols=68 lines=40')
         print('Starting Game Tracker')
-        # starts function run with CTRL Exit being possible without causing an error
+        # starts function run with CTRL + C Exit being possible without causing an error
         try:
             self.refresh_steam_games(self.steam_id)
             self.steam_deck_check()
