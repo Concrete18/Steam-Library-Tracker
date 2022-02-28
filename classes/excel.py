@@ -1,4 +1,5 @@
 from openpyxl.styles.borders import Side
+from openpyxl.styles import PatternFill, Border
 import openpyxl
 from pathlib import Path
 from time import sleep
@@ -111,8 +112,16 @@ class Sheet():
                 row_index[title] = i+1
         return row_index
 
-    def list_in_string(self, list, string):
-        return any(x in string for x in list)
+    def list_in_string(self, list, string, all_lower=True):
+        '''
+        Returns True if any entry in the given `list` is in the given `string`.
+
+        Setting `all_lower` to True allows you to make the check set all to lowercase.
+        '''
+        if all_lower:
+            return any(x.lower() in string.lower() for x in list)
+        else:
+            return any(x in string for x in list)
         
     def format_cells(self, game_name):
         '''
@@ -122,12 +131,12 @@ class Sheet():
             horizontal='center', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
         left = openpyxl.styles.alignment.Alignment(
             horizontal='left', vertical='center', text_rotation=0, wrap_text=False, shrink_to_fit=True, indent=0)
-        border = openpyxl.styles.borders.Border(
+        border = Border(
             left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'),
             diagonal=None, outline=True, start=None, end=None)
+        light_grey_fill = PatternFill(start_color='F2F2F2', end_color='F2F2F2', fill_type='solid')
         for column in self.col_index.keys():
             cell = self.cur_sheet.cell(row=self.row_index[game_name], column=self.col_index[column])
-            column = column.lower()
             # Percent
             if self.list_in_string(['percent', 'discount'], column):
                 cell.style = 'Percent'
@@ -137,16 +146,20 @@ class Sheet():
             # 1 decimal place
             if self.list_in_string(['hours played'], column):
                 cell.number_format = '#,#0.0'
+            # fill
+            if self.list_in_string(['Rating Comparison', 'Probable Completion'], column):
+                cell.fill = light_grey_fill
             # date
             elif self.list_in_string(['last updated', 'date'], column):
                 cell.number_format = "MM/DD/YYYY"
             # centering
-            if column not in ['name', 'tags', 'game name', 'developers', 'publishers', 'genre']:
+            if column not in ['Name', 'Tags', 'Game Name', 'Developers', 'Publishers', 'Genre']:
                 cell.alignment = center
             else:
                 cell.alignment = left
             # border
             cell.border = border
+
     @staticmethod
     def create_excel_date(datetime=None, date=True, time=True):
         '''
@@ -248,8 +261,6 @@ class Sheet():
                 append_list.append(cell_dict[column])
             else:
                 append_list.append('')
-                if debug:
-                    print(f'Missing data for {column}.')
         self.cur_sheet.append(append_list)
         self.update_index(column_key)
         self.excel.changes_made = True
