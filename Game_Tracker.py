@@ -595,9 +595,10 @@ class Tracker(Logger, Helper):
         Checks steam_deck.txt and updates steam deck status with the info.
         '''
         seconds_since_last_run = time.time() - self.last_run
-        hours_since_last_run = round(seconds_since_last_run*0.000277778)
+        hours_since_last_run = seconds_since_last_run*0.000277778
         if hours_since_last_run <= hour_freq:
-            print(f'Skipping Steam Deck Check.\nNext check due in {hour_freq-hours_since_last_run} hours.')
+            hour_till = round(hour_freq-hours_since_last_run, 1)
+            print(f'Skipping Steam Deck Check.\nNext check due in {hour_till} hours.')
             return
         print('\nStarting Steam Deck Compatibility Check')
         url = f'https://checkmydeck.herokuapp.com/users/{steam_id}/library'
