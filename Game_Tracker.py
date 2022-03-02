@@ -592,7 +592,7 @@ class Tracker(Logger, Helper):
 
     def steam_deck_check(self, steam_id=76561197982626192, hour_freq=1):
         '''
-        Checks steam_deck.txt and updates steam deck status with the info.
+        Checks steam_deck.txt and updates steam deck status with the new info.
         '''
         seconds_since_last_run = time.time() - self.last_run
         hours_since_last_run = seconds_since_last_run*0.000277778
