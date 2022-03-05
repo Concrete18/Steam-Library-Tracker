@@ -299,7 +299,7 @@ class Tracker(Logger, Helper):
 
     def requests_loop(self, skip_filled=1, check_status=0):
         """
-        Loops through games in row_index and gets missing data for time to beat and Metacritic score.
+        Loops through games in row_i and gets missing data for time to beat and Metacritic score.
         """
         # creates checklist
         check_list = []
@@ -312,7 +312,7 @@ class Tracker(Logger, Helper):
             release_year_column_name := "Release Year",
             # steam_deck_viable_column_name := 'Steam Deck Viable',
         ]
-        for game in self.games.row_index:
+        for game in self.games.row_i:
             play_status = self.games.get_cell(game, "Play Status")
             if check_status:
                 if play_status not in [
@@ -459,7 +459,7 @@ class Tracker(Logger, Helper):
             # checks for games that changed names
             self.removed_from_steam = [
                 str(game)
-                for game in self.games.row_index.keys()
+                for game in self.games.row_i.keys()
                 if self.games.get_cell(game, "Platform") == "Steam"
             ]
             self.total_games_updated = 0
@@ -487,7 +487,7 @@ class Tracker(Logger, Helper):
                 else:
                     play_status = "Unset"  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
-                if game_name in self.games.row_index.keys():
+                if game_name in self.games.row_i.keys():
                     if game_name in self.removed_from_steam:
                         self.removed_from_steam.remove(game_name)
                     self.update_game(game_name, playtime_forever, play_status)
@@ -594,8 +594,8 @@ class Tracker(Logger, Helper):
                 continue
             # skip if it already exist
             if (
-                game_name in self.games.row_index.keys()
-                or f"{game_name} - Console" in self.games.row_index.keys()
+                game_name in self.games.row_i.keys()
+                or f"{game_name} - Console" in self.games.row_i.keys()
             ):
                 continue
             # TODO skip if the game exists with a playstation version already
@@ -879,7 +879,7 @@ class Tracker(Logger, Helper):
         if play_status == None:
             return
         choice_list = []
-        for game, index in self.games.row_index.items():
+        for game, index in self.games.row_i.items():
             game_play_status = self.games.get_cell(index, "Play Status").lower()
             if game_play_status == play_status.lower():
                 choice_list.append(game)
@@ -917,7 +917,7 @@ class Tracker(Logger, Helper):
         # starts check with progress bar
         print("\nStarting Game Sale Check\n")
         for game, index in tqdm(
-            iterable=self.games.row_index.items(),
+            iterable=self.games.row_i.items(),
             ascii=True,
             unit="games",
             dynamic_ncols=True,

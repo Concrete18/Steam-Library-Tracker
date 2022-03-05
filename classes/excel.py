@@ -83,10 +83,10 @@ class Sheet:
                 raise "No sheets exist."
         self.column_name = column_name
         # column and row indexes
-        self.col_i = self.create_column_index()
-        self.row_i = self.create_row_index(self.column_name)
+        self.col_i = self.get_column_index()
+        self.row_i = self.get_row_index(self.column_name)
 
-    def create_column_index(self):
+    def get_column_index(self):
         """
         Creates the column index.
         """
@@ -97,7 +97,7 @@ class Sheet:
                 col_index[title] = i
         return col_index
 
-    def create_row_index(self, col_name):
+    def get_row_index(self, col_name):
         """
         Creates the row index based on `column_name`.
         """
