@@ -437,7 +437,7 @@ class Tracker(Logger, Helper):
 
     def refresh_steam_games(self, steam_id):
         """
-        Gets games owned by the entered Steam ID amd runs excel update/add functions.
+        Gets games owned by the entered Steam ID and runs excel update/add functions.
         """
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
@@ -608,7 +608,7 @@ class Tracker(Logger, Helper):
         if total_games_added > 0:
             self.excel.save_excel_sheet()
 
-    def steam_deck_check(self, steam_id=76561197982626192, hour_freq=1):
+    def steam_deck_check(self, steam_id, hour_freq=1):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
@@ -616,7 +616,7 @@ class Tracker(Logger, Helper):
         hours_since_last_run = seconds_since_last_run * 0.000277778
         if hours_since_last_run <= hour_freq:
             hour_till = round(hour_freq - hours_since_last_run, 1)
-            print(f"Skipping Steam Deck Check.\nNext check due in {hour_till} hours.")
+            print(f"\nSkipping Steam Deck Check.\nNext check due in {hour_till} hours.")
             return
         print("\nStarting Steam Deck Compatibility Check")
         url = f"https://checkmydeck.herokuapp.com/users/{steam_id}/library"
@@ -1057,8 +1057,7 @@ class Tracker(Logger, Helper):
         # starts function run with CTRL + C Exit being possible without causing an error
         try:
             self.refresh_steam_games(self.steam_id)
-            self.steam_deck_check()
-            # self.check_steam_deck_data_file()
+            self.steam_deck_check(steam_id=self.steam_id)
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
