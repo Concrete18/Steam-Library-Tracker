@@ -306,7 +306,7 @@ class Tracker(Logger, Helper):
             genre_column_name := "Genre",
             publishers_column_name := "Publishers",
             developers_column_name := "Developers",
-            metacritic_column_name := "Metacritic Score",
+            metacritic_column_name := "Metacritic",
             time_to_beat_column_name := "Time To Beat in Hours",
             release_year_column_name := "Release Year",
             # steam_deck_viable_column_name := 'Steam Deck Viable',
@@ -801,7 +801,7 @@ class Tracker(Logger, Helper):
             "Platform": platform,
             "VR Support": vr_support,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
-            "Metacritic Score": self.get_metacritic_score(game_name, "Steam"),
+            "Metacritic": self.get_metacritic_score(game_name, "Steam"),
             "Rating Comparison": "",
             "Probable Completion": "",
             "Hours Played": hours_played,
@@ -811,13 +811,18 @@ class Tracker(Logger, Helper):
             "Date Added": self.excel_date,
         }
         steam_info = self.get_game_info(game_appid)
-        # if steam_info:
-        #     column_info['Publishers'] = steam_info['publisher']
-        #     column_info['developer'] = steam_info['developer']
-        #     column_info['Publishers'] = steam_info['developer']
-        #     if 'metacric' in steam_info.keys():
-        #         column_info['Metacritic Score'] = steam_info['metacric']
-        self.games.add_new_line(column_info)
+        if steam_info:
+            columns = [
+                "Publishers",
+                "Developers",
+                "Genre",
+                "Release Year",
+                "Metacritic",
+            ]
+            for column in columns:
+                if column.lower() in steam_info.keys():
+                    column_info[column] = steam_info[column.lower()]
+        self.games.add_new_line(column_info, game_name)
         self.added_games.append(game_name)
         self.total_games_added += 1
         self.games.format_cells(game_name)
