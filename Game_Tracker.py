@@ -651,9 +651,12 @@ class Tracker(Logger, Helper):
                     print(info)
             self.excel.save_excel_sheet()
         else:
-            print("Failed to update Steam Deck Data")
+            print("Failed connect to Steam Deck Data")
 
     def check_steam_deck_data_file(self):
+        """
+        Checks steam deck data based on data copied into a text file.
+        """
         with open("configs\steam_deck.txt") as f:
             lines = f.read().splitlines()
         for line in lines:
