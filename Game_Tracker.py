@@ -21,7 +21,6 @@ class Tracker(Logger, Helper):
     config = Path("configs\config.json")
     with open(config) as file:
         data = json.load(file)
-
     steam_api_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
     excel_filename = data["settings"]["excel_filename"]
@@ -54,7 +53,7 @@ class Tracker(Logger, Helper):
         """
         Quick data request with check for success.
         """
-        response = requests.get(url, headers)
+        response = requests.get(url, headers=headers)
         if response == None:
             return False
         elif response.status_code == requests.codes.ok:
@@ -104,7 +103,7 @@ class Tracker(Logger, Helper):
         else:
             return "Not Found"
 
-    def get_metacritic_score(self, game_name, platform):
+    def get_metacritic(self, game_name, platform, debug=False):
         """
         Uses requests to get the metacritic review score for the entered game.
         """
@@ -126,10 +125,12 @@ class Tracker(Logger, Helper):
         }
         for string, replace in replace_dict.items():
             game_name = game_name.replace(string, replace)
-        url = f"https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}"
         user_agent = {"User-agent": "Mozilla/5.0"}
         self.api_sleeper("metacritic")
         review_score = ""
+        url = f"https://www.metacritic.com/game/{platform.lower()}/{game_name.lower()}"
+        if debug:
+            print(url)
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
@@ -361,7 +362,7 @@ class Tracker(Logger, Helper):
                 # metacritic score check
                 if not self.games.get_cell(game_name, metacritic_column_name):
                     platform = self.games.get_cell(game_name, "Platform")
-                    metacritic_score = self.get_metacritic_score(game_name, platform)
+                    metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score != None:
                         self.games.update_cell(
                             game_name, metacritic_column_name, metacritic_score
@@ -801,7 +802,7 @@ class Tracker(Logger, Helper):
             "Platform": platform,
             "VR Support": vr_support,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
-            "Metacritic": self.get_metacritic_score(game_name, "Steam"),
+            "Metacritic": self.get_metacritic(game_name, "Steam"),
             "Rating Comparison": "",
             "Probable Completion": "",
             "Hours Played": hours_played,
