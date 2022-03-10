@@ -430,7 +430,7 @@ class Tracker(Logger, Helper):
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
-                    self.excel.save_excel_sheet()
+                    self.excel.save_excel_sheet(use_print=False, backup=False)
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
