@@ -1017,6 +1017,23 @@ class Tracker(Logger, Helper):
             input("\nPress Enter to open the excel sheet.\n")
         os.startfile(self.excel.file_path)
 
+    def steam_deck_data_checker(self):
+        """
+        Prints a message of a possible steam deck key if found in the app id search.
+        """
+        app_id = 1145360
+        url = f"https://store.steampowered.com/api/appdetails?appids={app_id}&l=english"
+        response = self.request_url(url)
+        if response:
+            dict = response.json()
+            keywords = ["deck"]
+            keys = dict[str(app_id)]["data"].keys()
+            for keyword in keywords:
+                for key in keys:
+                    if keyword in key:
+                        print("\nPossible Steam Deck Key found")
+                        print(key)
+
     def pick_task(self):
         """
         Allows picking a task to do next using a matching number.
@@ -1071,6 +1088,7 @@ class Tracker(Logger, Helper):
             self.output_completion_data()
             self.requests_loop()
             self.update_last_run()
+            self.steam_deck_data_checker()
             self.pick_task()
             os.startfile(self.excel.file_path)
         except KeyboardInterrupt:
@@ -1079,7 +1097,6 @@ class Tracker(Logger, Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    # print(App.get_game_info(1145360, debug=True))
     # App.view_favorite_games_sales()
     # print(App.get_steam_id('Varnock'))
     # App.steam_deck_check()
