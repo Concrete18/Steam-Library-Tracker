@@ -46,10 +46,10 @@ class TestStringMethods(unittest.TestCase):
         print("\n", "get_game_info")
         test = Tracker()
         # checks using the app id for Deep Rock Galactic
-        dict = test.get_game_info(548430)
-        self.assertIn("name", dict.keys())
-        self.assertIn("developers", dict.keys())
-        self.assertIn("publishers", dict.keys())
+        dict = test.get_game_info(1145360)
+        keys = ["key", "developers", "publishers"]
+        for key in keys:
+            self.assertIn(key, dict.keys())
 
     def test_get_metacritic(self):
         print("\n", "get_metacritic")
