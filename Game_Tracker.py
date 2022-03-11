@@ -609,7 +609,25 @@ class Tracker(Logger, Helper):
         if total_games_added > 0:
             self.excel.save_excel_sheet()
 
-    def steam_deck_check(self, steam_id, hour_freq=1):
+    def create_df(self, table):
+        """
+        Creates a dataframe from a `table` found using requests and BeautifulSoup.
+        """
+        # find all headers
+        headers = []
+        for i in table.find_all("th"):
+            title = i.text
+            headers.append(title)
+        # creates and fills dataframe
+        df = pd.DataFrame(columns=headers)
+        for j in table.find_all("tr")[1:]:
+            row_data = j.find_all("td")
+            row = [i.text for i in row_data]
+            length = len(df)
+            df.loc[length] = row
+        return df
+
+    def steam_deck_check(self, steam_id, hour_freq=0):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
@@ -625,21 +643,15 @@ class Tracker(Logger, Helper):
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
+            legend = soup.find("table", id="deckCompatChartLegend")
             percent = soup.find(id="deckCompatChartPercent").text.split("%")[0] + "%"
-            print(f"{percent} of games are playable.")
-            table1 = soup.find("table", id="deckCompatReportTable")
-            # finds headers
-            headers = []
-            for i in table1.find_all("th"):
-                title = i.text
-                headers.append(title)
-            # createsa and fills dataframe
-            df = pd.DataFrame(columns=headers)
-            for j in table1.find_all("tr")[1:]:
-                row_data = j.find_all("td")
-                row = [i.text for i in row_data]
-                length = len(df)
-                df.loc[length] = row
+            # prints data
+            # for item in legend.text.split("\n"):
+            #     print("testing", item, "testing")
+            print(f"{percent} of games are Verifed/Playable.")
+            # finds the table and headers for the report
+            table = soup.find("table", id="deckCompatReportTable")
+            df = self.create_df(table)
             # loops through table using the dataframe
             for index, row in df.iterrows():
                 # gets rid of possible new lines that could be added
