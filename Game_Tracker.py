@@ -627,7 +627,7 @@ class Tracker(Logger, Helper):
             df.loc[length] = row
         return df
 
-    def steam_deck_check(self, steam_id, hour_freq=0):
+    def steam_deck_check(self, steam_id, hour_freq=1):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
@@ -644,21 +644,24 @@ class Tracker(Logger, Helper):
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
             legend = soup.find("table", id="deckCompatChartLegend")
-            percent = soup.find(id="deckCompatChartPercent").text.split("%")[0] + "%"
             # prints data
-            # for item in legend.text.split("\n"):
-            #     print("testing", item, "testing")
-            print(f"{percent} of games are Verifed/Playable.")
+            for item in legend.text.split("\n"):
+                if item != "":
+                    print(item)
             # finds the table and headers for the report
             table = soup.find("table", id="deckCompatReportTable")
             df = self.create_df(table)
             # loops through table using the dataframe
+            first_run = True
             for index, row in df.iterrows():
                 # gets rid of possible new lines that could be added
                 last_updated = row["Last Change"].replace("\n", "")
                 game_name = row["Title"].replace("\n", "")
                 status = row["Status"].replace("\n", "")
                 if self.games.update_cell(game_name, "Steam Deck Status", status):
+                    if first_run:
+                        print("Updated Games:")
+                        first_run = False
                     info = f"{game_name} was updated to {status.title()}"
                     self.logger.info(info)
                     print(info)
