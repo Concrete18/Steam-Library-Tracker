@@ -1,3 +1,4 @@
+from unicodedata import category
 import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
@@ -16,7 +17,7 @@ class Tracker(Logger, Helper):
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-
+    ext_terminal = sys.stdout.isatty()
     # config init
     config = Path("configs\config.json")
     with open(config) as file:
@@ -53,7 +54,11 @@ class Tracker(Logger, Helper):
         """
         Quick data request with check for success.
         """
-        response = requests.get(url, headers=headers)
+        try:
+            response = requests.get(url, headers=headers)
+        except requests.exceptions.ConnectionError:
+            print("Connection Error: Internet can't be accessed")
+            return False
         if response == None:
             return False
         elif response.status_code == requests.codes.ok:
@@ -297,6 +302,45 @@ class Tracker(Logger, Helper):
             return ""
         return f"https://store.steampowered.com/app/{app_id}/{self.string_url_convert(game_name)}/"
 
+    def steam_deck_compat(self, app_id):
+        """
+        Gets a games steam deck verification and other compatibility data by `app_id`.
+        """
+        url = f"https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}"
+        data = self.request_url(url).json()
+        categories = {
+            0: "Unknown",
+            1: "Unsupported",
+            2: "Playable",
+            3: "Verified",
+        }
+        category_num = data["results"]["resolved_category"]
+        specific_ratings = data["results"]["resolved_items"]
+        result = {"category": categories[category_num]}
+        # ph
+        PREFIX = "#SteamDeckVerified_TestResult"
+        ratings = {
+            "controller_func": f"{PREFIX}_DefaultControllerConfigFullyFunctional",
+            "controller_glyphs": f"{PREFIX}_ControllerGlyphsMatchDeckDevice",
+            "legible_text": f"{PREFIX}_InterfaceTextIsLegible",
+            "good_config": f"{PREFIX}_DefaultConfigurationIsPerformant",
+        }
+        display_type = {
+            1: "Note",
+            2: "Fail",
+            3: "Info",
+            4: "Checkmark",
+        }
+        for rating in specific_ratings:
+            for check, key in ratings.items():
+                if rating["loc_token"] == key:
+                    if rating["display_type"] == 4:
+                        result[check] = True
+                    else:
+                        result[check] = False
+        print(result)
+        return result
+
     def requests_loop(self, skip_filled=1, check_status=0):
         """
         Loops through games in row_idx and gets missing data for time to beat and Metacritic score.
@@ -487,6 +531,8 @@ class Tracker(Logger, Helper):
                 else:
                     play_status = "Unset"  # sets play_status to Unset if none of the above applies
                 # Updates game if it is in the index or adds if it is not.
+                # TODO make sure play status is set properly
+                # if played more then an hour then set to playing if it was set to unplayed
                 if game_name in self.games.row_idx.keys():
                     if game_name in self.removed_from_steam:
                         self.removed_from_steam.remove(game_name)
@@ -645,9 +691,14 @@ class Tracker(Logger, Helper):
             soup = BeautifulSoup(response.text, "html.parser")
             legend = soup.find("table", id="deckCompatChartLegend")
             # prints data
+            category_totals = []
             for item in legend.text.split("\n"):
                 if item != "":
-                    print(item)
+                    split_str = item.split(" ")
+                    category = split_str[0].replace(":", "").title()
+                    count = split_str[1]
+                    perctent = split_str[3].replace("(", "").replace(")", "")
+                    print(f"{count} {category} games at {perctent}")
             # finds the table and headers for the report
             table = soup.find("table", id="deckCompatReportTable")
             df = self.create_df(table)
@@ -1092,7 +1143,7 @@ class Tracker(Logger, Helper):
         """
         self.config_check()
         self.arg_func()
-        if sys.stdout.isatty():
+        if self.ext_terminal:
             os.system("mode con cols=68 lines=40")
         print("Starting Game Tracker")
         # starts function run with CTRL + C Exit being possible without causing an error
@@ -1112,8 +1163,12 @@ class Tracker(Logger, Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.view_favorite_games_sales()
-    # print(App.get_steam_id('Varnock'))
-    # App.steam_deck_check()
-    # exit()
+    if not App.ext_terminal:
+        # App.view_favorite_games_sales()
+        # print(App.get_steam_id('Varnock'))
+        # App.steam_deck_check()
+        App.steam_deck_compat(427520)
+        App.steam_deck_compat(1290000)
+        # App.get_game_info(1290000, debug=True)
+        exit()
     App.run()
