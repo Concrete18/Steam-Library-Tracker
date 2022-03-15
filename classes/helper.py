@@ -1,8 +1,20 @@
 import datetime as dt
-import time, json
+import time, json, requests
 
 
 class Helper:
+    @staticmethod
+    def request_url(url, headers=None):
+        """
+        Quick data request with check for success.
+        """
+        try:
+            response = requests.get(url, headers=headers)
+        except requests.exceptions.ConnectionError:
+            input("Connection Error: Internet can't be accessed")
+            exit()
+        return response if response.status_code == requests.codes.ok else False
+
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
         """
         Delays delays for a set period of time if the `api` was run too recently.
