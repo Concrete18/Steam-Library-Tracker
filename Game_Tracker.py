@@ -49,23 +49,6 @@ class Tracker(Logger, Helper):
         else:
             return True, None
 
-    @staticmethod
-    def request_url(url, headers=None):
-        """
-        Quick data request with check for success.
-        """
-        try:
-            response = requests.get(url, headers=headers)
-        except requests.exceptions.ConnectionError:
-            print("Connection Error: Internet can't be accessed")
-            return False
-        if response == None:
-            return False
-        elif response.status_code == requests.codes.ok:
-            return response
-        else:
-            return False
-
     def get_steam_id(self, vanity_url):
         """
         Gets a users Steam ID via their `vanity_url`.
@@ -493,13 +476,9 @@ class Tracker(Logger, Helper):
         root_url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
         url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
         combinded_url = f"{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1"
-        try:
-            self.api_sleeper("steam_owned_games")
-            data = requests.get(combinded_url)
-        except requests.exceptions.ConnectionError:
-            print("Connection Error: Internet can't be accessed")
-            return False
-        if data.status_code == requests.codes.ok:
+        self.api_sleeper("steam_owned_games")
+        response = self.request_url(combinded_url)
+        if response:
             # checks for games that changed names
             self.removed_from_steam = [
                 str(game)
@@ -509,7 +488,7 @@ class Tracker(Logger, Helper):
             self.total_games_updated = 0
             self.total_games_added = 0
             self.added_games = []
-            for game in data.json()["response"]["games"]:
+            for game in response.json()["response"]["games"]:
                 game_name = game["name"]
                 if self.should_ignore(game_name):
                     continue
@@ -711,7 +690,7 @@ class Tracker(Logger, Helper):
                 status = row["Status"].replace("\n", "")
                 if self.games.update_cell(game_name, "Steam Deck Status", status):
                     if first_run:
-                        print("Updated Games:")
+                        print("\nUpdated Games:")
                         first_run = False
                     info = f"{game_name} was updated to {status.title()}"
                     self.logger.info(info)
@@ -1167,8 +1146,9 @@ if __name__ == "__main__":
         # App.view_favorite_games_sales()
         # print(App.get_steam_id('Varnock'))
         # App.steam_deck_check()
-        App.steam_deck_compat(427520)
-        App.steam_deck_compat(1290000)
+        # App.steam_deck_compat(427520)
+        # App.steam_deck_compat(1290000)
         # App.get_game_info(1290000, debug=True)
-        exit()
+        # exit()
+        pass
     App.run()
