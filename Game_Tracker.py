@@ -36,6 +36,16 @@ class Tracker(Logger, Helper):
     excel_date = f"=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)"
     # api call logger
     invalid_months = []
+    play_status_choices = {
+        "1": "Played",
+        "2": "Playing",
+        "3": "Waiting",
+        "4": "Finished",
+        "5": "Quit",
+        "6": "Unplayed",
+        "7": "Ignore",
+        "8": "Demo",
+    }
 
     def config_check(self):
         """
@@ -529,12 +539,6 @@ class Tracker(Logger, Helper):
                             item, "Play Status", f"Removed | {status}"
                         )
             return True
-        if data.status_code == 500:
-            print("Server Error: make sure your api key and steam id is valid.")
-        else:
-            print("\nFailed to connect to Steam API:\nCheck your internet.")
-            print(data.status_code)
-            return False
 
     @staticmethod
     def hash_file(file_path):
@@ -898,16 +902,6 @@ class Tracker(Logger, Helper):
         Shows a list of Play Status's to choose from.
         Respond with the playstatus or numerical postion of the status from the list.
         """
-        play_status_choices = {
-            "1": "Played",
-            "2": "Playing",
-            "3": "Waiting",
-            "4": "Finished",
-            "5": "Quit",
-            "6": "Unplayed",
-            "7": "Ignore",
-            "8": "Demo",
-        }
         prompt = ", ".join(play_status_choices.values()) + "\n:"
         while True:
             response = input(prompt).lower()
@@ -1045,6 +1039,35 @@ class Tracker(Logger, Helper):
         input()
         exit()
 
+    def custom_update_game(self):
+        """
+        ph
+        """
+        game_name = input("\nWhat game do you want to update?\n")
+        game_idx = None
+        for game in self.games.row_idx.keys():
+            if game_name.lower() == game.lower():
+                game_idx = self.games.row_idx[game]
+                break
+            # TODO add sequence matching
+        if not game_idx:
+            print(f"No Game found matching {game_name}.")
+            return
+        updated = False
+        # sets new hours if a number is given
+        hours = input("\nHow many hours have you played?\n")
+        if hours.isnumeric():
+            self.games.update_cell(game_idx, "Hours Played", float(hours))
+            updated = True
+        # sets status if a status is given
+        status = input("\nWhat is the new Status?\n").title()
+        if status in self.play_status_choices.values():
+            self.games.update_cell(game_idx, "Play Status", status)
+            updated = True
+        if updated:
+            self.games.update_cell(game_idx, "Date Updated", self.excel_date)
+            self.excel.save_excel_sheet(backup=False)
+
     def update_last_run(self):
         """
         Updates the last run time in seconds.
@@ -1085,35 +1108,38 @@ class Tracker(Logger, Helper):
         """
         print("\nWhat do you want to do next?\n")
         choices = [
-            "Pick Random Game",
-            "Add Game",
-            "Update the Playstation Data",
-            "Check for and view Favorite Games Sales",
-            "View Favorite Games Sales",
-            "Open Log",
+            "Update Game",  # 1
+            "Pick Random Game",  # 2
+            "Add Game",  # 3
+            "Update the Playstation Data",  # 4
+            "Check for and view Favorite Games Sales",  # 5
+            "View Favorite Games Sales",  # 6
+            "Open Log",  # 7
         ]
         for count, choice in enumerate(choices):
             print(f"{count+1}. {choice}")
         res = input("\nPress Enter without a number to open the excel sheet.\n")
         if res == "1":
+            self.custom_update_game()
+        elif res == "2":
             self.pick_random_game()
             self.open_excel_input()
-        elif res == "2":
+        elif res == "3":
             self.add_game()
             self.open_excel_input()
-        elif res == "3":
+        elif res == "4":
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
             webbrowser.open(r"https://store.playstation.com/")
             input("Press Enter when done.")
             self.check_playstation_json()
-        elif res == "4":
+        elif res == "5":
             self.get_favorite_games_sales()
             self.open_excel_input()
-        elif res == "5":
+        elif res == "6":
             self.view_favorite_games_sales()
             self.open_excel_input()
-        elif res == "6":
+        elif res == "7":
             webbrowser.open("configs/tracker.log")
 
     def run(self):
@@ -1149,6 +1175,6 @@ if __name__ == "__main__":
         # App.steam_deck_compat(427520)
         # App.steam_deck_compat(1290000)
         # App.get_game_info(1290000, debug=True)
-        # exit()
         pass
+    # App.custom_update_game()
     App.run()

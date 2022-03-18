@@ -13,7 +13,13 @@ class Helper:
         except requests.exceptions.ConnectionError:
             input("Connection Error: Internet can't be accessed")
             exit()
-        return response if response.status_code == requests.codes.ok else False
+        if response.status_code == requests.codes.ok:
+            return response
+        elif response.status_code == 500:
+            input("Server Error: make sure your api key and steam id is valid.")
+            exit()
+        else:
+            return False
 
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
         """
