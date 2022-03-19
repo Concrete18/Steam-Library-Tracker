@@ -1,5 +1,4 @@
-from unicodedata import category
-import requests, random, time, json, os, re, sys, hashlib, webbrowser, subprocess
+import random, time, json, os, re, sys, hashlib, webbrowser, subprocess
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -902,12 +901,12 @@ class Tracker(Logger, Helper):
         Shows a list of Play Status's to choose from.
         Respond with the playstatus or numerical postion of the status from the list.
         """
-        prompt = ", ".join(play_status_choices.values()) + "\n:"
+        prompt = ", ".join(self.play_status_choices.values()) + "\n:"
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
-                return play_status_choices[response]
-            elif response.title() in play_status_choices.values():
+                return self.play_status_choices[response]
+            elif response.title() in self.play_status_choices.values():
                 return response
             elif response == "":
                 return None
