@@ -1,5 +1,6 @@
 import datetime as dt
 import time, json, requests
+from difflib import SequenceMatcher
 
 
 class Helper:
@@ -59,6 +60,25 @@ class Helper:
                 break
         conv_string = string.encode("ascii", "ignore").decode()
         return conv_string.strip()
+
+    def string_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
+        """
+        Takes the given phrase and finds a match in intents.json.
+        """
+        match = None
+        for string in string_list:
+            if string.lower() == target_str.lower():
+                return string
+            match_perc = SequenceMatcher(
+                None, target_str.lower(), string.lower()
+            ).ratio()
+            if match_perc > max_similarity:
+                max_similarity = match_perc
+                match = string
+        if debug:
+            match_perc = round(max_similarity, 2)
+            print(f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {match_perc}")
+        return match
 
     def save_json_output(self, new_data, filename):
         """
