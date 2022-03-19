@@ -3,6 +3,7 @@ import openpyxl
 from pathlib import Path
 from time import sleep
 import datetime as dt
+import pandas as pd
 import shutil
 
 
@@ -330,3 +331,9 @@ class Sheet(Format):
         self.cur_sheet.delete_column(column)
         self.excel.changes_made = True
         return True
+
+    def create_dataframe(self, date_columns=None, na_values=None):
+        return
+        # file_loc = self.excel.file_path
+        # df = pd.read_excel(file_path=file_loc, engine="openpyxl", sheet_name=self.sheet_name parse_dates=date_columns, na_values=na_values)
+        # return df
