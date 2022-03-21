@@ -501,7 +501,6 @@ class Tracker(Logger, Helper):
                 game_name = game["name"]
                 if self.should_ignore(game_name):
                     continue
-                # TODO include linux playtime
                 playtime_forever = game["playtime_forever"]
                 game_appid = game["appid"]
                 # Demo
@@ -621,10 +620,8 @@ class Tracker(Logger, Helper):
             if self.should_ignore(game_name) or game_name in added_games:
                 continue
             # skip if it already exist
-            if (
-                game_name in self.games.row_idx.keys()
-                or f"{game_name} - Console" in self.games.row_idx.keys()
-            ):
+            a = f"{game_name} - Console"
+            if game_name in self.games.row_idx.keys() or a in self.games.row_idx.keys():
                 continue
             # TODO skip if the game exists with a playstation version already
             # adds the game
@@ -679,8 +676,8 @@ class Tracker(Logger, Helper):
                     split_str = item.split(" ")
                     category = split_str[0].replace(":", "").title()
                     count = split_str[1]
-                    perctent = split_str[3].replace("(", "").replace(")", "")
-                    print(f"{count} {category} games at {perctent}")
+                    percent = split_str[3].replace("(", "").replace(")", "")
+                    print(f"{count} {category} games at {percent}")
             # finds the table and headers for the report
             table = soup.find("table", id="deckCompatReportTable")
             df = self.create_df(table)
@@ -691,6 +688,8 @@ class Tracker(Logger, Helper):
                 last_updated = row["Last Change"].replace("\n", "")
                 game_name = row["Title"].replace("\n", "")
                 status = row["Status"].replace("\n", "")
+                if game_name == "Grand Theft Auto: San Andreas":
+                    continue
                 if self.games.update_cell(game_name, "Steam Deck Status", status):
                     if first_run:
                         print("\nUpdated Games:")
@@ -950,7 +949,7 @@ class Tracker(Logger, Helper):
         Rating is set up using an input after running.
         """
         # gets favorite games from excel file as a list of dicts
-        favorite_games = []
+        fav_games = []
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         rating_limit = (
             input("What is the minimum rating for this search? (1-10)\n") or "8"
@@ -979,18 +978,15 @@ class Tracker(Logger, Helper):
                 game_dict["my_rating"] = my_rating
                 if "on_sale" in game_dict.keys():
                     if game_dict["on_sale"]:
-                        favorite_games.append(game_dict)
-        favorite_games = sorted(
-            favorite_games, key=lambda i: i["discount"], reverse=True
-        )
+                        fav_games.append(game_dict)
+        fav_games = sorted(fav_games, key=lambda i: i["discount"], reverse=True)
         print(
-            f"\n{len(favorite_games)} Favorite Games with Current Deals in Descending Order:\n"
+            f"\n{len(fav_games)} Favorite Games with Current Deals in Descending Order:\n"
         )
-        # TODO replace with better code for output
-        for game in favorite_games:
+        for game in fav_games:
             print(f'{game["name"]} - {game["price"]}')
         # save into file
-        self.save_json_output(favorite_games, "configs/favorite_games.json")
+        self.save_json_output(fav_games, "configs/favorite_games.json")
 
     def view_favorite_games_sales(self):
         """
@@ -1040,15 +1036,16 @@ class Tracker(Logger, Helper):
 
     def custom_update_game(self):
         """
-        ph
+        Allows updating a game by typing in an as close a possible version of the game name.
         """
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
-        for game in self.games.row_idx.keys():
-            if game_name.lower() == game.lower():
-                game_idx = self.games.row_idx[game]
-                break
-            # TODO add sequence matching
+        matched_game = self.string_matcher(game_name, self.games.row_idx.keys())
+        if matched_game:
+            game_idx = self.games.row_idx[matched_game]
+        else:
+            print("No Match")
+            return
         if not game_idx:
             print(f"No Game found matching {game_name}.")
             return
@@ -1057,15 +1054,26 @@ class Tracker(Logger, Helper):
         hours = input("\nHow many hours have you played?\n")
         if hours.isnumeric():
             self.games.update_cell(game_idx, "Hours Played", float(hours))
+            print(f"Updated to {hours} Hours")
             updated = True
+        else:
+            print("Left Hours Played the same.")
         # sets status if a status is given
         status = input("\nWhat is the new Status?\n").title()
         if status in self.play_status_choices.values():
             self.games.update_cell(game_idx, "Play Status", status)
+            print(f"Updated Play Status to {status}")
             updated = True
+        else:
+            print("Left Play Status the same.")
         if updated:
             self.games.update_cell(game_idx, "Date Updated", self.excel_date)
             self.excel.save_excel_sheet(backup=False)
+        else:
+            print("No changes made.")
+        response = input("Do you want to update another game? Type yes.\n")
+        if response.lower() in ["yes", "yeah", "y"]:
+            self.custom_update_game()
 
     def update_last_run(self):
         """
@@ -1083,6 +1091,7 @@ class Tracker(Logger, Helper):
         else:
             input("\nPress Enter to open the excel sheet.\n")
         os.startfile(self.excel.file_path)
+        exit()
 
     def steam_deck_data_checker(self):
         """
@@ -1122,10 +1131,8 @@ class Tracker(Logger, Helper):
             self.custom_update_game()
         elif res == "2":
             self.pick_random_game()
-            self.open_excel_input()
         elif res == "3":
             self.add_game()
-            self.open_excel_input()
         elif res == "4":
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
@@ -1134,12 +1141,13 @@ class Tracker(Logger, Helper):
             self.check_playstation_json()
         elif res == "5":
             self.get_favorite_games_sales()
-            self.open_excel_input()
         elif res == "6":
             self.view_favorite_games_sales()
-            self.open_excel_input()
         elif res == "7":
             webbrowser.open("configs/tracker.log")
+        elif res == "":
+            os.startfile(self.excel.file_path)
+            exit()
 
     def run(self):
         """
@@ -1160,7 +1168,7 @@ class Tracker(Logger, Helper):
             self.update_last_run()
             self.steam_deck_data_checker()
             self.pick_task()
-            os.startfile(self.excel.file_path)
+            self.open_excel_input()
         except KeyboardInterrupt:
             print("\nClosing")
 
