@@ -234,15 +234,6 @@ class Sheet(Format):
             column_key = column_value
         return row_key, column_key
 
-    def get_row(self, column_value):
-        """
-        WIP Shows row contents in a list.
-        """
-        row = self.row_idx[column_value]
-        data = list(self.cur_sheet.iter_rows()[row])
-        print(data)
-        return data
-
     def get_cell(self, row_value, column_value):
         """
         Gets the cell value based on the `row_value` and `column_value`.
@@ -333,7 +324,12 @@ class Sheet(Format):
         return True
 
     def create_dataframe(self, date_columns=None, na_values=None):
-        return
-        # file_loc = self.excel.file_path
-        # df = pd.read_excel(file_path=file_loc, engine="openpyxl", sheet_name=self.sheet_name parse_dates=date_columns, na_values=na_values)
-        # return df
+        file_loc = self.excel.file_path
+        df = pd.read_excel(
+            file_path=file_loc,
+            engine="openpyxl",
+            sheet_name=self.sheet_name,
+            parse_dates=date_columns,
+            na_values=na_values,
+        )
+        return df
