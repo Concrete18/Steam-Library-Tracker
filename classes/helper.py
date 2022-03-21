@@ -1,6 +1,6 @@
-import datetime as dt
-import time, json, requests
 from difflib import SequenceMatcher
+import time, json, requests
+import datetime as dt
 
 
 class Helper:
@@ -63,7 +63,7 @@ class Helper:
 
     def string_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
         """
-        Takes the given phrase and finds a match in intents.json.
+        Finds a match for target_str in string_list using sequence matching.
         """
         match = None
         for string in string_list:
