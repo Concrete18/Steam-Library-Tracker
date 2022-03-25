@@ -660,15 +660,19 @@ class Tracker(Logger, Helper):
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
+            # prints category info
             legend = soup.find("table", id="deckCompatChartLegend")
-            # prints data
-            category_totals = []
+            category_info = {}
             for item in legend.text.split("\n"):
                 if item != "":
                     split_str = item.split(" ")
                     category = split_str[0].replace(":", "").title()
                     count = split_str[1]
                     percent = split_str[3].replace("(", "").replace(")", "")
+                    # category_info[category] = {
+                    #     "total": count,
+                    #     "percent": percent,
+                    # }
                     print(f"{count} {category} games at {percent}")
             # finds the table and headers for the report
             table = soup.find("table", id="deckCompatReportTable")
@@ -1074,20 +1078,6 @@ class Tracker(Logger, Helper):
         self.data["settings"]["last_run"] = time.time()
         self.save_json_output(self.data, self.config)
 
-    def open_excel_input(self, other_option=False):
-        """
-        Opens excel file if previous input is passed.
-        """
-        if not other_option:
-            input("\nPress Enter to open the excel sheet.\n")
-        else:
-            input("\nPress Enter to open the excel sheet.\n")
-        if self.excel.file_path.exists:
-            os.startfile(self.excel.file_path)
-        else:
-            input("Excel File was not found.")
-        exit()
-
     def steam_deck_data_checker(self):
         """
         Prints a message of a possible steam deck key if found in the app id search.
@@ -1163,7 +1153,7 @@ class Tracker(Logger, Helper):
             self.update_last_run()
             self.steam_deck_data_checker()
             self.pick_task()
-            self.open_excel_input()
+            self.excel.ask_to_open()
         except KeyboardInterrupt:
             print("\nClosing")
 
