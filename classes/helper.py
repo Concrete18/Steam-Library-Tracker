@@ -1,5 +1,5 @@
 from difflib import SequenceMatcher
-import time, json, requests
+import time, json, requests, re
 import datetime as dt
 
 
@@ -35,6 +35,13 @@ class Helper:
 
     def request_retryer():
         pass
+
+    @staticmethod
+    def string_url_convert(string) -> str:
+        """
+        Converts given `string` into a url ready string and returns it.
+        """
+        return re.sub(r"\W+", "", string.replace(" ", "_")).lower()
 
     @staticmethod
     def unicode_remover(string) -> str:

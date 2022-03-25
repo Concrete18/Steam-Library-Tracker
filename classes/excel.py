@@ -1,27 +1,42 @@
-from openpyxl.styles import PatternFill, Border
-import openpyxl
+from logging.handlers import RotatingFileHandler
+import logging as lg
 from pathlib import Path
 from time import sleep
 import datetime as dt
 import pandas as pd
-import shutil
+import shutil, os
+import openpyxl
 
 
 class Excel:
 
     changes_made = False
 
-    def __init__(self, excel_filename):
+    def __init__(self, excel_filename, log_file="app.log", log_level=lg.DEBUG):
         """
         Allows retreiving, adding, updating, deleting and formatting cells within Excel.
 
         `excel_filename` is the path to the excel file.
+
+        `log_file` sets the path for logging.
+
+        `log_level` Sets the logging level of this logger. level must be an int or a str.
         """
         # workbook setup
         self.file_path = Path(excel_filename)
         self.wb = openpyxl.load_workbook(self.file_path)
+        # logger setup
+        log_formatter = lg.Formatter(
+            "%(asctime)s %(levelname)s %(message)s", datefmt="%m-%d-%Y %I:%M:%S %p"
+        )
+        self.logger = lg.getLogger(__name__)
+        self.logger.setLevel(log_level)  # Log Level
+        max_bytes = 5 * 1024 * 1024
+        my_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=2)
+        my_handler.setFormatter(log_formatter)
+        self.logger.addHandler(my_handler)
 
-    def save_excel_sheet(self, use_print=True, backup=True):
+    def save_excel(self, use_print=True, backup=True):
         """
         Backs up the excel file before saving the changes if `backup` is True.
 
@@ -34,7 +49,6 @@ class Excel:
             try:
                 # backups the file before saving.
                 if backup:
-                    self.file_path
                     shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
                 # saves the file once it is closed
                 if use_print:
@@ -43,6 +57,7 @@ class Excel:
                 while True:
                     try:
                         self.wb.save(self.file_path)
+                        self.logger.info(f'Saved to "{self.file_path}"')
                         if use_print:
                             print(f'Save Complete.{34*" "}')
                             self.changes_made = False
@@ -58,80 +73,24 @@ class Excel:
                     print("\nCancelling Save")
                 exit()
 
-
-class Format:
-    def format_cells(self, game_name):
+    def ask_to_open(self, skip_input=False):
         """
-        Cell Formatter for Game Library Tracker.
+        Opens excel file if after enter is pressed if the file still exists.
         """
-        center_align = openpyxl.styles.alignment.Alignment(
-            horizontal="center",
-            vertical="center",
-            text_rotation=0,
-            wrap_text=False,
-            shrink_to_fit=True,
-            indent=0,
-        )
-        left_align = openpyxl.styles.alignment.Alignment(
-            horizontal="left",
-            vertical="center",
-            text_rotation=0,
-            wrap_text=False,
-            shrink_to_fit=True,
-            indent=0,
-        )
-        border = Border(
-            left=openpyxl.styles.borders.Side(style="thin"),
-            right=openpyxl.styles.borders.Side(style="thin"),
-            top=openpyxl.styles.borders.Side(style="thin"),
-            bottom=openpyxl.styles.borders.Side(style="thin"),
-            diagonal=None,
-            outline=True,
-            start=None,
-            end=None,
-        )
-        light_grey_fill = PatternFill(
-            start_color="F2F2F2", end_color="F2F2F2", fill_type="solid"
-        )
-        for column in self.col_idx.keys():
-            cell = self.cur_sheet.cell(
-                row=self.row_idx[game_name], column=self.col_idx[column]
-            )
-            # Percent
-            if self.list_in_string(["percent", "discount"], column):
-                cell.style = "Percent"
-            # currency
-            elif self.list_in_string(["price", "msrp"], column):
-                cell.style = "Currency"
-            # 1 decimal place
-            if self.list_in_string(["hours played"], column):
-                cell.number_format = "#,#0.0"
-            # fill
-            if self.list_in_string(
-                ["Rating Comparison", "Probable Completion"], column
-            ):
-                cell.fill = light_grey_fill
-            # date
-            elif self.list_in_string(["last updated", "date"], column):
-                cell.number_format = "MM/DD/YYYY"
-            # centering
-            dont_center = [
-                "Name",
-                "Tags",
-                "Game Name",
-                "Developers",
-                "Publishers",
-                "Genre",
-            ]
-            if column not in dont_center:
-                cell.alignment = center_align
-            else:
-                cell.alignment = left_align
-            # border
-            cell.border = border
+        if not skip_input:
+            try:
+                input("\nPress Enter to open the excel sheet.\n")
+            except KeyboardInterrupt:
+                print("Closing")
+        if self.file_path.exists:
+            self.save_excel()
+            os.startfile(self.file_path)
+        else:
+            input("Excel File was not found.")
+        exit()
 
 
-class Sheet(Format):
+class Sheet:
     def __init__(self, excel_object, column_name, sheet_name=None) -> None:
         """
         Allows interacting with any one sheet within the excel_object given.
@@ -146,6 +105,7 @@ class Sheet(Format):
         self.excel = excel_object
         self.column_name = column_name
         self.sheet_name = sheet_name
+        # defaults used sheet to first one if none is specified
         if sheet_name:
             self.cur_sheet = self.wb[sheet_name]
         else:
@@ -157,6 +117,24 @@ class Sheet(Format):
         # column and row indexes
         self.col_idx = self.get_column_index()
         self.row_idx = self.get_row_index(self.column_name)
+        # error checking
+        self.missing_columns = []
+
+    @staticmethod
+    def indirect_cell(left=0, right=0):
+        """
+        Returns a string for setting an indirect cell location to a number `left` or `right`.
+
+        Only one direction can be greater then 0.
+        """
+        num = 0
+        if left > 0 and right == 0:
+            num -= left
+        elif right > 0 and left == 0:
+            num += right
+        else:
+            raise "Left and Right can't both be greater then 0."
+        return f'INDIRECT("RC[{num}]",0)'
 
     def get_column_index(self):
         """
@@ -209,7 +187,7 @@ class Sheet(Format):
         if date and time:
             return f"=DATE({year}, {month}, {day})+TIME({hour},{minute},0)"
         elif date:
-            return f"=DATE({year}, {month}, {day})"
+            return f"=DATE({year}, {month}, {day})+TIME(0,0,0)"
         elif time:
             return f"=TIME({hour},{minute},0)"
         else:
@@ -268,13 +246,13 @@ class Sheet(Format):
             if current_value != new_val:
                 self.cur_sheet.cell(row=row_key, column=column_key).value = new_val
                 if save:
-                    self.excel.save_excel_sheet(use_print=False, backup=False)
+                    self.excel.save_excel(use_print=False, backup=False)
                 else:
                     self.excel.changes_made = True
                 return True
         return False
 
-    def add_new_line(self, cell_dict, column_key, save=False, debug=False):
+    def add_new_line(self, cell_dict, column_key, save=False):
         """
         Adds the given dictionary, as `cell_dict`, onto a new line within the excel sheet.
 
@@ -284,6 +262,14 @@ class Sheet(Format):
 
         Saves after change if `save` is True.
         """
+        # missing column checker
+        # TODO test this
+        for column in cell_dict.keys():
+            if column not in self.col_idx and column not in self.missing_columns:
+                self.missing_columns.append(column)
+                self.excel.logger.warning(
+                    f"Missing {column} in {self.sheet_name} sheet"
+                )
         append_list = []
         for column in self.col_idx:
             if column in cell_dict:
@@ -293,7 +279,7 @@ class Sheet(Format):
         self.cur_sheet.append(append_list)
         self.update_index(column_key)
         if save:
-            self.excel.save_excel_sheet(use_print=False, backup=False)
+            self.excel.save_excel(use_print=False, backup=False)
         else:
             self.excel.changes_made = True
         return True
@@ -307,7 +293,7 @@ class Sheet(Format):
         row = self.row_idx[col_val]
         self.cur_sheet.delete_rows(row)
         if save:
-            self.excel.save_excel_sheet(use_print=False, backup=False)
+            self.excel.save_excel(use_print=False, backup=False)
         else:
             self.excel.changes_made = True
         return True

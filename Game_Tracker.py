@@ -7,7 +7,8 @@ import datetime as dt
 import pandas as pd
 
 # classes
-from classes.excel import Excel, Sheet
+from classes.excel import Excel
+from classes.custom_sheet import CustomSheet
 from classes.logger import Logger
 from classes.helper import Helper
 
@@ -29,7 +30,7 @@ class Tracker(Logger, Helper):
     ignore_list = [string.lower() for string in data["ignore_list"]]
     # class init
     excel = Excel(excel_filename)
-    games = Sheet(excel, "Game Name", sheet_name="Games")
+    games = CustomSheet(excel, "Game Name", sheet_name="Games")
     # current date and time setup
     cur_date = dt.datetime.now()
     excel_date = f"=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)"
@@ -280,13 +281,6 @@ class Tracker(Logger, Helper):
                 return final_dict
         return False
 
-    @staticmethod
-    def string_url_convert(string) -> str:
-        """
-        Converts given `string` into a url ready string and returns it.
-        """
-        return re.sub(r"\W+", "", string.replace(" ", "_")).lower()
-
     def get_store_link(self, game_name, app_id):
         """
         Generates a likely link to the games store page using `game_name` and `app_id`."""
@@ -380,9 +374,7 @@ class Tracker(Logger, Helper):
             return
         try:
             # updates missing data
-            print(
-                "\nStarting Time To Beat, Metacritic Score and other steam data check."
-            )
+            print("\nTime To Beat, Metacritic Score and other steam data check.")
             save_interval = 15
             running_interval = save_interval
             for game_name in tqdm(
@@ -481,7 +473,7 @@ class Tracker(Logger, Helper):
             steam_id = input(
                 "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
             )
-        print("\nStarting Steam Library Tracking")
+        print("\nSteam Library Tracking")
         root_url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
         url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
         combinded_url = f"{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1"
@@ -662,7 +654,7 @@ class Tracker(Logger, Helper):
             hour_till = round(hour_freq - hours_since_last_run, 1)
             print(f"\nSkipping Steam Deck Check.\nNext check due in {hour_till} hours.")
             return
-        print("\nStarting Steam Deck Compatibility Check")
+        print("\nSteam Deck Compatibility Check")
         url = f"https://checkmydeck.herokuapp.com/users/{steam_id}/library"
         user_agent = {"User-agent": "Mozilla/5.0"}
         response = self.request_url(url, headers=user_agent)
@@ -960,7 +952,7 @@ class Tracker(Logger, Helper):
             print("Invalid response - Using 8 instead.")
             rating_limit = 8
         # starts check with progress bar
-        print("\nStarting Game Sale Check\n")
+        print("\nGame Sale Check\n")
         for game, index in tqdm(
             iterable=self.games.row_idx.items(),
             ascii=True,
@@ -1090,7 +1082,10 @@ class Tracker(Logger, Helper):
             input("\nPress Enter to open the excel sheet.\n")
         else:
             input("\nPress Enter to open the excel sheet.\n")
-        os.startfile(self.excel.file_path)
+        if self.excel.file_path.exists:
+            os.startfile(self.excel.file_path)
+        else:
+            input("Excel File was not found.")
         exit()
 
     def steam_deck_data_checker(self):
