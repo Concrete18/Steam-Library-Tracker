@@ -458,11 +458,11 @@ class Tracker(Logger, Helper):
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
-                    self.excel.save_excel_sheet(use_print=False, backup=False)
+                    self.excel.save_excel(use_print=False, backup=False)
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
-            self.excel.save_excel_sheet()
+            self.excel.save_excel()
 
     def refresh_steam_games(self, steam_id):
         """
@@ -624,7 +624,7 @@ class Tracker(Logger, Helper):
         total_games_added = len(added_games)
         print(f"Added {total_games_added} PS4/PS5 Games.")
         if total_games_added > 0:
-            self.excel.save_excel_sheet()
+            self.excel.save_excel()
 
     def create_df(self, table):
         """
@@ -689,7 +689,7 @@ class Tracker(Logger, Helper):
                     info = f"{game_name} was updated to {status.title()}"
                     self.logger.info(info)
                     print(info)
-            self.excel.save_excel_sheet()
+            self.excel.save_excel()
         else:
             print("Failed connect to Steam Deck Data")
 
@@ -708,7 +708,7 @@ class Tracker(Logger, Helper):
                 app_id, game_name, ignore, status = line.split("\t")
             if self.games.update_cell(game_name, "Steam Deck Status", status):
                 print("failed on", game_name, status)
-        self.excel.save_excel_sheet()
+        self.excel.save_excel()
 
     def check_playstation_json(self):
         """
@@ -868,7 +868,7 @@ class Tracker(Logger, Helper):
         self.games.format_cells(game_name)
         if save:
             print("saved")
-            self.excel.save_excel_sheet()
+            self.excel.save_excel()
 
     def output_completion_data(self):
         """
@@ -883,7 +883,7 @@ class Tracker(Logger, Helper):
         if len(self.invalid_months) > 0:
             print(self.invalid_months)
         if self.excel.changes_made:
-            self.excel.save_excel_sheet()
+            self.excel.save_excel()
         else:
             print("\nNo Steam games were added or updated.")
 
@@ -1060,7 +1060,7 @@ class Tracker(Logger, Helper):
             print("Left Play Status the same.")
         if updated:
             self.games.update_cell(game_idx, "Date Updated", self.excel_date)
-            self.excel.save_excel_sheet(backup=False)
+            self.excel.save_excel(backup=False)
         else:
             print("No changes made.")
         response = input("Do you want to update another game? Type yes.\n")
