@@ -24,9 +24,9 @@ class TestStringMethods(unittest.TestCase):
         print("\n", "get_app_id")
         test = Tracker()
         app_id_tests = {
+            "Inscryption": 1092790,
             "Dishonored 2": 403640,
             "Deep Rock Galactic": 548430,
-            "Inscryption": 1092790,
         }
         for name, answer in app_id_tests.items():
             self.assertEqual(test.get_app_id(name), answer)
