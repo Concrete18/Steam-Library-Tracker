@@ -42,7 +42,10 @@ class CustomSheet(Sheet):
                 row=self.row_idx[game_name], column=self.col_idx[column]
             )
             # Percent
-            if self.list_in_string(["percent", "discount"], column):
+            if self.list_in_string(
+                ["percent", "discount", "Rating Comparison", "Probable Completion"],
+                column,
+            ):
                 cell.style = "Percent"
             # currency
             elif self.list_in_string(["price", "msrp"], column):

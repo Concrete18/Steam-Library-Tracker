@@ -2,25 +2,46 @@ from difflib import SequenceMatcher
 import time, json, requests, re
 import datetime as dt
 
+# logging
+from logging.handlers import RotatingFileHandler
+import logging as lg
 
-class Helper:
-    @staticmethod
-    def request_url(url, headers=None):
+
+class Logger:
+
+    # logger setup
+    log_formatter = lg.Formatter(
+        "%(asctime)s %(levelname)s %(message)s", datefmt="%m-%d-%Y %I:%M:%S %p"
+    )
+    logger = lg.getLogger(__name__)
+    logger.setLevel(lg.DEBUG)  # Log Level
+    my_handler = RotatingFileHandler(
+        "configs/tracker.log", maxBytes=5 * 1024 * 1024, backupCount=2
+    )
+    my_handler.setFormatter(log_formatter)
+    logger.addHandler(my_handler)
+
+
+class Helper(Logger):
+    def request_url(self, url, headers=None):
         """
         Quick data request with check for success.
         """
         try:
             response = requests.get(url, headers=headers)
         except requests.exceptions.ConnectionError:
-            input("Connection Error: Internet can't be accessed")
-            exit()
+            msg = "Connection Error: Internet can't be accessed"
+            self.logger.warning(msg)
+            return False
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
-            input("Server Error: make sure your api key and steam id is valid.")
-            exit()
+            msg = "Server Error: make sure your api key and steam id is valid."
+            self.logger.warning(msg)
         else:
-            return False
+            msg = f"Unknown Error: {response.status_code}"
+            self.logger.warning(msg)
+        return False
 
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
         """

@@ -4,15 +4,21 @@ from pathlib import Path
 from time import sleep
 import datetime as dt
 import pandas as pd
-import shutil, os
+import shutil, os, sys
 import openpyxl
 
 
 class Excel:
 
     changes_made = False
+    ext_terminal = sys.stdout.isatty()
 
-    def __init__(self, excel_filename, log_file="app.log", log_level=lg.DEBUG):
+    def __init__(
+        self,
+        excel_filename,
+        log_file="excel.log",
+        log_level=lg.DEBUG,
+    ):
         """
         Allows retreiving, adding, updating, deleting and formatting cells within Excel.
 
@@ -57,7 +63,6 @@ class Excel:
                 while True:
                     try:
                         self.wb.save(self.file_path)
-                        self.logger.info(f'Saved to "{self.file_path}"')
                         if use_print:
                             print(f'Save Complete.{34*" "}')
                             self.changes_made = False
@@ -69,6 +74,7 @@ class Excel:
                             first_run = False
                         sleep(1)
             except KeyboardInterrupt:
+                self.logger.warning(f"Save Cancelled")
                 if use_print:
                     print("\nCancelling Save")
                 exit()
@@ -77,11 +83,16 @@ class Excel:
         """
         Opens excel file if after enter is pressed if the file still exists.
         """
+        if not self.ext_terminal:
+            self.save_excel()
+            exit()
         if not skip_input:
             try:
                 input("\nPress Enter to open the excel sheet.\n")
             except KeyboardInterrupt:
                 print("Closing")
+                self.save_excel()
+                exit()
         if self.file_path.exists:
             self.save_excel()
             os.startfile(self.file_path)
@@ -170,8 +181,7 @@ class Sheet:
         else:
             return any(x in string for x in list)
 
-    @staticmethod
-    def create_excel_date(datetime=None, date=True, time=True):
+    def create_excel_date(self, datetime=None, date=True, time=True):
         """
         creates an excel date from the givin `datetime` object using =DATE().
 
@@ -191,6 +201,7 @@ class Sheet:
         elif time:
             return f"=TIME({hour},{minute},0)"
         else:
+            self.excel.logger.warning(f"create_excel_date did nothing")
             return None
 
     def get_row_col_index(self, row_value, column_value):
@@ -221,6 +232,8 @@ class Sheet:
         if row_key is not None and column_key is not None:
             return self.cur_sheet.cell(row=row_key, column=column_key).value
         else:
+            msg = f"get_cell: {column_value} and {row_value} point to nothing"
+            self.excel.logger.warning(msg)
             return None
 
     def update_index(self, col_key):
@@ -250,7 +263,10 @@ class Sheet:
                 else:
                     self.excel.changes_made = True
                 return True
-        return False
+        else:
+            msg = f"update_cell: {col_val} and {row_val} point to nothing"
+            self.excel.logger.warning(msg)
+            return False
 
     def add_new_line(self, cell_dict, column_key, save=False):
         """
@@ -263,13 +279,11 @@ class Sheet:
         Saves after change if `save` is True.
         """
         # missing column checker
-        # TODO test this
         for column in cell_dict.keys():
             if column not in self.col_idx and column not in self.missing_columns:
                 self.missing_columns.append(column)
-                self.excel.logger.warning(
-                    f"Missing {column} in {self.sheet_name} sheet"
-                )
+                msg = f"add_new_line: Missing {column} in {self.sheet_name} sheet"
+                self.excel.logger.warning(msg)
         append_list = []
         for column in self.col_idx:
             if column in cell_dict:

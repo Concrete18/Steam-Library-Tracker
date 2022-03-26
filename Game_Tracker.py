@@ -9,11 +9,10 @@ import pandas as pd
 # classes
 from classes.excel import Excel
 from classes.custom_sheet import CustomSheet
-from classes.logger import Logger
 from classes.helper import Helper
 
 
-class Tracker(Logger, Helper):
+class Tracker(Helper):
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -29,7 +28,7 @@ class Tracker(Logger, Helper):
     last_run = data["settings"]["last_run"]
     ignore_list = [string.lower() for string in data["ignore_list"]]
     # class init
-    excel = Excel(excel_filename)
+    excel = Excel(excel_filename, log_file="configs/excel.log")
     games = CustomSheet(excel, "Game Name", sheet_name="Games")
     # current date and time setup
     cur_date = dt.datetime.now()
@@ -838,6 +837,9 @@ class Tracker(Logger, Helper):
             vr_support = "No"
         else:
             vr_support = ""
+        l_1 = self.games.indirect_cell(left=1)
+        l_2 = self.games.indirect_cell(left=2)
+        l_10 = self.games.indirect_cell(left=10)
         column_info = {
             "My Rating": "",
             "Game Name": game_name,
@@ -846,8 +848,8 @@ class Tracker(Logger, Helper):
             "VR Support": vr_support,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
             "Metacritic": self.get_metacritic(game_name, "Steam"),
-            "Rating Comparison": "",
-            "Probable Completion": "",
+            "Rating Comparison": f'=IFERROR(({l_10}*10)/{l_1}, "Not Enough Data")',
+            "Probable Completion": f'=IFERROR({l_1}/{l_2},"Not Enough Data")',
             "Hours Played": hours_played,
             "App ID": game_appid,
             "Store Link": store_link_hyperlink,
@@ -1099,6 +1101,8 @@ class Tracker(Logger, Helper):
         """
         Allows picking a task to do next using a matching number.
         """
+        if not self.ext_terminal:
+            return
         print("\nWhat do you want to do next?\n")
         choices = [
             "Update Game",  # 1
