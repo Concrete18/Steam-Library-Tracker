@@ -831,10 +831,12 @@ class Tracker(Helper):
         if store_link:
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store Link")'
         # sets vr support value
+        steam_deck_status = ""
         if re.search(r"\bVR\b", game_name):
             vr_support = "Yes"
         elif platform in ["PS5", "PS4", "Switch"]:
             vr_support = "No"
+            steam_deck_status = "Unsupported"
         else:
             vr_support = ""
         l_1 = self.games.indirect_cell(left=1)
@@ -846,6 +848,7 @@ class Tracker(Helper):
             "Play Status": play_status,
             "Platform": platform,
             "VR Support": vr_support,
+            "Steam Deck Status": steam_deck_status,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
             "Metacritic": self.get_metacritic(game_name, "Steam"),
             "Rating Comparison": f'=IFERROR(({l_10}*10)/{l_1}, "Not Enough Data")',

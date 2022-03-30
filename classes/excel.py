@@ -16,6 +16,7 @@ class Excel:
     def __init__(
         self,
         excel_filename,
+        use_logging=True,
         log_file="excel.log",
         log_level=lg.DEBUG,
     ):
@@ -32,6 +33,7 @@ class Excel:
         self.file_path = Path(excel_filename)
         self.wb = openpyxl.load_workbook(self.file_path)
         # logger setup
+        self.use_logging = use_logging
         log_formatter = lg.Formatter(
             "%(asctime)s %(levelname)s %(message)s", datefmt="%m-%d-%Y %I:%M:%S %p"
         )
@@ -41,6 +43,32 @@ class Excel:
         my_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=2)
         my_handler.setFormatter(log_formatter)
         self.logger.addHandler(my_handler)
+
+    def log(self, msg, type="info"):
+        """
+        Logs `msg` with set `type` if `use_logging` is True.
+        """
+        if self.use_logging:
+            if type == "info":
+                self.logger.info(msg)
+            if type == "warning":
+                self.logger.warning(msg)
+            if type == "error":
+                self.logger.error(msg)
+
+    def create_dataframe(self, date_columns=None, na_values=None):
+        """
+        Creates a panda dataframe using the current used sheet.
+        """
+        file_loc = self.file_path
+        df = pd.read_excel(
+            file_loc,
+            engine="openpyxl",
+            sheet_name=None,
+            parse_dates=date_columns,
+            na_values=na_values,
+        )
+        return df
 
     def save_excel(self, use_print=True, backup=True):
         """
@@ -74,7 +102,7 @@ class Excel:
                             first_run = False
                         sleep(1)
             except KeyboardInterrupt:
-                self.logger.warning(f"Save Cancelled")
+                self.excel.log(f"Save Cancelled", "warning")
                 if use_print:
                     print("\nCancelling Save")
                 exit()
@@ -132,7 +160,7 @@ class Sheet:
         self.missing_columns = []
 
     @staticmethod
-    def indirect_cell(left=0, right=0):
+    def indirect_cell(left=0, right=0, manual_set=0):
         """
         Returns a string for setting an indirect cell location to a number `left` or `right`.
 
@@ -143,9 +171,18 @@ class Sheet:
             num -= left
         elif right > 0 and left == 0:
             num += right
+        elif manual_set != 0:
+            num = manual_set
         else:
             raise "Left and Right can't both be greater then 0."
         return f'INDIRECT("RC[{num}]",0)'
+
+    def easy_indrect_cell(self, cur_col, near_col):
+        """
+        Allows setting up an indirect cell formula
+        """
+        diff = self.col_idx[cur_col] - self.col_idx[near_col]
+        return self.indirect_cell(manual_set=diff)
 
     def get_column_index(self):
         """
@@ -201,7 +238,7 @@ class Sheet:
         elif time:
             return f"=TIME({hour},{minute},0)"
         else:
-            self.excel.logger.warning(f"create_excel_date did nothing")
+            self.excel.log(f"create_excel_date did nothing", "warning")
             return None
 
     def get_row_col_index(self, row_value, column_value):
@@ -233,7 +270,7 @@ class Sheet:
             return self.cur_sheet.cell(row=row_key, column=column_key).value
         else:
             msg = f"get_cell: {column_value} and {row_value} point to nothing"
-            self.excel.logger.warning(msg)
+            self.excel.log(msg, "warning")
             return None
 
     def update_index(self, col_key):
@@ -265,7 +302,7 @@ class Sheet:
                 return True
         else:
             msg = f"update_cell: {col_val} and {row_val} point to nothing"
-            self.excel.logger.warning(msg)
+            self.excel.log(msg, "warning")
             return False
 
     def add_new_line(self, cell_dict, column_key, save=False):
@@ -283,7 +320,7 @@ class Sheet:
             if column not in self.col_idx and column not in self.missing_columns:
                 self.missing_columns.append(column)
                 msg = f"add_new_line: Missing {column} in {self.sheet_name} sheet"
-                self.excel.logger.warning(msg)
+                self.excel.log(msg, "warning")
         append_list = []
         for column in self.col_idx:
             if column in cell_dict:
@@ -322,14 +359,3 @@ class Sheet:
         self.cur_sheet.delete_column(column)
         self.excel.changes_made = True
         return True
-
-    def create_dataframe(self, date_columns=None, na_values=None):
-        file_loc = self.excel.file_path
-        df = pd.read_excel(
-            file_path=file_loc,
-            engine="openpyxl",
-            sheet_name=self.sheet_name,
-            parse_dates=date_columns,
-            na_values=na_values,
-        )
-        return df
