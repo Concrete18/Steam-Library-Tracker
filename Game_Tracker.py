@@ -479,8 +479,8 @@ class Tracker(Helper):
         self.api_sleeper("steam_owned_games")
         response = self.request_url(combinded_url)
         if response:
-            # checks for games that changed names
-            self.removed_from_steam = [
+            # checks for games that changed names or no longer exist by removing later in the code
+            self.removed = [
                 str(game)
                 for game in self.games.row_idx.keys()
                 if self.games.get_cell(game, "Platform") == "Steam"
@@ -494,34 +494,33 @@ class Tracker(Helper):
                     continue
                 playtime_forever = game["playtime_forever"]
                 game_appid = game["appid"]
-                # Demo
-                if re.search(r"\bdemo\b", game["name"].lower()) or re.search(
-                    r"\btest\b", game["name"].lower()
-                ):
+                # demo/test check
+                is_demo = re.search(r"\bdemo\b", game["name"].lower())
+                is_test = re.search(r"\btest\b", game["name"].lower())
+                if is_demo or is_test:
                     play_status = "Demo"  # sets play_status to Demo if demo or test appears in the name
-                # Unplayed
+                # unplayed
                 elif playtime_forever <= 20:
                     play_status = "Unplayed"  # sets play_status to Unplayed if playtime_forever is 0-15
-                # Playing
+                # playing
                 elif game["playtime_windows_forever"] > 60:
                     play_status = "Playing"  # sets play_status to Played if playtime_forever is greater then 1 hour
-                # Unset
+                # unset
                 else:
                     play_status = "Unset"  # sets play_status to Unset if none of the above applies
-                # Updates game if it is in the index or adds if it is not.
-                # TODO make sure play status is set properly
-                # if played more then an hour then set to playing if it was set to unplayed
+                # updates game if it is in the index or adds if it is not.
                 if game_name in self.games.row_idx.keys():
-                    if game_name in self.removed_from_steam:
-                        self.removed_from_steam.remove(game_name)
+                    # removes existing games
+                    if game_name in self.removed:
+                        self.removed.remove(game_name)
                     self.update_game(game_name, playtime_forever, play_status)
                 else:
                     self.add_game(game_name, playtime_forever, game_appid, play_status)
-            if len(self.removed_from_steam) > 0:
+            if len(self.removed) > 0:
                 print(
-                    f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed_from_steam)}'
+                    f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed)}'
                 )
-                for item in self.removed_from_steam:
+                for item in self.removed:
                     status = self.games.get_cell(item, "Play Status")
                     if "Removed" not in status:
                         self.games.update_cell(
@@ -755,6 +754,7 @@ class Tracker(Helper):
             )
             self.games.update_cell(game_name, "Date Updated", self.excel_date)
             self.total_games_updated += 1
+            # TODO make this smarter
             if play_status == "unset":
                 self.games.update_cell(game_name, "Play Status", "Played")
             unit = "hours"
@@ -821,8 +821,12 @@ class Tracker(Helper):
             else:
                 return
         else:
+            # sets hours played
             if playtime_forever:
                 hours_played = self.hours_played(playtime_forever)
+                # sets play status
+                if hours_played > 0.5:
+                    play_status = "Playing"
             else:
                 hours_played = ""
         # store link setup
@@ -851,8 +855,8 @@ class Tracker(Helper):
             "Steam Deck Status": steam_deck_status,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
             "Metacritic": self.get_metacritic(game_name, "Steam"),
-            "Rating Comparison": f'=IFERROR(({l_10}*10)/{l_1}, "Not Enough Data")',
-            "Probable Completion": f'=IFERROR({l_1}/{l_2},"Not Enough Data")',
+            "Rating Comparison": f'=IFERROR(({l_10}*10)/{l_1}, "Missing Data")',
+            "Probable Completion": f'=IFERROR({l_1}/{l_2},"Missing Data")',
             "Hours Played": hours_played,
             "App ID": game_appid,
             "Store Link": store_link_hyperlink,

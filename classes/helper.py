@@ -21,6 +21,18 @@ class Logger:
     my_handler.setFormatter(log_formatter)
     logger.addHandler(my_handler)
 
+    def log_return(self, func):
+        """
+        Logs return of function when this decoratior is applied.
+        """
+
+        def wrapped(*args, **kwargs):
+            value = func(*args, **kwargs)
+            self.logger.info(value)
+            return value
+
+        return wrapped
+
 
 class Helper(Logger):
     def request_url(self, url, headers=None):
@@ -67,7 +79,7 @@ class Helper(Logger):
     @staticmethod
     def unicode_remover(string) -> str:
         """
-        ph
+        Removes unicode from `string`.
         """
         if type(string) != str:
             return string

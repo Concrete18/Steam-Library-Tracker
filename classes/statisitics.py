@@ -10,7 +10,7 @@ class Stat:
         excel_path = r"Excel Game Sheet.xlsx"
         na_values = [
             "Page Error",
-            "Not Enough Data",
+            "Missing Data",
             "Not Found",
             "No Data",
             "No Score",
