@@ -50,6 +50,16 @@ class Helper(Logger):
         elif response.status_code == 500:
             msg = "Server Error: make sure your api key and steam id is valid."
             self.logger.warning(msg)
+        elif response.status_code == 404:
+            msg = f"Server Error: 404 Content moved or was. URL: {url}"
+            self.logger.warning(msg)
+        elif response.status_code == 429:
+            msg = "Server Error: Too Many reqeuests made. Waiting to try again."
+            self.logger.warning(msg)
+            # TODO check response to see how long code needs to wait
+            self.logger.warning(response)
+            time.sleep(5)
+            self.request_url(url, headers=None)
         else:
             msg = f"Unknown Error: {response.status_code}"
             self.logger.warning(msg)
@@ -75,6 +85,30 @@ class Helper(Logger):
         Converts given `string` into a url ready string and returns it.
         """
         return re.sub(r"\W+", "", string.replace(" ", "_")).lower()
+
+    @staticmethod
+    def hours_played(minutes_played):
+        """
+        Converts minutes played to a hours played in decimal form.
+        """
+        return round(minutes_played / 60, 1)
+
+    @staticmethod
+    def time_passed(minutes_played):
+        """
+        Using `minutes_played`, outputs a nicely formatted time played and an int for hours played.
+
+        Returns time_played and hours_played
+        """
+        time_played = f"{round(minutes_played, 1)} Minute(s)"
+        hours_played = minutes_played / 60
+        if hours_played > 24:
+            days = round(hours_played / 24, 1)
+            time_played = f"{days} Day(s)"
+        elif minutes_played > 60:
+            hours = round(hours_played, 1)
+            time_played = f"{hours} Hour(s)"
+        return time_played
 
     @staticmethod
     def unicode_remover(string) -> str:
