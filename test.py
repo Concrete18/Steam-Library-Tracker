@@ -62,6 +62,39 @@ class TestStringMethods(unittest.TestCase):
         for name, answer in metacritic_tests.items():
             self.assertEqual(test.get_metacritic(name, "pc"), answer)
 
+    def test_hours_played(self):
+        print("\n", "hours_played")
+        test = Tracker()
+        time_hours_played = {
+            800: 13.3,
+            30: 0.5,
+            2940: 49,
+        }
+        for minutes_played, answer in time_hours_played.items():
+            self.assertEqual(test.hours_played(minutes_played), answer)
+
+    def test_time_passed(self):
+        print("\n", "time_passed")
+        test = Tracker()
+        time_passed_tests = {
+            800: "13.3 Hour(s)",
+            30: "30 Minute(s)",
+            2940: "2.0 Day(s)",
+        }
+        for minutes_played, answer in time_passed_tests.items():
+            self.assertEqual(test.time_passed(minutes_played), answer)
+
+    def test_play_status(self):
+        print("\n", "play_status")
+        test = Tracker()
+        self.assertEqual(test.play_status("Unplayed", 0.1), "Unplayed")
+        self.assertEqual(test.play_status("Unplayed", 0.5), "Played")
+
+        self.assertEqual(test.play_status("Unplayed", 1), "Playing")
+        self.assertEqual(test.play_status("Unplayed", 0.5), "Played")
+
+        self.assertEqual(test.play_status("Finished", 0.1), "Finished")
+
     def test_string_matcher(self):
         print("\n", "string_matcher")
         test = Tracker()
