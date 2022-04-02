@@ -43,7 +43,6 @@ class Tracker(Helper):
         "5": "Quit",
         "6": "Unplayed",
         "7": "Ignore",
-        "8": "Demo",
     }
 
     def config_check(self):
@@ -71,13 +70,6 @@ class Tracker(Helper):
             return steam_id
         else:
             return False
-
-    @staticmethod
-    def hours_played(playtime_forever):
-        """
-        Converts minutes played to a hours played in decimal form.
-        """
-        return round(playtime_forever / 60, 4)
 
     def get_time_to_beat(self, game_name, delay=2):
         """
@@ -463,15 +455,30 @@ class Tracker(Helper):
         finally:
             self.excel.save_excel()
 
+    @staticmethod
+    def play_status(play_status, hours_played):
+        """
+        Using time_played and the current play_status, determines if the play_status should change.
+        """
+        if play_status not in ["Played", "Unplayed"]:
+            return play_status
+        # play status change
+        if hours_played >= 1:
+            play_status = "Playing"
+        elif hours_played >= 0.5:
+            play_status = "Played"
+        else:
+            play_status = "Unplayed"
+        return play_status
+
     def refresh_steam_games(self, steam_id):
         """
         Gets games owned by the entered Steam ID and runs excel update/add functions.
         """
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
-            steam_id = input(
-                "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
-            )
+            msg = "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
+            steam_id = input(msg)
         print("\nSteam Library Tracking")
         root_url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
         url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
@@ -492,40 +499,26 @@ class Tracker(Helper):
                 game_name = game["name"]
                 if self.should_ignore(game_name):
                     continue
-                playtime_forever = game["playtime_forever"]
+                # set play time eariler so it only needs to be set up once
+                minutes_played = game["playtime_forever"]
+                hours_played = self.hours_played(minutes_played)
+                cur_play_status = self.games.get_cell(game_name, "Play Status")
+                play_status = self.play_status(cur_play_status, hours_played)
                 game_appid = game["appid"]
-                # demo/test check
-                is_demo = re.search(r"\bdemo\b", game["name"].lower())
-                is_test = re.search(r"\btest\b", game["name"].lower())
-                if is_demo or is_test:
-                    play_status = "Demo"  # sets play_status to Demo if demo or test appears in the name
-                # unplayed
-                elif playtime_forever <= 20:
-                    play_status = "Unplayed"  # sets play_status to Unplayed if playtime_forever is 0-15
-                # playing
-                elif game["playtime_windows_forever"] > 60:
-                    play_status = "Playing"  # sets play_status to Played if playtime_forever is greater then 1 hour
-                # unset
-                else:
-                    play_status = "Unset"  # sets play_status to Unset if none of the above applies
-                # updates game if it is in the index or adds if it is not.
                 if game_name in self.games.row_idx.keys():
                     # removes existing games
                     if game_name in self.removed:
                         self.removed.remove(game_name)
-                    self.update_game(game_name, playtime_forever, play_status)
+                    self.update_game(game_name, minutes_played, play_status)
                 else:
-                    self.add_game(game_name, playtime_forever, game_appid, play_status)
+                    self.add_game(game_name, minutes_played, game_appid, play_status)
             if len(self.removed) > 0:
-                print(
-                    f'\nThe following Steam games are unaccounted for:\n{" ,".join(self.removed)}'
-                )
+                print(f'\nUnaccounted Steam games:\n{" ,".join(self.removed)}')
                 for item in self.removed:
                     status = self.games.get_cell(item, "Play Status")
                     if "Removed" not in status:
-                        self.games.update_cell(
-                            item, "Play Status", f"Removed | {status}"
-                        )
+                        new_status = f"Removed | {status}"
+                        self.games.update_cell(item, "Play Status", new_status)
             return True
 
     @staticmethod
@@ -571,6 +564,7 @@ class Tracker(Helper):
         keyword_ignore_list = [
             "demo",
             "beta",
+            "Playtest",
             "Youtube" "PreOrder",
             "Pre-Order",
             "Soundtrack",
@@ -733,50 +727,41 @@ class Tracker(Helper):
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
         self.add_playstation_games(games)
 
-    def update_game(self, game_name, playtime_forever, play_status):
+    def update_game(self, game_name, minutes_played, play_status):
         """
         Updates the games playtime(if changed) and play status(if unset).
         """
         previous_hours_played = self.games.get_cell(game_name, "Hours Played")
-        current_hours_played = self.hours_played(playtime_forever)
+        current_hours_played = self.hours_played(minutes_played)
         current_platform = self.games.get_cell(game_name, "Platform")
-        if (
-            current_platform != "Steam"
-        ):  # prevents updating games that are owned on Steam and a console.
+        # prevents updating games that are owned on Steam and a console.
+        if current_platform != "Steam":
             return
         elif previous_hours_played == None or previous_hours_played == "None":
             previous_hours_played = 0
         else:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
-            self.games.update_cell(
-                game_name, "Hours Played", self.hours_played(playtime_forever)
-            )
+            self.games.update_cell(game_name, "Hours Played", current_hours_played)
             self.games.update_cell(game_name, "Date Updated", self.excel_date)
+            self.games.update_cell(game_name, "Play Status", play_status)
             self.total_games_updated += 1
-            # TODO make this smarter
-            if play_status == "unset":
-                self.games.update_cell(game_name, "Play Status", "Played")
-            unit = "hours"
-            added_time = current_hours_played - previous_hours_played
-            if added_time < 1:
-                added_time = added_time * 60
-                unit = "minutes"
-            added_time = round(added_time, 1)
-            total_hours = round(current_hours_played, 1)
-            total_days = round(total_hours / 24, 1)
-            days_string = ""
-            if total_days >= 1:
-                days_string = f" | {total_days} days"
+            # updated game logging
+            hours_played = current_hours_played - previous_hours_played
+            added_time_played = self.time_passed(hours_played * 60)
+            overall_time_played = self.time_passed(minutes_played)
             print(f"\n > {game_name} updated.")
-            print(f"   Added {added_time} {unit}")
-            print(f"   Total Playtime: {total_hours} hours{days_string}.")
+            print(f"   Added {added_time_played}")
+            print(f"   Total Playtime: {overall_time_played}.")
+            # logs play time
+            msg = f"{game_name} played for {added_time_played}"
+            self.logger.info(msg)
         self.games.format_cells(game_name)
 
     def add_game(
         self,
         game_name=None,
-        playtime_forever="",
+        minutes_played="",
         game_appid="",
         play_status="",
         platform="Steam",
@@ -822,8 +807,8 @@ class Tracker(Helper):
                 return
         else:
             # sets hours played
-            if playtime_forever:
-                hours_played = self.hours_played(playtime_forever)
+            if minutes_played:
+                hours_played = self.hours_played(minutes_played)
                 # sets play status
                 if hours_played > 0.5:
                     play_status = "Playing"
