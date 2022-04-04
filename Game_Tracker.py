@@ -547,8 +547,6 @@ class Tracker(Helper):
             print("\nNo PlayStation games were added or updated.")
             return False
         else:
-            print("prev", previous_hash)
-            print("new ", new_hash)
             self.data["settings"]["playstation_hash"] = new_hash
             self.save_json_output(self.data, self.config)
             with open(self.config) as file:
@@ -1030,9 +1028,19 @@ class Tracker(Helper):
         """
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
-        matched_game = self.string_matcher2(game_name, self.games.row_idx.keys())
-        if matched_game:
-            game_idx = self.games.row_idx[matched_game]
+        matched_games = self.string_matcher2(game_name, self.games.row_idx.keys())
+        if len(matched_games) == 0:
+            match = matched_games[0]
+            if match in self.games.row_idx:
+                print(f"Found {match}")
+                game_idx = self.games.row_idx[match]
+        elif len(matched_games) >= 1:
+            games_string = "\n"
+            for i, game in enumerate(matched_games):
+                games_string += f"{i+1}. {game} | "
+            print(games_string[0:-3])
+            num = self.ask_for_integer("Type number for game you are looking for.")
+            game_idx = self.games.row_idx[matched_games[num - 1]]
         else:
             print("No Match")
             return
@@ -1118,7 +1126,7 @@ class Tracker(Helper):
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
             webbrowser.open(r"https://store.playstation.com/")
-            input("Press Enter when done.")
+            input("\nPress Enter when done.")
             self.check_playstation_json()
         elif res == "5":
             self.get_favorite_games_sales()
