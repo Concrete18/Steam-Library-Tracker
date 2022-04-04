@@ -150,11 +150,11 @@ class Tracker(Helper):
                 return item["appid"]
         return None
 
-    def get_year(self, date):
+    def get_year(self, date_string):
         """
-        Takes the given `date` and changes it to this format, "Sep 14, 2016".
+        Gets the year from `date_string`.
         """
-        year = re.search(r"[0-9]{4}", date)
+        year = re.search(r"[0-9]{4}", date_string)
         if year:
             return year.group(0)
         else:
@@ -174,7 +174,6 @@ class Tracker(Helper):
         if not response:
             return None
         else:
-            # TODO make it retry
             info_dict = {}
             dict = response.json()
             if debug:
@@ -604,10 +603,11 @@ class Tracker(Helper):
             if self.should_ignore(game_name) or game_name in added_games:
                 continue
             # skip if it already exist
-            a = f"{game_name} - Console"
-            if game_name in self.games.row_idx.keys() or a in self.games.row_idx.keys():
-                continue
+            game_exists = game_name in self.games.row_idx.keys()
             # TODO skip if the game exists with a playstation version already
+            console_exists = f"{game_name} - Console" in self.games.row_idx.keys()
+            if game_exists or console_exists:
+                continue
             # adds the game
             added_games.append(game_name)
             self.add_game(
@@ -1030,7 +1030,7 @@ class Tracker(Helper):
         """
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
-        matched_game = self.string_matcher(game_name, self.games.row_idx.keys())
+        matched_game = self.string_matcher2(game_name, self.games.row_idx.keys())
         if matched_game:
             game_idx = self.games.row_idx[matched_game]
         else:
