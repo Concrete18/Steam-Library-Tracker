@@ -1,4 +1,6 @@
 from difflib import SequenceMatcher
+from distutils.errors import DistutilsOptionError
+from pickletools import string1
 import time, json, requests, re
 import datetime as dt
 
@@ -135,6 +137,28 @@ class Helper(Logger):
         conv_string = string.encode("ascii", "ignore").decode()
         return conv_string.strip()
 
+    def lev_distance(self, word1: str, word2: str, lower=True) -> int:
+        """
+        Returns the Levenshtein distance of `word1` and `word2`.
+        """
+        if lower:
+            word1, word2 = word1.lower(), word2.lower()
+        cache = [[float("inf")] * (len(word2) + 1) for i in range(len(word1) + 1)]
+        for j in range(len(word2) + 1):
+            cache[len(word1)][j] = len(word2) - j
+        for i in range(len(word1) + 1):
+            cache[i][len(word2)] = len(word1) - i
+        for i in range(len(word1) - 1, -1, -1):
+            for j in range(len(word2) - 1, -1, -1):
+                if word1[i] == word2[j]:
+                    cache[i][j] = cache[i + 1][j + 1]
+                else:
+                    min_change = min(
+                        cache[i + 1][j], cache[i][j + 1], cache[i + 1][j + 1]
+                    )
+                    cache[i][j] = 1 + min_change
+        return cache[0][0]
+
     def string_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
         """
         Finds a match for target_str in string_list using sequence matching.
@@ -154,6 +178,38 @@ class Helper(Logger):
             print(f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {match_perc}")
         return match
 
+    def string_matcher2(self, target_str, string_list, max_distance=None, debug=False):
+        """
+        Finds a match for target_str in string_list using sequence matching.
+        """
+        if max_distance == None:
+            max_distance = round(len(target_str) * 0.6)
+            max_distance = float("inf")
+        starting_max = max_distance
+        matches = {}
+        match = None
+        for string in string_list:
+            if string.lower() == target_str.lower():
+                return string
+            distance = self.lev_distance(target_str, string)
+            print(string, distance)
+            if distance < max_distance:
+                max_distance = distance
+                match = string
+                matches[string] = distance
+        if debug:
+            print(f"\nTarget: {target_str}\nMatch: {match}")
+            print(f"Distance: {max_distance}\nStarting Max:{starting_max}")
+        sorted_keys = sorted(matches, key=matches.get)
+        sorted_values = sorted(matches.values())
+        limit = 5
+        if len(sorted_keys) > limit:
+            sorted_keys = sorted_keys[0:limit]
+        print(sorted_keys)
+        print(sorted_values)
+
+        return match
+
     def save_json_output(self, new_data, filename):
         """
         Saves data into json format with the given filename.
@@ -165,3 +221,30 @@ class Helper(Logger):
             last_check_data = json.load(file)
             if new_data != last_check_data:
                 raise "Data did not save error"
+
+
+if __name__ == "__main__":
+    pass
+    App = Helper()
+
+    # string1 = "grave Of The deaddancer: Switch Edition"
+    # string2 = "Crypt Of The Necrodancer: Nintendo Switch Edition"
+    # distance = App.lev_distance(string1, string2)
+    # print(distance)
+
+    # test_list = [
+    #     "This is a test, yay",
+    #     "this is not it, arg",
+    #     "Find the batman!",
+    #     "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+    #     "The Last of Us",
+    #     "Elden Ring",
+    #     "The Last of Us Part I",
+    #     "The Last of Us Part II",
+    #     "Waltz of the Wizard: Natural Magic",
+    #     "Life is Strange™",
+    #     "The Witcher 3: Wild Hunt",
+    #     "Marvel's Spider-Man: Miles Morales",
+    #     "Crypt Of The Necrodancer: Nintendo Switch Edition",
+    # ]
+    # match = App.string_matcher2("grave Of The deaddancer: Switch Edition", test_list)
