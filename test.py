@@ -146,7 +146,7 @@ class TestStringMethods(unittest.TestCase):
         }
         for string, answer in string_tests.items():
             self.assertEqual(
-                tester.string_matcher2(string, test_list, debug=True),
+                tester.string_matcher2(string, test_list, debug=True)[0],
                 answer,
             )
             # self.assertEqual(
