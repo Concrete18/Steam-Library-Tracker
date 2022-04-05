@@ -1157,7 +1157,7 @@ class Tracker(Helper):
             self.update_last_run()
             self.steam_deck_data_checker()
             self.pick_task()
-            self.excel.ask_to_open()
+            self.excel.open_file_input()
         except KeyboardInterrupt:
             print("\nClosing")
 
