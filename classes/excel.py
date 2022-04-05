@@ -6,6 +6,7 @@ import datetime as dt
 import pandas as pd
 import shutil, os, sys
 import openpyxl
+import zipfile
 
 
 class Excel:
@@ -31,7 +32,13 @@ class Excel:
         """
         # workbook setup
         self.file_path = Path(excel_filename)
-        self.wb = openpyxl.load_workbook(self.file_path)
+        try:
+            self.wb = openpyxl.load_workbook(self.file_path)
+        except zipfile.BadZipFile:
+            response = input(
+                f"Error with {self.file_path}.\nCheck backup to restore backup."
+            )
+            # TODO Add restore to backup option
         # logger setup
         self.use_logging = use_logging
         log_formatter = lg.Formatter(
@@ -90,10 +97,13 @@ class Excel:
                 first_run = True
                 while True:
                     try:
-                        self.wb.save(self.file_path)
-                        if use_print:
-                            print(f'Save Complete.{34*" "}')
-                            self.changes_made = False
+                        if self.file_path.exists:
+                            self.wb.save(self.file_path)
+                            if use_print:
+                                print(f'Save Complete.{34*" "}')
+                                self.changes_made = False
+                        else:
+                            print("File no longer exists. Save Cancelled")
                         break
                     except PermissionError:
                         if first_run:
@@ -102,31 +112,39 @@ class Excel:
                             first_run = False
                         sleep(1)
             except KeyboardInterrupt:
-                self.excel.log(f"Save Cancelled", "warning")
+                self.log(f"Save Cancelled", "warning")
                 if use_print:
                     print("\nCancelling Save")
                 exit()
 
-    def ask_to_open(self, skip_input=False):
+    def open_excel(self, save=True):
         """
-        Opens excel file if after enter is pressed if the file still exists.
+        Opens the current excel file if it still exists and then exits.
+
+        Saves changes if `save` is True.
+        """
+        if save:
+            self.save_excel()
+        if self.file_path.exists:
+            os.startfile(self.file_path)
+        else:
+            print("File no longer exists.")
+        exit()
+
+    def open_file_input(self):
+        """
+        Opens the excel file if it exists after enter is pressed during the input.
         """
         if not self.ext_terminal:
             self.save_excel()
             exit()
-        if not skip_input:
-            try:
-                input("\nPress Enter to open the excel sheet.\n")
-            except KeyboardInterrupt:
-                print("Closing")
-                self.save_excel()
-                exit()
-        if self.file_path.exists:
+        try:
+            input("\nPress Enter to open the excel sheet.\n")
+        except KeyboardInterrupt:
+            print("Closing...")
             self.save_excel()
-            os.startfile(self.file_path)
-        else:
-            input("Excel File was not found.")
-        exit()
+            exit()
+        self.open_excel()
 
 
 class Sheet:
@@ -177,11 +195,15 @@ class Sheet:
             raise "Left and Right can't both be greater then 0."
         return f'INDIRECT("RC[{num}]",0)'
 
-    def easy_indrect_cell(self, cur_col, near_col):
+    def easy_indirect_cell(self, cur_col, ref_col):
         """
-        Allows setting up an indirect cell formula
+        Allows setting up an indirect cell formula.
+
+        Set `cur_col`to the column name of the column the formula is going into.
+
+        Set `near_col` to the column name of the column you are wanting to reference.
         """
-        diff = self.col_idx[cur_col] - self.col_idx[near_col]
+        diff = self.col_idx[ref_col] - self.col_idx[cur_col]
         return self.indirect_cell(manual_set=diff)
 
     def get_column_index(self):
