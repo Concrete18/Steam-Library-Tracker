@@ -12,6 +12,7 @@ import zipfile
 class Excel:
 
     changes_made = False
+    backed_up = False
     ext_terminal = sys.stdout.isatty()
 
     def __init__(
@@ -38,7 +39,11 @@ class Excel:
             response = input(
                 f"Error with {self.file_path}.\nCheck backup to restore backup."
             )
-            # TODO Add restore to backup option
+            if response in ["yes", "yeah", "y"]:
+                # renames current to .old
+                os.rename(self.file_path, f"{self.file_path}.old")
+                # renames backup to remove .bak
+                os.rename(f"{self.file_path}.bak", self.file_path)
         # logger setup
         self.use_logging = use_logging
         log_formatter = lg.Formatter(
@@ -90,7 +95,9 @@ class Excel:
             try:
                 # backups the file before saving.
                 if backup:
-                    shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
+                    if not self.backed_up:
+                        shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
+                        print("\nBacked up Excel")
                 # saves the file once it is closed
                 if use_print:
                     print("\nSaving...")
@@ -301,7 +308,7 @@ class Sheet:
         """
         self.row_idx[col_key] = self.cur_sheet._current_row
 
-    def update_cell(self, row_val, col_val, new_val, save=False):
+    def update_cell(self, row_val, col_val, new_val, blank=False, save=False):
         """
         Updates the cell based on `row_val` and `col_val` to `new_val`.
 
@@ -312,6 +319,8 @@ class Sheet:
         row_key, column_key = self.get_row_col_index(row_val, col_val)
         if row_key is not None and column_key is not None:
             current_value = self.cur_sheet.cell(row=row_key, column=column_key).value
+            if blank and current_value is not None:
+                return False
             # updates only if cell will actually be changed
             if new_val == "":
                 new_val = None
