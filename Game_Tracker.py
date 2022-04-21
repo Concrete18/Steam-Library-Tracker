@@ -32,7 +32,7 @@ class Tracker(Helper):
     games = CustomSheet(excel, "Game Name", sheet_name="Games")
     # current date and time setup
     cur_date = dt.datetime.now()
-    excel_date = f"=DATE({cur_date.year}, {cur_date.month}, {cur_date.day})+TIME({cur_date.hour},{cur_date.minute},0)"
+    formatted_date = cur_date.strftime("%#m/%#d/%Y")
     # api call logger
     invalid_months = []
     play_status_choices = {
@@ -215,6 +215,8 @@ class Tracker(Helper):
                     info_dict["early_access"] = dict[str(app_id)]["data"][
                         "early_access"
                     ]
+                else:
+                    info_dict["early_access"] = None
                 # get release year
                 if "release_date" in keys:
                     release_date = dict[str(app_id)]["data"]["release_date"]["date"]
@@ -277,45 +279,6 @@ class Tracker(Helper):
         if not app_id or app_id == "None":
             return ""
         return f"https://store.steampowered.com/app/{app_id}/{self.string_url_convert(game_name)}/"
-
-    def steam_deck_compat(self, app_id):
-        """
-        Gets a games steam deck verification and other compatibility data by `app_id`.
-        """
-        url = f"https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}"
-        data = self.request_url(url).json()
-        categories = {
-            0: "Unknown",
-            1: "Unsupported",
-            2: "Playable",
-            3: "Verified",
-        }
-        category_num = data["results"]["resolved_category"]
-        specific_ratings = data["results"]["resolved_items"]
-        result = {"category": categories[category_num]}
-        # ph
-        PREFIX = "#SteamDeckVerified_TestResult"
-        ratings = {
-            "controller_func": f"{PREFIX}_DefaultControllerConfigFullyFunctional",
-            "controller_glyphs": f"{PREFIX}_ControllerGlyphsMatchDeckDevice",
-            "legible_text": f"{PREFIX}_InterfaceTextIsLegible",
-            "good_config": f"{PREFIX}_DefaultConfigurationIsPerformant",
-        }
-        display_type = {
-            1: "Note",
-            2: "Fail",
-            3: "Info",
-            4: "Checkmark",
-        }
-        for rating in specific_ratings:
-            for check, key in ratings.items():
-                if rating["loc_token"] == key:
-                    if rating["display_type"] == 4:
-                        result[check] = True
-                    else:
-                        result[check] = False
-        print(result)
-        return result
 
     def requests_loop(self, skip_filled=1, check_status=0):
         """
@@ -459,7 +422,7 @@ class Tracker(Helper):
         """
         Using time_played and the current play_status, determines if the play_status should change.
         """
-        if play_status not in ["Played", "Unplayed"]:
+        if play_status not in ["Played", "Unplayed", "Waiting"]:
             return play_status
         # play status change
         if hours_played >= 1:
@@ -515,21 +478,21 @@ class Tracker(Helper):
                 print(f'\nUnaccounted Steam games:\n{" ,".join(self.removed)}')
                 for item in self.removed:
                     status = self.games.get_cell(item, "Play Status")
-                    if "Removed" not in status:
-                        new_status = f"Removed | {status}"
-                        self.games.update_cell(item, "Play Status", new_status)
+                    if status is not None:
+                        if "Removed" not in status:
+                            new_status = f"Removed | {status}"
+                            self.games.update_cell(item, "Play Status", new_status)
             return True
 
     @staticmethod
-    def hash_file(file_path):
+    def hash_file(file_path, buf_size=65536):
         """
         Creates a hash for the given `file_path`.
         """
-        BUF_SIZE = 65536
         md5 = hashlib.md5()
         with open(file_path, "rb") as f:
             while True:
-                data = f.read(BUF_SIZE)
+                data = f.read(buf_size)
                 if not data:
                     break
                 md5.update(data)
@@ -634,6 +597,45 @@ class Tracker(Helper):
             df.loc[length] = row
         return df
 
+    def steam_deck_compat(self, app_id):
+        """
+        Gets a games steam deck verification and other compatibility data by `app_id`.
+        """
+        url = f"https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}"
+        data = self.request_url(url).json()
+        categories = {
+            0: "UNKNOWN",
+            1: "UNSUPPORTED",
+            2: "PLAYABLE",
+            3: "VERIFIED",
+        }
+        category_num = data["results"]["resolved_category"]
+        specific_ratings = data["results"]["resolved_items"]
+        result = {"category": categories[category_num]}
+        # ph
+        PREFIX = "#SteamDeckVerified_TestResult"
+        ratings = {
+            "controller_func": f"{PREFIX}_DefaultControllerConfigFullyFunctional",
+            "controller_glyphs": f"{PREFIX}_ControllerGlyphsMatchDeckDevice",
+            "legible_text": f"{PREFIX}_InterfaceTextIsLegible",
+            "good_config": f"{PREFIX}_DefaultConfigurationIsPerformant",
+        }
+        display_type = {
+            1: "Note",
+            2: "Fail",
+            3: "Info",
+            4: "Checkmark",
+        }
+        for rating in specific_ratings:
+            for check, key in ratings.items():
+                if rating["loc_token"] == key:
+                    if rating["display_type"] == 4:
+                        result[check] = True
+                    else:
+                        result[check] = False
+        print(result)
+        return result
+
     def steam_deck_check(self, steam_id, hour_freq=1):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
@@ -645,25 +647,24 @@ class Tracker(Helper):
             print(f"\nSkipping Steam Deck Check.\nNext check due in {hour_till} hours.")
             return
         print("\nSteam Deck Compatibility Check")
-        url = f"https://checkmydeck.herokuapp.com/users/{steam_id}/library"
+        url = f"https://checkmydeck.herokuapp.com/users/{steam_id}/lists/44701/"
         user_agent = {"User-agent": "Mozilla/5.0"}
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
             # prints category info
-            legend = soup.find("table", id="deckCompatChartLegend")
-            category_info = {}
-            for item in legend.text.split("\n"):
-                if item != "":
-                    split_str = item.split(" ")
-                    category = split_str[0].replace(":", "").title()
-                    count = split_str[1]
-                    percent = split_str[3].replace("(", "").replace(")", "")
-                    # category_info[category] = {
-                    #     "total": count,
-                    #     "percent": percent,
-                    # }
-                    print(f"{count} {category} games at {percent}")
+            try:
+                legend = soup.find("table", id="deckCompatChartLegend")
+                for item in legend.text.split("\n"):
+                    if item != "":
+                        split_str = item.split(" ")
+                        category = split_str[0].replace(":", "").title()
+                        count = split_str[1]
+                        percent = split_str[3].replace("(", "").replace(")", "")
+                        print(f"{count} {category} games at {percent}")
+            except AttributeError:
+                print("Legend changed")
+                return
             # finds the table and headers for the report
             table = soup.find("table", id="deckCompatReportTable")
             df = self.create_df(table)
@@ -741,7 +742,7 @@ class Tracker(Helper):
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
             self.games.update_cell(game_name, "Hours Played", current_hours_played)
-            self.games.update_cell(game_name, "Date Updated", self.excel_date)
+            self.games.update_cell(game_name, "Date Updated", self.formatted_date)
             self.games.update_cell(game_name, "Play Status", play_status)
             self.total_games_updated += 1
             # updated game logging
@@ -823,7 +824,7 @@ class Tracker(Helper):
             vr_support = "Yes"
         elif platform in ["PS5", "PS4", "Switch"]:
             vr_support = "No"
-            steam_deck_status = "Unsupported"
+            steam_deck_status = "UNSUPPORTED"
         else:
             vr_support = ""
         l_1 = self.games.indirect_cell(left=1)
@@ -843,8 +844,8 @@ class Tracker(Helper):
             "Hours Played": hours_played,
             "App ID": game_appid,
             "Store Link": store_link_hyperlink,
-            "Date Updated": self.excel_date,
-            "Date Added": self.excel_date,
+            "Date Updated": self.formatted_date,
+            "Date Added": self.formatted_date,
         }
         steam_info = self.get_game_info(game_appid)
         if steam_info:
@@ -1065,7 +1066,7 @@ class Tracker(Helper):
         else:
             print("Left Play Status the same.")
         if updated:
-            self.games.update_cell(game_idx, "Date Updated", self.excel_date)
+            self.games.update_cell(game_idx, "Date Updated", self.formatted_date)
             self.excel.save_excel(backup=False)
         else:
             print("No changes made.")
@@ -1133,7 +1134,8 @@ class Tracker(Helper):
         elif res == "6":
             self.view_favorite_games_sales()
         elif res == "7":
-            webbrowser.open("configs/tracker.log")
+            osCommandString = "notepad.exe configs/tracker.log"
+            os.system(osCommandString)
         elif res == "":
             os.startfile(self.excel.file_path)
             exit()
