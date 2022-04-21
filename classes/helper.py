@@ -1,6 +1,4 @@
 from difflib import SequenceMatcher
-from distutils.errors import DistutilsOptionError
-from pickletools import string1
 import time, json, requests, re
 import datetime as dt
 
@@ -58,7 +56,6 @@ class Helper(Logger):
         elif response.status_code == 429:
             msg = "Server Error: Too Many reqeuests made. Waiting to try again."
             self.logger.warning(msg)
-            # TODO check response to see how long code needs to wait
             self.logger.warning(response)
             time.sleep(5)
             self.request_url(url, headers=None)
