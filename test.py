@@ -62,6 +62,22 @@ class TestStringMethods(unittest.TestCase):
         for name, answer in metacritic_tests.items():
             self.assertEqual(tester.get_metacritic(name, "pc"), answer)
 
+    def test_steam_deck_compat(self):
+        print("\n", "steam_deck_compat")
+        tester = Tracker()
+        steam_deck_tests = {
+            1167630: "PLAYABLE",
+            667970: "UNSUPPORTED",
+            1579380: "UNKNOWN",
+            1145360: "VERIFIED",
+            204080: "VERIFIED",
+            # Deathloop check has empty results from the api
+            # 1457700: "VERIFIED",
+            204080: False,
+        }
+        for app_id, status in steam_deck_tests.items():
+            self.assertEqual(tester.steam_deck_compat(app_id), status)
+
     def test_hours_played(self):
         print("\n", "hours_played")
         tester = Tracker()
@@ -74,7 +90,7 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.hours_played(minutes_played), answer)
 
     def test_time_passed(self):
-        print("\n", "time_passed")
+        print("\n", "convert_time_passed")
         tester = Tracker()
         time_passed_tests = {
             800: "13.3 Hour(s)",
@@ -82,7 +98,7 @@ class TestStringMethods(unittest.TestCase):
             2940: "2.0 Day(s)",
         }
         for minutes_played, answer in time_passed_tests.items():
-            self.assertEqual(tester.time_passed(minutes_played), answer)
+            self.assertEqual(tester.convert_time_passed(minutes_played), answer)
 
     def test_play_status(self):
         print("\n", "play_status")
