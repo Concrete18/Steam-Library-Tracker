@@ -25,7 +25,6 @@ class Tracker(Helper):
     steam_id = str(data["settings"]["steam_id"])
     excel_filename = data["settings"]["excel_filename"]
     playstation_data_link = data["settings"]["playstation_data_link"]
-    last_run = data["settings"]["last_run"]
     ignore_list = [string.lower() for string in data["ignore_list"]]
     # class init
     excel = Excel(excel_filename, log_file="configs/excel.log")
@@ -597,22 +596,36 @@ class Tracker(Helper):
             df.loc[length] = row
         return df
 
+    def update_last_run(self, name):
+        """
+        Updates json by `name` with seconds since epoc.
+        """
+        self.data["last_runs"][name] = time.time()
+        self.save_json_output(self.data, self.config)
+
     def steam_deck_compat(self, app_id):
         """
         Gets a games steam deck verification and other compatibility data by `app_id`.
         """
         url = f"https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}"
         data = self.request_url(url).json()
+        if not data:
+            return False
         categories = {
             0: "UNKNOWN",
             1: "UNSUPPORTED",
             2: "PLAYABLE",
             3: "VERIFIED",
         }
-        category_num = data["results"]["resolved_category"]
-        specific_ratings = data["results"]["resolved_items"]
-        result = {"category": categories[category_num]}
-        # ph
+        results = data["results"]
+        if not results:
+            return False
+        category_id = results["resolved_category"]
+        return categories[category_id]
+        # old code
+        specific_ratings = results["resolved_items"]
+        result = {"category": categories[category_ident]}
+        # placeholder
         PREFIX = "#SteamDeckVerified_TestResult"
         ratings = {
             "controller_func": f"{PREFIX}_DefaultControllerConfigFullyFunctional",
@@ -633,60 +646,51 @@ class Tracker(Helper):
                         result[check] = True
                     else:
                         result[check] = False
-        print(result)
         return result
 
-    def steam_deck_check(self, steam_id, hour_freq=1):
+    def steam_deck_check(self):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
-        seconds_since_last_run = time.time() - self.last_run
-        hours_since_last_run = seconds_since_last_run * 0.000277778
-        if hours_since_last_run <= hour_freq:
-            hour_till = round(hour_freq - hours_since_last_run, 1)
-            print(f"\nSkipping Steam Deck Check.\nNext check due in {hour_till} hours.")
+        # TODO create time delay
+        last_check = self.data["last_runs"]["steam_deck_check"]
+        check_freq = self.data["settings"]["steam_deck_check_freq"]
+        if not self.time_passed(last_check, check_freq):
+            print("\nSkipping Steam Deck Check")
             return
         print("\nSteam Deck Compatibility Check")
-        url = f"https://checkmydeck.herokuapp.com/users/{steam_id}/lists/44701/"
-        user_agent = {"User-agent": "Mozilla/5.0"}
-        response = self.request_url(url, headers=user_agent)
-        if response:
-            soup = BeautifulSoup(response.text, "html.parser")
-            # prints category info
-            try:
-                legend = soup.find("table", id="deckCompatChartLegend")
-                for item in legend.text.split("\n"):
-                    if item != "":
-                        split_str = item.split(" ")
-                        category = split_str[0].replace(":", "").title()
-                        count = split_str[1]
-                        percent = split_str[3].replace("(", "").replace(")", "")
-                        print(f"{count} {category} games at {percent}")
-            except AttributeError:
-                print("Legend changed")
-                return
-            # finds the table and headers for the report
-            table = soup.find("table", id="deckCompatReportTable")
-            df = self.create_df(table)
-            # loops through table using the dataframe
-            first_run = True
-            for index, row in df.iterrows():
-                # gets rid of possible new lines that could be added
-                last_updated = row["Last Change"].replace("\n", "")
-                game_name = row["Title"].replace("\n", "")
-                status = row["Status"].replace("\n", "")
-                if game_name == "Grand Theft Auto: San Andreas":
-                    continue
-                if self.games.update_cell(game_name, "Steam Deck Status", status):
-                    if first_run:
-                        print("\nUpdated Games:")
-                        first_run = False
-                    info = f"{game_name} was updated to {status.title()}"
-                    self.logger.info(info)
-                    print(info)
+        ignore_list = ["Grand Theft Auto: San Andreas"]
+        updated_games = []
+        empty_results = []
+        for game_name in tqdm(
+            iterable=self.games.row_idx,
+            ascii=True,
+            unit="games",
+            dynamic_ncols=True,
+        ):
+            if game_name in ignore_list:
+                continue
+            app_id = self.games.get_cell(game_name, "App ID")
+            if not app_id:
+                continue
+            status = self.steam_deck_compat(app_id)
+            self.api_sleeper("steam_deck")
+            if not status:
+                empty_results.append(game_name)
+                continue
+            if self.games.update_cell(game_name, "Steam Deck Status", status):
+                info = f"{game_name} was updated to {status}"
+                updated_games.append(info)
+        if updated_games:
+            print("\nUpdated Games:")
+            for game in updated_games:
+                print(game)
+            for game in empty_results:
+                print(f"Results are empty for {game}")
             self.excel.save_excel()
         else:
-            print("Failed connect to Steam Deck Data")
+            print("No Steam Deck Status Changes")
+        self.update_last_run("steam_deck_check")
 
     def check_steam_deck_data_file(self):
         """
@@ -747,8 +751,8 @@ class Tracker(Helper):
             self.total_games_updated += 1
             # updated game logging
             hours_played = current_hours_played - previous_hours_played
-            added_time_played = self.time_passed(hours_played * 60)
-            overall_time_played = self.time_passed(minutes_played)
+            added_time_played = self.convert_time_passed(hours_played * 60)
+            overall_time_played = self.convert_time_passed(minutes_played)
             print(f"\n > {game_name} updated.")
             print(f"   Added {added_time_played}")
             print(f"   Total Playtime: {overall_time_played}.")
@@ -1074,13 +1078,6 @@ class Tracker(Helper):
         if response.lower() in ["yes", "yeah", "y"]:
             self.custom_update_game()
 
-    def update_last_run(self):
-        """
-        Updates the last run time in seconds.
-        """
-        self.data["settings"]["last_run"] = time.time()
-        self.save_json_output(self.data, self.config)
-
     def steam_deck_data_checker(self):
         """
         Prints a message of a possible steam deck key if found in the app id search.
@@ -1102,8 +1099,8 @@ class Tracker(Helper):
         """
         Allows picking a task to do next using a matching number.
         """
-        if not self.ext_terminal:
-            return
+        # if not self.ext_terminal:
+        #     return
         print("\nWhat do you want to do next?\n")
         choices = [
             "Update Game",  # 1
@@ -1152,11 +1149,10 @@ class Tracker(Helper):
         # starts function run with CTRL + C Exit being possible without causing an error
         try:
             self.refresh_steam_games(self.steam_id)
-            self.steam_deck_check(steam_id=self.steam_id)
+            self.steam_deck_check()
             self.check_playstation_json()
             self.output_completion_data()
             self.requests_loop()
-            self.update_last_run()
             self.steam_deck_data_checker()
             self.pick_task()
             self.excel.open_file_input()
@@ -1170,7 +1166,7 @@ if __name__ == "__main__":
         # App.view_favorite_games_sales()
         # print(App.get_steam_id('Varnock'))
         # App.steam_deck_check()
-        # App.steam_deck_compat(427520)
+        # App.steam_deck_compat(1457700)
         # App.steam_deck_compat(1290000)
         # App.get_game_info(1290000, debug=True)
         pass
