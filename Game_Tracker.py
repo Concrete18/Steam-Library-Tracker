@@ -95,24 +95,15 @@ class Tracker(Helper):
         """
         Uses requests to get the metacritic review score for the entered game.
         """
+        if " - Console" in game_name:
+            game_name = game_name.replace(" - Console", "")
         if platform == "PS4":
             platform = "playstation-4"
         elif platform == "PS5":
             platform = "playstation-5"
-        elif platform in ["Steam", "Uplay", "Origin", "MS Store"]:
+        elif platform in ["Steam", "Uplay", "Origin", "MS Store", "GOG"]:
             platform = "pc"
-        replace_dict = {
-            ":": "",
-            "'": "",
-            "&": "",
-            ",": "",
-            "?": "",
-            "™": "",
-            "_": "-",
-            " ": "-",
-        }
-        for string, replace in replace_dict.items():
-            game_name = game_name.replace(string, replace)
+        game_name = self.url_sanatize(game_name)
         user_agent = {"User-agent": "Mozilla/5.0"}
         self.api_sleeper("metacritic")
         review_score = ""
@@ -129,6 +120,8 @@ class Tracker(Helper):
                 review_score = "No Score"
             return review_score
         else:
+            msg = f"Failed to check {url}"
+            self.logger.warning(msg)
             review_score = "Page Error"
         return review_score
 
@@ -685,9 +678,10 @@ class Tracker(Helper):
             print("\nUpdated Games:")
             for game in updated_games:
                 print(game)
-            for game in empty_results:
-                print(f"Results are empty for {game}")
             self.excel.save_excel()
+            if empty_results:
+                print("The following Games failed to retrieve data.")
+                print(", ".join(empty_results))
         else:
             print("No Steam Deck Status Changes")
         self.update_last_run("steam_deck_check")
