@@ -103,6 +103,20 @@ class Helper(Logger):
         return days_since >= days
 
     @staticmethod
+    def url_sanatize(string, space_replace="-"):
+        """
+        Removes all illegal URL characters from the given `string`.
+
+        Turns spaces into dashes if `space_to_dash` is true.
+        """
+        string = string.replace(" ", space_replace)
+        # Allowed characters (0-9, A-Z, a-z, "-", ".", "_", "~")
+        string = re.sub(r"[^a-z0-9-._~]+", "", string.lower()).strip()
+        while "--" in string:
+            string = string.replace("--", "-")
+        return string
+
+    @staticmethod
     def convert_time_passed(minutes_played):
         """
         Using `minutes_played`, outputs a nicely formatted time played and an int for hours played.
@@ -239,4 +253,6 @@ class Helper(Logger):
 
 
 if __name__ == "__main__":
-    pass
+    App = Helper()
+    test = App.url_sanatize("Hood: Outlaws & Legends")
+    print(test)
