@@ -97,6 +97,7 @@ class Excel:
                 if backup:
                     if not self.backed_up:
                         shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
+                        self.backed_up = True
                         print("\nBacked up Excel")
                 # saves the file once it is closed
                 if use_print:
