@@ -100,6 +100,16 @@ class TestStringMethods(unittest.TestCase):
         for minutes_played, answer in time_passed_tests.items():
             self.assertEqual(tester.convert_time_passed(minutes_played), answer)
 
+    def test_url_sanatize(self):
+        print("\n", "url_sanatize")
+        tester = Tracker()
+        url_tests = {
+            "Hood: Outlaws & Legends": "hood-outlaws-legends",
+            "This is a (test), or is it?": "this-is-a-test-or-is-it",
+        }
+        for string, result in url_tests.items():
+            self.assertEqual(tester.url_sanatize(string), result)
+
     def test_play_status(self):
         print("\n", "play_status")
         tester = Tracker()
