@@ -103,7 +103,7 @@ class Tracker(Helper):
             platform = "playstation-5"
         elif platform in ["Steam", "Uplay", "Origin", "MS Store", "GOG"]:
             platform = "pc"
-        game_name = self.url_sanatize(game_name)
+        game_name = self.url_sanitize(game_name)
         user_agent = {"User-agent": "Mozilla/5.0"}
         self.api_sleeper("metacritic")
         review_score = ""
@@ -265,12 +265,13 @@ class Tracker(Helper):
                 return final_dict
         return False
 
-    def get_store_link(self, game_name, app_id):
+    def get_store_link(self, app_id):
         """
-        Generates a likely link to the games store page using `game_name` and `app_id`."""
+        Generates a steam store link to the games page using it's `app_id`.
+        """
         if not app_id or app_id == "None":
-            return ""
-        return f"https://store.steampowered.com/app/{app_id}/{self.string_url_convert(game_name)}/"
+            return False
+        return f"https://store.steampowered.com/app/{app_id}/"
 
     def requests_loop(self, skip_filled=1, check_status=0):
         """
@@ -457,15 +458,16 @@ class Tracker(Helper):
                 minutes_played = game["playtime_forever"]
                 hours_played = self.hours_played(minutes_played)
                 cur_play_status = self.games.get_cell(game_name, "Play Status")
+                # TODO fix play status setting
                 play_status = self.play_status(cur_play_status, hours_played)
-                game_appid = game["appid"]
+                app_id = game["appid"]
                 if game_name in self.games.row_idx.keys():
                     # removes existing games
                     if game_name in self.removed:
                         self.removed.remove(game_name)
                     self.update_game(game_name, minutes_played, play_status)
                 else:
-                    self.add_game(game_name, minutes_played, game_appid, play_status)
+                    self.add_game(game_name, minutes_played, app_id, play_status)
             if len(self.removed) > 0:
                 print(f'\nUnaccounted Steam games:\n{" ,".join(self.removed)}')
                 for item in self.removed:
@@ -591,9 +593,10 @@ class Tracker(Helper):
 
     def update_last_run(self, name):
         """
-        Updates json by `name` with seconds since epoc.
+        Updates json by `name` with the current date.
         """
-        self.data["last_runs"][name] = time.time()
+        today = dt.datetime.now()
+        self.data["last_runs"][name] = today.strftime("%m/%d/%Y")
         self.save_json_output(self.data, self.config)
 
     def steam_deck_compat(self, app_id):
@@ -645,11 +648,13 @@ class Tracker(Helper):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
-        # TODO create time delay
         last_check = self.data["last_runs"]["steam_deck_check"]
+        last_check = self.string_to_date(last_check)
         check_freq = self.data["settings"]["steam_deck_check_freq"]
-        if not self.time_passed(last_check, check_freq):
-            print("\nSkipping Steam Deck Check")
+        days_since = self.days_since(last_check)
+        if days_since < check_freq:
+            days_till_check = check_freq - days_since
+            print(f"\nNext Steam Deck Check in {days_till_check} days")
             return
         print("\nSteam Deck Compatibility Check")
         ignore_list = ["Grand Theft Auto: San Andreas"]
@@ -759,7 +764,7 @@ class Tracker(Helper):
         self,
         game_name=None,
         minutes_played="",
-        game_appid="",
+        app_id="",
         play_status="",
         platform="Steam",
     ):
@@ -813,11 +818,11 @@ class Tracker(Helper):
                 hours_played = ""
         # store link setup
         store_link_hyperlink = ""
-        store_link = self.get_store_link(game_name, game_appid)
+        store_link = self.get_store_link(app_id)
         if store_link:
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store Link")'
         # sets vr support value
-        steam_deck_status = ""
+        steam_deck_status = "UNKNOWN"
         if re.search(r"\bVR\b", game_name):
             vr_support = "Yes"
         elif platform in ["PS5", "PS4", "Switch"]:
@@ -825,9 +830,14 @@ class Tracker(Helper):
             steam_deck_status = "UNSUPPORTED"
         else:
             vr_support = ""
-        l_1 = self.games.indirect_cell(left=1)
-        l_2 = self.games.indirect_cell(left=2)
-        l_10 = self.games.indirect_cell(left=10)
+        # easy_indirect_cell setup
+        rating_com = "Rating Comparison"
+        my_rating = self.games.easy_indirect_cell(rating_com, "My Rating")
+        metacritic = self.games.easy_indirect_cell(rating_com, "Metacritic")
+        prob_compl = "Probable Completion"
+        hours = self.games.easy_indirect_cell(prob_compl, "Hours Played")
+        ttb = self.games.easy_indirect_cell(prob_compl, "Time To Beat in Hours")
+        # sets excel column values
         column_info = {
             "My Rating": "",
             "Game Name": game_name,
@@ -837,15 +847,15 @@ class Tracker(Helper):
             "Steam Deck Status": steam_deck_status,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
             "Metacritic": self.get_metacritic(game_name, "Steam"),
-            "Rating Comparison": f'=IFERROR(({l_10}*10)/{l_1}, "Missing Data")',
-            "Probable Completion": f'=IFERROR({l_1}/{l_2},"Missing Data")',
+            "Rating Comparison": f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
+            "Probable Completion": f'=IFERROR({hours}/{ttb},"Missing Data")',
             "Hours Played": hours_played,
-            "App ID": game_appid,
+            "App ID": app_id,
             "Store Link": store_link_hyperlink,
             "Date Updated": self.formatted_date,
             "Date Added": self.formatted_date,
         }
-        steam_info = self.get_game_info(game_appid)
+        steam_info = self.get_game_info(app_id)
         if steam_info:
             columns = [
                 "Publishers",
