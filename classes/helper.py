@@ -79,31 +79,34 @@ class Helper(Logger):
         api_calls[api] = cur_datetime
 
     @staticmethod
-    def string_url_convert(string) -> str:
-        """
-        Converts given `string` into a url ready string and returns it.
-        """
-        return re.sub(r"\W+", "", string.replace(" ", "_")).lower()
-
-    @staticmethod
     def hours_played(minutes_played):
         """
-        Converts minutes played to a hours played in decimal form.
+        Converts `minutes_played` to a hours played in decimal form.
         """
         return round(minutes_played / 60, 1)
 
     @staticmethod
-    def time_passed(past_time: int, days: int):
+    def string_to_date(date: str):
         """
-        ph
+        Converts String `date` in MM/DD/YYYY format to datetime object.
         """
-        current_time = time.time()
-        seconds_since = current_time - past_time
-        days_since = seconds_since / 60 / 60 / 24
-        return days_since >= days
+        return dt.datetime.strptime(date, "%m/%d/%Y")
 
     @staticmethod
-    def url_sanatize(string, space_replace="-"):
+    def days_since(past_date, current_date=None):
+        """
+        Gets the days since a `past_date`.
+
+        if `current_date` is not given then it is set to the current date.
+        """
+        # TODO use in other programs
+        if not current_date:
+            current_date = dt.datetime.now()
+        delta = current_date - past_date
+        return delta.days
+
+    @staticmethod
+    def url_sanitize(string, space_replace="-"):
         """
         Removes all illegal URL characters from the given `string`.
 
@@ -254,5 +257,5 @@ class Helper(Logger):
 
 if __name__ == "__main__":
     App = Helper()
-    test = App.url_sanatize("Hood: Outlaws & Legends")
-    print(test)
+    response = App.request_url("https://store.steampowered.com/app/752564654590/")
+    print(response.url)
