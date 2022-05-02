@@ -1,4 +1,5 @@
 import unittest
+import datetime as dt
 
 # classes
 from Game_Tracker import Tracker
@@ -29,17 +30,6 @@ class TestStringMethods(unittest.TestCase):
         }
         for name, answer in app_id_tests.items():
             self.assertEqual(tester.get_app_id(name), answer)
-
-    def test_string_url_convert(self):
-        print("\n", "string_url_convert")
-        tester = Tracker()
-        string_tests = {
-            "Where is the beef?": "where_is_the_beef",
-            "Deep Rock Galactic": "deep_rock_galactic",
-            "Inscryption": "inscryption",
-        }
-        for string, answer in string_tests.items():
-            self.assertEqual(tester.string_url_convert(string), answer)
 
     def test_get_game_info(self):
         print("\n", "get_game_info")
@@ -100,15 +90,46 @@ class TestStringMethods(unittest.TestCase):
         for minutes_played, answer in time_passed_tests.items():
             self.assertEqual(tester.convert_time_passed(minutes_played), answer)
 
-    def test_url_sanatize(self):
-        print("\n", "url_sanatize")
+    def test_days_since(self):
+        print("\n", "days_since")
+        tester = Tracker()
+        date_tests = {
+            2: dt.datetime(2022, 4, 22),
+            10: dt.datetime(2022, 4, 14),
+            365: dt.datetime(2021, 4, 24),
+        }
+        past_date = dt.datetime(2022, 4, 24)
+        for answer, current_date in date_tests.items():
+            self.assertEqual(tester.days_since(current_date, past_date), answer)
+
+    def test_get_store_link(self):
+        print("\n", "get_store_link")
+        tester = Tracker()
+        store_link_tests = {
+            "752590": "https://store.steampowered.com/app/752590/",
+            "629730": "https://store.steampowered.com/app/629730/",
+        }
+        for app_id, answer in store_link_tests.items():
+            self.assertEqual(tester.get_store_link(app_id), answer)
+            # tests that the url exists
+            response = tester.request_url(answer)
+            self.assertIn(app_id, response.url)
+            self.assertTrue(response)
+        # test for broken link that redirects due to app id not being found
+        invalid_url = "https://store.steampowered.com/app/6546546545465484213211545730/"
+        response = tester.request_url(invalid_url)
+        self.assertNotIn("6546546545465484213211545730", response.url)
+
+    def test_url_sanitize(self):
+        print("\n", "url_sanitize")
         tester = Tracker()
         url_tests = {
             "Hood: Outlaws & Legends": "hood-outlaws-legends",
             "This is a (test), or is it?": "this-is-a-test-or-is-it",
+            "Blade & Sorcery": "blade-sorcery",
         }
         for string, result in url_tests.items():
-            self.assertEqual(tester.url_sanatize(string), result)
+            self.assertEqual(tester.url_sanitize(string), result)
 
     def test_play_status(self):
         print("\n", "play_status")
