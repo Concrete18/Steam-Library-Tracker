@@ -99,7 +99,6 @@ class Helper(Logger):
 
         if `current_date` is not given then it is set to the current date.
         """
-        # TODO use in other programs
         if not current_date:
             current_date = dt.datetime.now()
         delta = current_date - past_date

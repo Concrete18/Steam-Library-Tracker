@@ -7,7 +7,7 @@ class Stat:
     def create_dataframe(
         excel_path,
     ):
-        excel_path = r"Excel Game Sheet.xlsx"
+        excel_path = r"Game Library.xlsx"
         na_values = [
             "Page Error",
             "Missing Data",
