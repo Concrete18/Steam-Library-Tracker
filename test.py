@@ -140,6 +140,18 @@ class TestStringMethods(unittest.TestCase):
             {"play_status": "Unplayed", "hours": 1, "ans": "Playing"},
             {"play_status": "Unplayed", "hours": 0.5, "ans": "Played"},
             {"play_status": "Finished", "hours": 0.1, "ans": "Finished"},
+            # do nothing
+            {"play_status": "Waiting", "hours": 100, "ans": "Waiting"},
+            {"play_status": "Quit", "hours": 100, "ans": "Quit"},
+            {"play_status": "Finished", "hours": 100, "ans": "Finished"},
+            {"play_status": "Ignore", "hours": 100, "ans": "Ignore"},
+            # new game
+            {"play_status": "", "hours": 0, "ans": "Unplayed"},
+            {"play_status": "", "hours": 0.5, "ans": "Played"},
+            {"play_status": "", "hours": 1, "ans": "Playing"},
+            # error
+            {"play_status": "", "hours": "Test", "ans": ""},
+            {"play_status": "Unplayed", "hours": "Test", "ans": "Unplayed"},
         ]
         for a in tests:
             self.assertEqual(tester.play_status(a["play_status"], a["hours"]), a["ans"])
