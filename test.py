@@ -55,18 +55,12 @@ class TestStringMethods(unittest.TestCase):
     def test_steam_deck_compat(self):
         print("\n", "steam_deck_compat")
         tester = Tracker()
-        steam_deck_tests = {
-            1167630: "PLAYABLE",
-            667970: "UNSUPPORTED",
-            1579380: "UNKNOWN",
-            1145360: "VERIFIED",
-            204080: "VERIFIED",
-            # Deathloop check has empty results from the api
-            # 1457700: "VERIFIED",
-            204080: False,
-        }
-        for app_id, status in steam_deck_tests.items():
-            self.assertEqual(tester.steam_deck_compat(app_id), status)
+        passes = ["VERIFIED", "PLAYABLE", "UNSUPPORTED", "UNKNOWN"]
+        app_ids = [1145360, 1167630, 667970, 1579380]
+        for app_id in app_ids:
+            self.assertIn(tester.steam_deck_compat(app_id), passes)
+        invalid_app_id = 9999999999999999999999999999
+        self.assertFalse(tester.steam_deck_compat(invalid_app_id))
 
     def test_hours_played(self):
         print("\n", "hours_played")
