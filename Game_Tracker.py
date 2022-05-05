@@ -359,6 +359,7 @@ class Tracker(Helper):
                             self.games.update_cell(game_name, ea_column_name, "No")
                     else:
                         self.games.update_cell(game_name, genre_column, "No Genre")
+                        self.games.update_cell(game_name, ea_column_name, "Unknown")
                     # release year
                     if steam_info["release_date"]:
                         self.games.update_cell(
@@ -401,6 +402,7 @@ class Tracker(Helper):
                     self.games.update_cell(game_name, genre_column, "No Data")
                     self.games.update_cell(game_name, dev_column, "No Data")
                     self.games.update_cell(game_name, pub_column, "No Data")
+                    self.games.update_cell(game_name, ea_column_name, "No")
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -576,7 +578,7 @@ class Tracker(Helper):
         if total_games_added > 0:
             self.excel.save_excel()
 
-    def create_df(self, table):
+    def create_dataframe(self, table):
         """
         Creates a dataframe from a `table` found using requests and BeautifulSoup.
         """
@@ -831,6 +833,7 @@ class Tracker(Helper):
         elif platform in ["PS5", "PS4", "Switch"]:
             vr_support = "No"
             steam_deck_status = "UNSUPPORTED"
+            early_access = "No"
         else:
             vr_support = ""
         # easy_indirect_cell setup
@@ -847,6 +850,7 @@ class Tracker(Helper):
             "Play Status": play_status,
             "Platform": platform,
             "VR Support": vr_support,
+            "Early Access": early_access,
             "Steam Deck Status": steam_deck_status,
             "Time To Beat in Hours": self.get_time_to_beat(game_name),
             "Metacritic": self.get_metacritic(game_name, "Steam"),
