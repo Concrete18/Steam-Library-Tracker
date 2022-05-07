@@ -59,7 +59,7 @@ class TestStringMethods(unittest.TestCase):
         app_ids = [1145360, 1167630, 667970, 1579380]
         for app_id in app_ids:
             self.assertIn(tester.steam_deck_compat(app_id), passes)
-        invalid_app_id = 9999999999999999999999999999
+        invalid_app_id = 9**30
         self.assertFalse(tester.steam_deck_compat(invalid_app_id))
 
     def test_hours_played(self):
