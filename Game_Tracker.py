@@ -523,8 +523,9 @@ class Tracker(Helper):
         keyword_ignore_list = [
             "demo",
             "beta",
+            "Youtube",
             "Playtest",
-            "Youtube" "PreOrder",
+            "PreOrder",
             "Pre-Order",
             "Soundtrack",
             "Closed Test",
@@ -623,31 +624,6 @@ class Tracker(Helper):
             return False
         category_id = results["resolved_category"]
         return categories[category_id]
-        # old code
-        specific_ratings = results["resolved_items"]
-        result = {"category": categories[category_ident]}
-        # placeholder
-        PREFIX = "#SteamDeckVerified_TestResult"
-        ratings = {
-            "controller_func": f"{PREFIX}_DefaultControllerConfigFullyFunctional",
-            "controller_glyphs": f"{PREFIX}_ControllerGlyphsMatchDeckDevice",
-            "legible_text": f"{PREFIX}_InterfaceTextIsLegible",
-            "good_config": f"{PREFIX}_DefaultConfigurationIsPerformant",
-        }
-        display_type = {
-            1: "Note",
-            2: "Fail",
-            3: "Info",
-            4: "Checkmark",
-        }
-        for rating in specific_ratings:
-            for check, key in ratings.items():
-                if rating["loc_token"] == key:
-                    if rating["display_type"] == 4:
-                        result[check] = True
-                    else:
-                        result[check] = False
-        return result
 
     def steam_deck_check(self):
         """

@@ -98,7 +98,7 @@ class Excel:
                     if not self.backed_up:
                         shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
                         self.backed_up = True
-                        print("\nBacked up Excel")
+                        self.log(f"Excel file backed up", "info")
                 # saves the file once it is closed
                 if use_print:
                     print("\nSaving...")
@@ -291,8 +291,6 @@ class Sheet:
         if row_key is not None and column_key is not None:
             return self.cur_sheet.cell(row=row_key, column=column_key).value
         else:
-            # msg = f"get_cell: {column_value} and {row_value} point to nothing"
-            # self.excel.log(msg, "warning")
             return None
 
     def update_index(self, col_key):
@@ -325,10 +323,6 @@ class Sheet:
                     self.excel.changes_made = True
                 return True
         else:
-            msg = f"update_cell: {col_val} and {row_val} point to nothing"
-            self.excel.log(msg, "warning")
-            msg = f"update_cell: extra data {row_key} and {column_key}"
-            self.excel.log(msg, "warning")
             return False
 
     def add_new_line(self, cell_dict, column_key, save=False):
