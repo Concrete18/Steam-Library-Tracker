@@ -191,7 +191,7 @@ class Helper(Logger):
                     cache[i][j] = 1 + min_change
         return cache[0][0]
 
-    def string_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
+    def sim_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
         """
         Finds a match for target_str in string_list using sequence matching.
         """
@@ -210,7 +210,7 @@ class Helper(Logger):
             print(f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {match_perc}")
         return match
 
-    def string_matcher2(
+    def lev_dist_matcher(
         self,
         target_str: str,
         string_list: list,

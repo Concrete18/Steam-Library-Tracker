@@ -33,7 +33,6 @@ class Tracker(Helper):
     cur_date = dt.datetime.now()
     formatted_date = cur_date.strftime("%#m/%#d/%Y")
     # api call logger
-    invalid_months = []
     play_status_choices = {
         "1": "Played",
         "2": "Playing",
@@ -625,18 +624,19 @@ class Tracker(Helper):
         category_id = results["resolved_category"]
         return categories[category_id]
 
-    def steam_deck_check(self):
+    def steam_deck_check(self, force_run=False):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
-        last_check = self.data["last_runs"]["steam_deck_check"]
-        last_check = self.string_to_date(last_check)
-        check_freq = self.data["settings"]["steam_deck_check_freq"]
-        days_since = self.days_since(last_check)
-        if days_since < check_freq:
-            days_till_check = check_freq - days_since
-            print(f"\nNext Steam Deck Check in {days_till_check} days")
-            return
+        if not force_run:
+            last_check = self.data["last_runs"]["steam_deck_check"]
+            last_check = self.string_to_date(last_check)
+            check_freq = self.data["settings"]["steam_deck_check_freq"]
+            days_since = self.days_since(last_check)
+            if days_since < check_freq:
+                days_till_check = check_freq - days_since
+                print(f"\nNext Steam Deck Check in {days_till_check} days")
+                return
         print("\nSteam Deck Compatibility Check")
         ignore_list = ["Grand Theft Auto: San Andreas"]
         updated_games = []
@@ -868,8 +868,6 @@ class Tracker(Helper):
                 print(", ".join(self.added_games))
         if self.total_games_updated > 0:
             print(f"\nGames Updated: {self.total_games_updated}")
-        if len(self.invalid_months) > 0:
-            print(self.invalid_months)
         if self.excel.changes_made:
             self.excel.save_excel()
         else:
@@ -1020,7 +1018,7 @@ class Tracker(Helper):
         """
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
-        matched_games = self.string_matcher2(game_name, self.games.row_idx.keys())
+        matched_games = self.lev_dist_matcher(game_name, self.games.row_idx.keys())
         if len(matched_games) == 0:
             match = matched_games[0]
             if match in self.games.row_idx:
@@ -1092,11 +1090,12 @@ class Tracker(Helper):
         choices = [
             "Update Game",  # 1
             "Pick Random Game",  # 2
-            "Add Game",  # 3
-            "Update the Playstation Data",  # 4
-            "Check for and view Favorite Games Sales",  # 5
-            "View Favorite Games Sales",  # 6
-            "Open Log",  # 7
+            "Check Steam Deck Game Status",  # 3
+            "Add Game",  # 4
+            "Update the Playstation Data",  # 5
+            "Check for and view Favorite Games Sales",  # 6
+            "View Favorite Games Sales",  # 7
+            "Open Log",  # 8
         ]
         for count, choice in enumerate(choices):
             print(f"{count+1}. {choice}")
@@ -1106,18 +1105,20 @@ class Tracker(Helper):
         elif res == "2":
             self.pick_random_game()
         elif res == "3":
-            self.add_game()
+            self.steam_deck_check()
         elif res == "4":
+            self.add_game()
+        elif res == "5":
             subprocess.Popen(f'notepad "configs\playstation_games.json"')
             webbrowser.open(self.playstation_data_link)
             webbrowser.open(r"https://store.playstation.com/")
             input("\nPress Enter when done.")
             self.check_playstation_json()
-        elif res == "5":
-            self.get_favorite_games_sales()
         elif res == "6":
-            self.view_favorite_games_sales()
+            self.get_favorite_games_sales()
         elif res == "7":
+            self.view_favorite_games_sales()
+        elif res == "8":
             osCommandString = "notepad.exe configs/tracker.log"
             os.system(osCommandString)
         elif res == "":
