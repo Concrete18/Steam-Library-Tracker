@@ -1,5 +1,7 @@
 import unittest
 import datetime as dt
+import os
+from pathlib import Path
 
 # classes
 from Game_Tracker import Tracker
@@ -166,8 +168,8 @@ class TestStringMethods(unittest.TestCase):
         for a in string_tests:
             self.assertEqual(tester.lev_distance(a["word1"], a["word2"]), a["ans"])
 
-    def test_string_matcher(self):
-        print("\n", "string_matcher")
+    def test_sim_matcher(self):
+        print("\n", "sim_matcher")
         tester = Tracker()
         test_list = [
             "This is a test, yay",
@@ -199,12 +201,10 @@ class TestStringMethods(unittest.TestCase):
         }
         for string, answer in string_tests.items():
             self.assertEqual(
-                tester.string_matcher2(string, test_list, debug=True)[0],
+                tester.lev_dist_matcher(string, test_list, debug=True)[0],
                 answer,
             )
-            # self.assertEqual(
-            #     tester.string_matcher(string, test_list, debug=True), answer
-            # )
+            # self.assertEqual(tester.sim_matcher(string, test_list, debug=True), answer)
 
 
 if __name__ == "__main__":
