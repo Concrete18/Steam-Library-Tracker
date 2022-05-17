@@ -141,6 +141,10 @@ class TestStringMethods(unittest.TestCase):
             {"play_status": "Quit", "hours": 100, "ans": "Quit"},
             {"play_status": "Finished", "hours": 100, "ans": "Finished"},
             {"play_status": "Ignore", "hours": 100, "ans": "Ignore"},
+            # must play
+            {"play_status": "Must Play", "hours": 0, "ans": "Must Play"},
+            {"play_status": "Must Play", "hours": 0.5, "ans": "Played"},
+            {"play_status": "Must Play", "hours": 1, "ans": "Playing"},
             # new game
             {"play_status": "", "hours": 0, "ans": "Unplayed"},
             {"play_status": "", "hours": 0.5, "ans": "Played"},
