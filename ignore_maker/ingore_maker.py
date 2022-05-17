@@ -15,7 +15,7 @@ class IgnoreMaker:
                 unicode_issues.append(game)
             else:
                 print(f'"{game}",')
-        if len(unicode_issues) > 0:
+        if unicode_issues:
             print("The following have unicode issues.")
             for game in unicode_issues:
                 print(game)
