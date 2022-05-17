@@ -179,7 +179,7 @@ class Sheet:
         if sheet_name:
             self.cur_sheet = self.wb[sheet_name]
         else:
-            if len(self.wb.sheetnames) > 0:
+            if self.wb.sheetnames:
                 self.cur_sheet = self.wb[self.wb.sheetnames[0]]
             else:
                 raise "No sheets exist."
