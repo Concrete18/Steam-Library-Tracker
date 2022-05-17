@@ -42,6 +42,8 @@ class Tracker(Helper):
         "6": "Unplayed",
         "7": "Ignore",
     }
+    # misc
+    json_path = Path("configs\playstation_games.json")
 
     def config_check(self):
         """
@@ -50,7 +52,7 @@ class Tracker(Helper):
         errors = []
         if len(self.steam_id) != 17:
             errors.append("Steam ID is invalid.")
-        if len(errors) > 0:
+        if errors:
             return False, errors
         else:
             return True, None
@@ -419,7 +421,7 @@ class Tracker(Helper):
         hours_played_type = type(hours_played)
         if hours_played_type is not float and hours_played_type is not int:
             return play_status or ""
-        if play_status not in ["Played", "Unplayed", ""]:
+        if play_status not in ["Played", "Unplayed", "Must Play", ""]:
             return play_status
         # play status change
         if hours_played >= 1:
@@ -427,25 +429,29 @@ class Tracker(Helper):
         elif hours_played >= 0.5:
             play_status = "Played"
         else:
-            play_status = "Unplayed"
+            if play_status != "Must Play":
+                play_status = "Unplayed"
         return play_status
 
     def refresh_steam_games(self, steam_id):
         """
-        Gets games owned by the entered Steam ID and runs excel update/add functions.
+        Gets games owned by the entered `steam_id`
+        and runs excel update/add functions.
         """
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
             msg = "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
             steam_id = input(msg)
         print("\nSteam Library Tracking")
-        root_url = "http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/"
+        main_url = "http://api.steampowered.com/"
+        api_action = "IPlayerService/GetOwnedGames/v0001/"
         url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
-        combinded_url = f"{root_url}{url_var}&include_played_free_games=0&format=json&include_appinfo=1"
+        options = "include_played_free_games=0&format=json&include_appinfo=1"
+        combinded_url = f"{main_url}{api_action}{url_var}&{options}"
         self.api_sleeper("steam_owned_games")
         response = self.request_url(combinded_url)
         if response:
-            # checks for games that changed names or no longer exist by removing later in the code
+            # checks for games that changed names or no longer exist
             self.removed = [
                 str(game)
                 for game in self.games.row_idx.keys()
@@ -472,7 +478,7 @@ class Tracker(Helper):
                     self.update_game(game_name, minutes_played, play_status)
                 else:
                     self.add_game(game_name, minutes_played, app_id, play_status)
-            if len(self.removed) > 0:
+            if self.removed:
                 print(f'\nUnaccounted Steam games:\n{" ,".join(self.removed)}')
                 for item in self.removed:
                     status = self.games.get_cell(item, "Play Status")
@@ -694,17 +700,16 @@ class Tracker(Helper):
         Checks `playstation_games.json` to find out if it is newly updated so it can add the new games to the sheet.
         """
         # checks if json exists
-        json_path = Path("configs\playstation_games.json")
-        if not json_path.exists:
+        if not self.json_path.exists:
             print("PlayStation Json does not exist.")
             webbrowser.open_new(self.playstation_data_link)
             return None
         # create hash file if it does not exist
-        if not json_path.exists:
-            json_path.touch()
-        if not self.check_for_changes(json_path):
+        if not self.json_path.exists:
+            self.json_path.touch()
+        if not self.check_for_changes(self.json_path):
             return None
-        with open(json_path) as file:
+        with open(self.json_path) as file:
             data = json.load(file)
         print("\nChecking for new games for PS4 or PS5.")
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
@@ -741,6 +746,36 @@ class Tracker(Helper):
             self.logger.info(msg)
         self.games.format_cells(game_name)
 
+    def manually_add_game(self):
+        """
+        Allows manually adding a game by giving the name,
+        platform and hours played.
+        """
+        game_name = input("\nWhat is the name of the game?\n:")
+        platform = input("\nWhat is the platform is this on?\n:")
+        platform_names = {
+            "playstation 5": "PS5",
+            "ps5": "PS5",
+            "playstation 4": "PS4",
+            "ps4": "PS4",
+            "sw": "Switch",
+            "uplay": "Uplay",
+            "gog": "GOG",
+            "ms store": "MS Store",
+            "ms": "MS Store",
+            "microsoft": "MS Store",
+        }
+        if platform.lower() in platform_names:
+            platform = platform_names[platform.lower()]
+        hours_played = int(input("\nHow many hours have you played it?\n:") or 0)
+        print("\nWhat Play Status should it have?")
+        play_status = self.play_status_picker() or "Unset"
+        print(f"\nAdded Game:\n{game_name}")
+        print(f"Platform: {platform}")
+        print(f"Hours Played: {hours_played}")
+        print(f"Play Status: {play_status}")
+        self.add_game()
+
     def add_game(
         self,
         game_name=None,
@@ -748,55 +783,19 @@ class Tracker(Helper):
         app_id="",
         play_status="",
         platform="Steam",
+        save=False,
     ):
         """
-        Appends new game to excel sheet into the correct columns using self.column_i.
-        Any columns that are inputted manually are left blank.
+        ph
         """
-        save = 0
-        if game_name == None:
-            save = 1
-            game_name = input(
-                "\nDo you want to add a new game?\nIf Yes type the game name.\n:"
-            )
-            if game_name != "":
-                if game_name.lower() in ["yes", "y"]:
-                    game_name = input("\nWhat is the name of the game?\n:")
-                platform = input("\nWhat is the platform is this on?\n:")
-                platform_names = {
-                    "playstation 5": "PS5",
-                    "ps5": "PS5",
-                    "playstation 4": "PS4",
-                    "ps4": "PS4",
-                    "sw": "Switch",
-                    "uplay": "Uplay",
-                    "gog": "GOG",
-                    "ms store": "MS Store",
-                    "ms": "MS Store",
-                    "microsoft": "MS Store",
-                }
-                if platform.lower() in platform_names:
-                    platform = platform_names[platform.lower()]
-                hours_played = int(
-                    input("\nHow many hours have you played it?\n:") or 0
-                )
-                print("\nWhat Play Status should it have?")
-                play_status = self.play_status_picker() or "Unset"
-                print(f"\nAdded Game:\n{game_name}")
-                print(f"Platform: {platform}")
-                print(f"Hours Played: {hours_played}")
-                print(f"Play Status: {play_status}")
-            else:
-                return
+        # TODO fix unset play status when adding new game
+        if minutes_played:
+            hours_played = self.hours_played(minutes_played)
+            # sets play status
+            play_status = self.play_status(play_status, hours_played)
         else:
-            # sets hours played
-            if minutes_played:
-                hours_played = self.hours_played(minutes_played)
-                # sets play status
-                if hours_played > 0.5:
-                    play_status = "Playing"
-            else:
-                hours_played = ""
+            play_status = "Unplayed"
+            hours_played = ""
         # store link setup
         store_link_hyperlink = ""
         store_link = self.get_store_link(app_id)
@@ -804,12 +803,12 @@ class Tracker(Helper):
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store Link")'
         # sets vr support value
         steam_deck_status = "UNKNOWN"
+        early_access = "No"
         if re.search(r"\bVR\b", game_name):
             vr_support = "Yes"
         elif platform in ["PS5", "PS4", "Switch"]:
             vr_support = "No"
             steam_deck_status = "UNSUPPORTED"
-            early_access = "No"
         else:
             vr_support = ""
         # easy_indirect_cell setup
@@ -846,6 +845,7 @@ class Tracker(Helper):
                 "Genre",
                 "Release Year",
                 "Metacritic",
+                "Early Access",
             ]
             for column in columns:
                 if column.lower() in steam_info.keys():
@@ -864,7 +864,7 @@ class Tracker(Helper):
         """
         if self.total_games_added > 0:
             print(f"\nGames Added: {self.total_games_added}")
-            if len(self.added_games) > 0:
+            if self.added_games:
                 print(", ".join(self.added_games))
         if self.total_games_updated > 0:
             print(f"\nGames Updated: {self.total_games_updated}")
@@ -914,7 +914,7 @@ class Tracker(Helper):
         while not input(
             "Press Enter to pick another and No for finish.\n:"
         ).lower() in ["no", "n"]:
-            if len(choice_list) == 0:
+            if not choice_list:
                 print(f"All games with {play_status} have already been picked.\n")
                 return
             picked_game = random.choice(choice_list)
@@ -1019,7 +1019,7 @@ class Tracker(Helper):
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
         matched_games = self.lev_dist_matcher(game_name, self.games.row_idx.keys())
-        if len(matched_games) == 0:
+        if not matched_games:
             match = matched_games[0]
             if match in self.games.row_idx:
                 print(f"Found {match}")
@@ -1080,50 +1080,69 @@ class Tracker(Helper):
                         print("\nPossible Steam Deck Key found")
                         print(key)
 
+    def update_playstation_data(self):
+        """
+        Opens playstation data json file and web json with latest data
+        for manual updating.
+        """
+        subprocess.Popen(f'notepad "{self.json_path}"')
+        webbrowser.open(self.playstation_data_link)
+        webbrowser.open(r"https://store.playstation.com/")
+        input("\nPress Enter when done.")
+        self.check_playstation_json()
+
+    @staticmethod
+    def open_log():
+        osCommandString = "notepad.exe configs/tracker.log"
+        os.system(osCommandString)
+
     def pick_task(self):
         """
         Allows picking a task to do next using a matching number.
         """
-        # if not self.ext_terminal:
-        #     return
         print("\nWhat do you want to do next?\n")
         choices = [
-            "Update Game",  # 1
-            "Pick Random Game",  # 2
-            "Check Steam Deck Game Status",  # 3
-            "Add Game",  # 4
-            "Update the Playstation Data",  # 5
-            "Check for and view Favorite Games Sales",  # 6
-            "View Favorite Games Sales",  # 7
-            "Open Log",  # 8
+            {
+                "text": "Update Game",
+                "func": self.custom_update_game,
+            },
+            {
+                "text": "Pick Random Game",
+                "func": self.pick_random_game,
+            },
+            {
+                "text": "Check Steam Deck Game Status",
+                "func": lambda: self.steam_deck_check(force_run=True),
+            },
+            {
+                "text": "Add Game",
+                "func": self.manually_add_game,
+            },
+            {
+                "text": "Update the Playstation Data",
+                "func": self.update_playstation_data,
+            },
+            {
+                "text": "Check Favorite Games Sales",
+                "func": self.get_favorite_games_sales,
+            },
+            {
+                "text": "View Favorite Games Sales",
+                "func": self.view_favorite_games_sales,
+            },
+            {
+                "text": "Open Log",
+                "func": self.open_log,
+            },
         ]
         for count, choice in enumerate(choices):
-            print(f"{count+1}. {choice}")
-        res = input("\nPress Enter without a number to open the excel sheet.\n")
-        if res == "1":
-            self.custom_update_game()
-        elif res == "2":
-            self.pick_random_game()
-        elif res == "3":
-            self.steam_deck_check()
-        elif res == "4":
-            self.add_game()
-        elif res == "5":
-            subprocess.Popen(f'notepad "configs\playstation_games.json"')
-            webbrowser.open(self.playstation_data_link)
-            webbrowser.open(r"https://store.playstation.com/")
-            input("\nPress Enter when done.")
-            self.check_playstation_json()
-        elif res == "6":
-            self.get_favorite_games_sales()
-        elif res == "7":
-            self.view_favorite_games_sales()
-        elif res == "8":
-            osCommandString = "notepad.exe configs/tracker.log"
-            os.system(osCommandString)
-        elif res == "":
+            print(f"{count+1}. {choice['text']}")
+        msg = "\nPress Enter without a number to open the excel sheet.\n"
+        res = self.ask_for_integer(msg, num_range=(1, len(choices)), allow_blank=True)
+        if res == "":
             os.startfile(self.excel.file_path)
             exit()
+        choices[res - 1]["func"]()
 
     def run(self):
         """
