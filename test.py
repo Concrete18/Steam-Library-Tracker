@@ -146,11 +146,11 @@ class TestStringMethods(unittest.TestCase):
             {"play_status": "Must Play", "hours": 0.5, "ans": "Played"},
             {"play_status": "Must Play", "hours": 1, "ans": "Playing"},
             # new game
-            {"play_status": "", "hours": 0, "ans": "Unplayed"},
-            {"play_status": "", "hours": 0.5, "ans": "Played"},
-            {"play_status": "", "hours": 1, "ans": "Playing"},
+            {"play_status": None, "hours": 0, "ans": "Unplayed"},
+            {"play_status": None, "hours": 0.5, "ans": "Played"},
+            {"play_status": None, "hours": 1, "ans": "Playing"},
             # error
-            {"play_status": "", "hours": "Test", "ans": ""},
+            {"play_status": None, "hours": "Test", "ans": ""},
             {"play_status": "Unplayed", "hours": "Test", "ans": "Unplayed"},
         ]
         for a in tests:
