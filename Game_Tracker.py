@@ -421,7 +421,7 @@ class Tracker(Helper):
         hours_played_type = type(hours_played)
         if hours_played_type is not float and hours_played_type is not int:
             return play_status or ""
-        if play_status not in ["Played", "Unplayed", "Must Play", ""]:
+        if play_status not in ["Played", "Unplayed", "Must Play", None]:
             return play_status
         # play status change
         if hours_played >= 1:
@@ -468,7 +468,6 @@ class Tracker(Helper):
                 minutes_played = game["playtime_forever"]
                 hours_played = self.hours_played(minutes_played)
                 cur_play_status = self.games.get_cell(game_name, "Play Status")
-                # TODO fix play status setting
                 play_status = self.play_status(cur_play_status, hours_played)
                 app_id = game["appid"]
                 if game_name in self.games.row_idx.keys():
@@ -520,9 +519,10 @@ class Tracker(Helper):
                 data = json.load(file)
         return True
 
-    def should_ignore(self, name):
+    def should_ignore(self, string):
         """
-        Returns True if any keywords are found or it is in the `ignore_list`.
+        Returns True if `string` has any keywords found in it or
+        it is in the `ignore_list`.
         """
         # keyword check
         keyword_ignore_list = [
@@ -539,12 +539,12 @@ class Tracker(Helper):
             "Bonus Content",
             "Trial Edition",
         ]
-        name = name.lower()
+        string = string.lower()
         for string in keyword_ignore_list:
-            if re.search(rf"\b{string.lower()}\b", name):
+            if re.search(rf"\b{string.lower()}\b", string):
                 return True
         # ignore list
-        if name in self.ignore_list:
+        if string in self.ignore_list:
             return True
         return False
 
@@ -774,7 +774,14 @@ class Tracker(Helper):
         print(f"Platform: {platform}")
         print(f"Hours Played: {hours_played}")
         print(f"Play Status: {play_status}")
-        self.add_game()
+        self.add_game(
+            game_name=game_name,
+            minutes_played=hours_played * 60,
+            play_status=play_status,
+            platform=platform,
+            save=True,
+        )
+        return game_name, hours_played * 60, play_status
 
     def add_game(
         self,
@@ -786,9 +793,10 @@ class Tracker(Helper):
         save=False,
     ):
         """
-        ph
+        Adds a game with the game_name, hours played using `minutes_played`, `play_status` and `platform`.
+
+        If save is True, it will save after adding the game.
         """
-        # TODO fix unset play status when adding new game
         if minutes_played:
             hours_played = self.hours_played(minutes_played)
             # sets play status
