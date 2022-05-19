@@ -553,7 +553,14 @@ class Tracker(Helper):
         """
         Basic unicode cleaner.
         """
-        inicode_dict = {"â€": "'", "®": "", "™": "", "â„¢": "", "Â": "", "Ã›": "U"}
+        inicode_dict = {
+            "â€": "'",
+            "®": "",
+            "™": "",
+            "â„¢": "",
+            "Â": "",
+            "Ã›": "U",
+        }
         for char, replace in inicode_dict.items():
             string = string.replace(char, replace)
         return string.strip()
@@ -563,21 +570,32 @@ class Tracker(Helper):
         Adds playstation games to excel using the given `games` variable.
         """
         added_games = []
-        for game in tqdm(iterable=games, ascii=True, unit="games", dynamic_ncols=True):
+        for game in tqdm(
+            iterable=games,
+            ascii=True,
+            unit="games",
+            dynamic_ncols=True,
+        ):
             game_name = self.unicode_fix(game["name"])
-            # skip if it should be ignored or was added this session
-            if self.should_ignore(game_name) or game_name in added_games:
-                continue
-            # skip if it already exist
-            game_exists = game_name in self.games.row_idx.keys()
-            # TODO skip if the game exists with a playstation version already
-            console_exists = f"{game_name} - Console" in self.games.row_idx.keys()
-            if game_exists or console_exists:
+            # skip if it any are true
+            game_exists = [
+                # should be ignored
+                self.should_ignore(game_name),
+                # added this session
+                game_name in added_games,
+                # already exist
+                game_name in self.games.row_idx.keys(),
+                # game exists with a playstation version already
+                f"{game_name} - Console" in self.games.row_idx.keys(),
+            ]
+            if any(game_exists):
                 continue
             # adds the game
             added_games.append(game_name)
             self.add_game(
-                game_name=game_name, play_status="Unplayed", platform=game["platform"]
+                game_name=game_name,
+                play_status="Unplayed",
+                platform=game["platform"],
             )
         total_games_added = len(added_games)
         print(f"Added {total_games_added} PS4/PS5 Games.")
@@ -586,7 +604,8 @@ class Tracker(Helper):
 
     def create_dataframe(self, table):
         """
-        Creates a dataframe from a `table` found using requests and BeautifulSoup.
+        Creates a dataframe from a `table` found using requests and
+        BeautifulSoup.
         """
         # find all headers
         headers = []
@@ -606,15 +625,17 @@ class Tracker(Helper):
         """
         Updates json by `name` with the current date.
         """
-        today = dt.datetime.now()
-        self.data["last_runs"][name] = today.strftime("%m/%d/%Y")
+        self.data["last_runs"][name] = self.cur_date.strftime("%m/%d/%Y")
         self.save_json_output(self.data, self.config)
 
     def steam_deck_compat(self, app_id):
         """
-        Gets a games steam deck verification and other compatibility data by `app_id`.
+        Gets a games steam deck verification and other compatibility data
+        by `app_id`.
         """
-        url = f"https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}"
+        base_url = "https://store.steampowered.com/"
+        action_url = "saleaction/ajaxgetdeckappcompatibilityreport"
+        url = f"{base_url}{action_url}?nAppID={app_id}"
         data = self.request_url(url).json()
         if not data:
             return False
@@ -697,7 +718,8 @@ class Tracker(Helper):
 
     def check_playstation_json(self):
         """
-        Checks `playstation_games.json` to find out if it is newly updated so it can add the new games to the sheet.
+        Checks `playstation_games.json` to find out if it is newly updated so
+        it can add the new games to the sheet.
         """
         # checks if json exists
         if not self.json_path.exists:
