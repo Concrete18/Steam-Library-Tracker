@@ -127,6 +127,12 @@ class TestStringMethods(unittest.TestCase):
         for string, result in url_tests.items():
             self.assertEqual(tester.url_sanitize(string), result)
 
+    def test_should_ignore(self):
+        print("\n", "should_ignore")
+        tester = Tracker()
+        self.assertTrue(tester.should_ignore("Game Beta"))
+        self.assertFalse(tester.should_ignore("This is a great game"))
+
     def test_play_status(self):
         print("\n", "play_status")
         tester = Tracker()

@@ -478,7 +478,7 @@ class Tracker(Helper):
                 else:
                     self.add_game(game_name, minutes_played, app_id, play_status)
             if self.removed:
-                print(f'\nUnaccounted Steam games:\n{" ,".join(self.removed)}')
+                print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
                 for item in self.removed:
                     status = self.games.get_cell(item, "Play Status")
                     if status is not None:
@@ -519,9 +519,9 @@ class Tracker(Helper):
                 data = json.load(file)
         return True
 
-    def should_ignore(self, string):
+    def should_ignore(self, name):
         """
-        Returns True if `string` has any keywords found in it or
+        Returns True if `name` has any keywords found in it or
         it is in the `ignore_list`.
         """
         # keyword check
@@ -539,12 +539,12 @@ class Tracker(Helper):
             "Bonus Content",
             "Trial Edition",
         ]
-        string = string.lower()
+        name = name.lower()
         for string in keyword_ignore_list:
-            if re.search(rf"\b{string.lower()}\b", string):
+            if re.search(rf"\b{string.lower()}\b", name):
                 return True
         # ignore list
-        if string in self.ignore_list:
+        if name in self.ignore_list:
             return True
         return False
 
@@ -1158,8 +1158,8 @@ class Tracker(Helper):
         """
         self.config_check()
         self.arg_func()
-        if self.ext_terminal:
-            os.system("mode con cols=68 lines=40")
+        # if self.ext_terminal:
+        #     os.system("mode con cols=68 lines=40")
         print("Starting Game Tracker")
         # starts function run with CTRL + C Exit being possible without causing an error
         try:
