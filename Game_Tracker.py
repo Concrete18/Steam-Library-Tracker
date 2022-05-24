@@ -738,24 +738,6 @@ class Tracker(Helper):
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
         self.add_playstation_games(games)
 
-    def set_date_updated(self, game):
-        """
-        Sets `game`'s Date Updated cell to the current date.
-        """
-        self.games.update_cell(game, "Date Updated", self.formatted_date)
-
-    def set_hours_played(self, game_name, hours_played):
-        """
-        Sets `game`'s Hours Played cell to `hours_played`.
-        """
-        self.games.update_cell(game_name, "Hours Played", hours_played)
-
-    def set_play_status(self, game_name, play_status):
-        """
-        Sets `game`'s Play Status cell to `play_status`.
-        """
-        self.games.update_cell(game_name, "Play Status", play_status)
-
     def update_game(self, game_name, minutes_played, play_status):
         """
         Updates the games playtime and play status if they changed.
@@ -1061,6 +1043,24 @@ class Tracker(Helper):
         input()
         exit()
 
+    def set_date_updated(self, game):
+        """
+        Sets `game`'s Date Updated cell to the current date.
+        """
+        self.games.update_cell(game, "Date Updated", self.formatted_date)
+
+    def set_hours_played(self, game_name, hours_played):
+        """
+        Sets `game`'s Hours Played cell to `hours_played`.
+        """
+        self.games.update_cell(game_name, "Hours Played", hours_played)
+
+    def set_play_status(self, game_name, play_status):
+        """
+        Sets `game`'s Play Status cell to `play_status`.
+        """
+        self.games.update_cell(game_name, "Play Status", play_status)
+
     def custom_update_game(self):
         """
         Allows updating a game by typing in an as close a possible version of the game name.
@@ -1090,7 +1090,7 @@ class Tracker(Helper):
         # sets new hours if a number is given
         hours = input("\nHow many hours have you played?\n")
         if hours.isnumeric():
-            self.games.update_cell(game_idx, "Hours Played", float(hours))
+            self.set_hours_played(game_idx, float(hours))
             print(f"Updated to {hours} Hours")
             updated = True
         else:
@@ -1098,7 +1098,7 @@ class Tracker(Helper):
         # sets status if a status is given
         status = input("\nWhat is the new Status?\n").title()
         if status in self.play_status_choices.values():
-            self.games.update_cell(game_idx, "Play Status", status)
+            self.set_play_status(game_idx, status)
             print(f"Updated Play Status to {status}")
             updated = True
         else:
