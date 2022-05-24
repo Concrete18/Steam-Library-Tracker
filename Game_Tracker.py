@@ -479,12 +479,13 @@ class Tracker(Helper):
                     self.add_game(game_name, minutes_played, app_id, play_status)
             if self.removed:
                 print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
-                for item in self.removed:
-                    status = self.games.get_cell(item, "Play Status")
+                for game in self.removed:
+                    status = self.games.get_cell(game, "Play Status")
                     if status is not None:
-                        if "Removed" not in status:
-                            new_status = f"Removed | {status}"
-                            self.games.update_cell(item, "Play Status", new_status)
+                        if "Removed | " not in status:
+                            removed_status = f"Removed | {status}"
+                            self.games.update_cell(game, "Play Status", removed_status)
+                            self.set_date_updated(game)
             return True
 
     @staticmethod
@@ -656,16 +657,16 @@ class Tracker(Helper):
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
         if not force_run:
-            last_check = self.data["last_runs"]["steam_deck_check"]
-            last_check = self.string_to_date(last_check)
-            check_freq = self.data["settings"]["steam_deck_check_freq"]
+            last_check_string = self.data["last_runs"]["steam_deck_check"]
+            last_check = self.string_to_date(last_check_string)
             days_since = self.days_since(last_check)
+            check_freq = self.data["settings"]["steam_deck_check_freq"]
             if days_since < check_freq:
                 days_till_check = check_freq - days_since
                 print(f"\nNext Steam Deck Check in {days_till_check} days")
                 return
         print("\nSteam Deck Compatibility Check")
-        ignore_list = ["Grand Theft Auto: San Andreas"]
+        ignore_list = self.data["steam_deck_ignore_list"]
         updated_games = []
         empty_results = []
         for game_name in tqdm(
@@ -737,9 +738,27 @@ class Tracker(Helper):
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
         self.add_playstation_games(games)
 
+    def set_date_updated(self, game):
+        """
+        Sets `game`'s Date Updated cell to the current date.
+        """
+        self.games.update_cell(game, "Date Updated", self.formatted_date)
+
+    def set_hours_played(self, game_name, hours_played):
+        """
+        Sets `game`'s Hours Played cell to `hours_played`.
+        """
+        self.games.update_cell(game_name, "Hours Played", hours_played)
+
+    def set_play_status(self, game_name, play_status):
+        """
+        Sets `game`'s Play Status cell to `play_status`.
+        """
+        self.games.update_cell(game_name, "Play Status", play_status)
+
     def update_game(self, game_name, minutes_played, play_status):
         """
-        Updates the games playtime(if changed) and play status(if unset).
+        Updates the games playtime and play status if they changed.
         """
         previous_hours_played = self.games.get_cell(game_name, "Hours Played")
         current_hours_played = self.hours_played(minutes_played)
@@ -752,9 +771,9 @@ class Tracker(Helper):
         else:
             previous_hours_played = float(previous_hours_played)
         if current_hours_played > previous_hours_played:
-            self.games.update_cell(game_name, "Hours Played", current_hours_played)
-            self.games.update_cell(game_name, "Date Updated", self.formatted_date)
-            self.games.update_cell(game_name, "Play Status", play_status)
+            self.set_hours_played(game_name, current_hours_played)
+            self.set_date_updated(game_name)
+            self.set_play_status(game_name, play_status)
             self.total_games_updated += 1
             # updated game logging
             hours_played = current_hours_played - previous_hours_played
@@ -1085,7 +1104,7 @@ class Tracker(Helper):
         else:
             print("Left Play Status the same.")
         if updated:
-            self.games.update_cell(game_idx, "Date Updated", self.formatted_date)
+            self.set_date_updated(game_idx)
             self.excel.save_excel(backup=False)
         else:
             print("No changes made.")
