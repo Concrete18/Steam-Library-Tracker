@@ -44,6 +44,16 @@ class Tracker(Helper):
     }
     # misc
     json_path = Path("configs\playstation_games.json")
+    # columns
+    to_check = [
+        genre_column := "Genre",
+        pub_column := "Publishers",
+        dev_column := "Developers",
+        metacritic_column := "Metacritic",
+        time_to_beat_column := "Time To Beat in Hours",
+        release_column := "Release Year",
+        ea_column_name := "Early Access",
+    ]
 
     def config_check(self):
         """
@@ -264,6 +274,72 @@ class Tracker(Helper):
                 return final_dict
         return False
 
+    def set_release_year(self, game, release_year):
+        """
+        Sets `game`'s release year cell to `release_year`.
+        """
+        self.games.update_cell(game, self.release_column, release_year)
+
+    def set_genre(self, game, genre):
+        """
+        Sets `game`'s genre cell to `genre`.
+        """
+        self.games.update_cell(game, self.genre_column, genre)
+
+    def set_early_access(self, game, value):
+        """
+        Sets `game`'s early access cell to `value`.
+        """
+        self.games.update_cell(game, self.ea_column_name, value)
+
+    def set_publisher(self, game, value):
+        """
+        Sets `game`'s publisher cell to `value`.
+        """
+        self.games.update_cell(game, self.pub_column, value)
+
+    def set_developer(self, game, value):
+        """
+        Sets `game`'s developer cell to `value`.
+        """
+        self.games.update_cell(game, self.dev_column, value)
+
+    def set_metacritic(self, game, score):
+        """
+        Sets `game`'s metacritic score to `score`.
+        """
+        self.games.update_cell(game, self.metacritic_column, score)
+
+    def set_time_to_beat(self, game, time_to_beat):
+        """
+        Sets `game`'s Time to beat cell to `time_to_beat`.
+        """
+        self.games.update_cell(game, self.time_to_beat_column, time_to_beat)
+
+    def set_steam_deck(self, game, status):
+        """
+        Sets `game`'s Steam Deck Status to `status`.
+        """
+        self.games.update_cell(game, "Steam Deck Status", status)
+
+    def set_hours_played(self, game_name, hours_played):
+        """
+        Sets `game`'s Hours Played cell to `hours_played`.
+        """
+        self.games.update_cell(game_name, "Hours Played", hours_played)
+
+    def set_play_status(self, game_name, play_status):
+        """
+        Sets `game`'s Play Status cell to `play_status`.
+        """
+        self.games.update_cell(game_name, "Play Status", play_status)
+
+    def set_date_updated(self, game):
+        """
+        Sets `game`'s Date Updated cell to the current date.
+        """
+        self.games.update_cell(game, "Date Updated", self.formatted_date)
+
     def get_store_link(self, app_id):
         """
         Generates a steam store link to the games page using it's `app_id`.
@@ -278,16 +354,6 @@ class Tracker(Helper):
         """
         # creates checklist
         check_list = []
-        to_check = [
-            genre_column := "Genre",
-            pub_column := "Publishers",
-            dev_column := "Developers",
-            metacritic_column := "Metacritic",
-            time_to_beat_column := "Time To Beat in Hours",
-            release_year_column := "Release Year",
-            ea_column_name := "Early Access",
-            # steam_deck_viable_column_name := 'Steam Deck Viable',
-        ]
         for game in self.games.row_idx:
             play_status = self.games.get_cell(game, "Play Status")
             if check_status:
@@ -300,7 +366,7 @@ class Tracker(Helper):
                 ]:
                     continue
             if skip_filled:
-                for column in to_check:
+                for column in self.to_check:
                     cell = self.games.get_cell(game, column)
                     if cell == None and game not in check_list:
                         check_list.append(game)
@@ -327,20 +393,16 @@ class Tracker(Helper):
                 iterable=check_list, ascii=True, unit="games", dynamic_ncols=True
             ):
                 # How long to beat check
-                if not self.games.get_cell(game_name, time_to_beat_column):
+                if not self.games.get_cell(game_name, self.time_to_beat_column):
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat != None:
-                        self.games.update_cell(
-                            game_name, time_to_beat_column, time_to_beat
-                        )
+                        self.set_time_to_beat(game_name, time_to_beat)
                 # metacritic score check
-                if not self.games.get_cell(game_name, metacritic_column):
+                if not self.games.get_cell(game_name, self.metacritic_column):
                     platform = self.games.get_cell(game_name, "Platform")
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score != None:
-                        self.games.update_cell(
-                            game_name, metacritic_column, metacritic_score
-                        )
+                        self.set_metacritic_score(game_name, metacritic_score)
                 # gets steam info if an app id exists for the entry and the platform is Steam
                 app_id = self.games.get_cell(game_name, "App ID")
                 if not app_id:
@@ -350,60 +412,42 @@ class Tracker(Helper):
                 if steam_info and platform == "Steam":
                     # genre
                     if steam_info["genre"]:
-                        self.games.update_cell(
-                            game_name, genre_column, steam_info["genre"]
-                        )
+                        self.set_genre(game_name, steam_info["genre"])
                         # early access
                         if "Early Access" in steam_info["genre"]:
-                            self.games.update_cell(game_name, ea_column_name, "Yes")
+                            self.set_early_access(self, game, "Yes")
                         else:
-                            self.games.update_cell(game_name, ea_column_name, "No")
+                            self.set_early_access(self, game, "No")
                     else:
-                        self.games.update_cell(game_name, genre_column, "No Genre")
-                        self.games.update_cell(game_name, ea_column_name, "Unknown")
+                        self.set_genre(self, game, "No Genre")
+                        self.set_early_access(self, game, "Unknown")
                     # release year
                     if steam_info["release_date"]:
-                        self.games.update_cell(
-                            game_name,
-                            release_year_column,
-                            steam_info["release_date"],
-                        )
+                        self.set_release_year(game_name, steam_info["release_date"])
                     else:
-                        self.games.update_cell(
-                            game_name, release_year_column, "No Release Year"
-                        )
+                        self.set_release_year(game_name, "No Release Year")
                     # developer
                     if steam_info["developers"]:
-                        self.games.update_cell(
-                            game_name, dev_column, steam_info["developers"]
-                        )
+                        self.set_developer(game_name, steam_info["developers"])
                     else:
-                        self.games.update_cell(game_name, dev_column, "No Developer")
+                        self.set_developer(game_name, "No Developer")
                     # publishers
                     if steam_info["publishers"]:
-                        self.games.update_cell(
-                            game_name, pub_column, steam_info["publishers"]
-                        )
+                        self.set_publisher(game_name, steam_info["publishers"])
                     else:
-                        self.games.update_cell(game_name, pub_column, "No Publisher")
+                        self.set_publisher(game_name, "No Publisher")
                     # metacritic
                     if steam_info["metacritic"]:
-                        self.games.update_cell(
-                            game_name, metacritic_column, steam_info["metacritic"]
-                        )
+                        self.set_metacritic(game_name, steam_info["metacritic"])
                     else:
-                        if not self.games.get_cell(game_name, metacritic_column):
-                            self.games.update_cell(
-                                game_name, metacritic_column, "No Score"
-                            )
+                        if not self.games.get_cell(game_name, self.metacritic_column):
+                            self.set_metacritic(game_name, "No Score")
                 else:
-                    self.games.update_cell(
-                        game_name, release_year_column, "No Release Year"
-                    )
-                    self.games.update_cell(game_name, genre_column, "No Data")
-                    self.games.update_cell(game_name, dev_column, "No Data")
-                    self.games.update_cell(game_name, pub_column, "No Data")
-                    self.games.update_cell(game_name, ea_column_name, "No")
+                    self.set_release_year(game_name, "No Release Year")
+                    self.set_genre(self, game, "No Data")
+                    self.set_developer(game_name, "No Data")
+                    self.set_publisher(game_name, "No Data")
+                    self.set_early_access(game_name, "No")
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -484,7 +528,7 @@ class Tracker(Helper):
                     if status is not None:
                         if "Removed | " not in status:
                             removed_status = f"Removed | {status}"
-                            self.games.update_cell(game, "Play Status", removed_status)
+                            self.set_play_status(game, removed_status)
                             self.set_date_updated(game)
             return True
 
@@ -685,7 +729,7 @@ class Tracker(Helper):
             if not status:
                 empty_results.append(game_name)
                 continue
-            if self.games.update_cell(game_name, "Steam Deck Status", status):
+            if self.set_steam_deck(game_name, status):
                 info = f"{game_name} was updated to {status}"
                 updated_games.append(info)
         if updated_games:
@@ -713,7 +757,7 @@ class Tracker(Helper):
                 app_id, game_name, status = line.split("\t")
             elif len(values) == 4:
                 app_id, game_name, ignore, status = line.split("\t")
-            if self.games.update_cell(game_name, "Steam Deck Status", status):
+            if self.set_steam_deck(game_name, status):
                 print("failed on", game_name, status)
         self.excel.save_excel()
 
@@ -1042,24 +1086,6 @@ class Tracker(Helper):
             print("Invalid Argument Given.")
         input()
         exit()
-
-    def set_date_updated(self, game):
-        """
-        Sets `game`'s Date Updated cell to the current date.
-        """
-        self.games.update_cell(game, "Date Updated", self.formatted_date)
-
-    def set_hours_played(self, game_name, hours_played):
-        """
-        Sets `game`'s Hours Played cell to `hours_played`.
-        """
-        self.games.update_cell(game_name, "Hours Played", hours_played)
-
-    def set_play_status(self, game_name, play_status):
-        """
-        Sets `game`'s Play Status cell to `play_status`.
-        """
-        self.games.update_cell(game_name, "Play Status", play_status)
 
     def custom_update_game(self):
         """
