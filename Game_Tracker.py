@@ -402,7 +402,7 @@ class Tracker(Helper):
                     platform = self.games.get_cell(game_name, "Platform")
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score != None:
-                        self.set_metacritic_score(game_name, metacritic_score)
+                        self.set_metacritic(game_name, metacritic_score)
                 # gets steam info if an app id exists for the entry and the platform is Steam
                 app_id = self.games.get_cell(game_name, "App ID")
                 if not app_id:
@@ -415,12 +415,12 @@ class Tracker(Helper):
                         self.set_genre(game_name, steam_info["genre"])
                         # early access
                         if "Early Access" in steam_info["genre"]:
-                            self.set_early_access(self, game, "Yes")
+                            self.set_early_access(game, "Yes")
                         else:
-                            self.set_early_access(self, game, "No")
+                            self.set_early_access(game, "No")
                     else:
-                        self.set_genre(self, game, "No Genre")
-                        self.set_early_access(self, game, "Unknown")
+                        self.set_genre(game, "No Genre")
+                        self.set_early_access(game, "Unknown")
                     # release year
                     if steam_info["release_date"]:
                         self.set_release_year(game_name, steam_info["release_date"])
@@ -444,7 +444,7 @@ class Tracker(Helper):
                             self.set_metacritic(game_name, "No Score")
                 else:
                     self.set_release_year(game_name, "No Release Year")
-                    self.set_genre(self, game, "No Data")
+                    self.set_genre(game, "No Data")
                     self.set_developer(game_name, "No Data")
                     self.set_publisher(game_name, "No Data")
                     self.set_early_access(game_name, "No")
