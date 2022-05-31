@@ -477,23 +477,30 @@ class Tracker(Helper):
                 play_status = "Unplayed"
         return play_status
 
-    def refresh_steam_games(self, steam_id):
+    def get_owned_steam_games(self, steam_id=0):
         """
-        Gets games owned by the entered `steam_id`
-        and runs excel update/add functions.
+        ph
         """
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
             msg = "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
             steam_id = input(msg)
-        print("\nSteam Library Tracking")
         main_url = "http://api.steampowered.com/"
         api_action = "IPlayerService/GetOwnedGames/v0001/"
         url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
         options = "include_played_free_games=0&format=json&include_appinfo=1"
         combinded_url = f"{main_url}{api_action}{url_var}&{options}"
         self.api_sleeper("steam_owned_games")
-        response = self.request_url(combinded_url)
+        return self.request_url(combinded_url)
+
+    def refresh_steam_games(self, steam_id):
+        """
+        Gets games owned by the entered `steam_id`
+        and runs excel update/add functions.
+        """
+
+        print("\nSteam Library Tracking")
+        response = self.get_owned_steam_games(steam_id)
         if response:
             # checks for games that changed names or no longer exist
             self.removed = [
@@ -1252,3 +1259,5 @@ if __name__ == "__main__":
         # App.get_game_info(1290000, debug=True)
         pass
     App.run()
+
+# sudo ./steamgrid -steamdir /home/deck/.steam/steam -nonsteamonly --steamgriddb 7c8154d05bb091bb2d7e4533143bc568 --onlymissingartwork
