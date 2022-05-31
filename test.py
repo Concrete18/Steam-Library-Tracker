@@ -131,6 +131,7 @@ class TestStringMethods(unittest.TestCase):
         print("\n", "should_ignore")
         tester = Tracker()
         self.assertTrue(tester.should_ignore("Game Beta"))
+        self.assertTrue(tester.should_ignore("Squad - Public Testing"))
         self.assertFalse(tester.should_ignore("This is a great game"))
 
     def test_play_status(self):
