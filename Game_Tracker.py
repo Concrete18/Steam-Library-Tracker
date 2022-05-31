@@ -204,13 +204,13 @@ class Tracker(Helper):
                     info_dict["genre"] = ", ".join(
                         get_json_desc(dict[str(app_id)]["data"]["genres"])
                     )
+                    # early access
+                    if "Early Access" in info_dict["genre"]:
+                        info_dict["early_access"] = "Yes"
+                    else:
+                        info_dict["early_access"] = "No"
                 else:
                     info_dict["genre"] = None
-                # early access
-                if "Early Access" in info_dict["genre"]:
-                    info_dict["early_access"] = "Yes"
-                else:
-                    info_dict["early_access"] = "No"
                 # get metacritic
                 if "metacritic" in keys:
                     info_dict["metacritic"] = dict[str(app_id)]["data"]["metacritic"][
@@ -578,11 +578,12 @@ class Tracker(Helper):
             "PreOrder",
             "Pre-Order",
             "Soundtrack",
-            "Closed Test",
-            "Public Test",
             "Test Server",
             "Bonus Content",
             "Trial Edition",
+            "Closed Test",
+            "Public Test",
+            "Public Testing",
         ]
         name = name.lower()
         for string in keyword_ignore_list:
