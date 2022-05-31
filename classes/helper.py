@@ -127,10 +127,10 @@ class Helper(Logger):
         """
         time_played = f"{round(minutes_played, 1)} Minute(s)"
         hours_played = minutes_played / 60
-        if hours_played > 24:
+        if round(hours_played) >= 24:
             days = round(hours_played / 24, 1)
             time_played = f"{days} Day(s)"
-        elif minutes_played > 60:
+        elif minutes_played >= 60:
             hours = round(hours_played, 1)
             time_played = f"{hours} Hour(s)"
         return time_played
