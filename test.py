@@ -79,8 +79,12 @@ class TestStringMethods(unittest.TestCase):
         print("\n", "convert_time_passed")
         tester = Tracker()
         time_passed_tests = {
+            59: "59 Minute(s)",
+            60: "1.0 Hour(s)",
             800: "13.3 Hour(s)",
-            30: "30 Minute(s)",
+            1439: "1.0 Day(s)",
+            1440: "1.0 Day(s)",
+            1441: "1.0 Day(s)",
             2940: "2.0 Day(s)",
         }
         for minutes_played, answer in time_passed_tests.items():
