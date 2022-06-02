@@ -7,6 +7,24 @@ from logging.handlers import RotatingFileHandler
 import logging as lg
 
 
+def keyboard_interrupt(func):
+    """
+    Catches all KeyboardInterrupt exceptions.
+    Closes with a message and delayed program exit.
+    """
+
+    def wrapped(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except KeyboardInterrupt:
+            delay = 1
+            print(f"\nClosing in {delay} second(s)")
+            time.sleep(delay)
+            exit()
+
+    return wrapped
+
+
 class Logger:
 
     # logger setup

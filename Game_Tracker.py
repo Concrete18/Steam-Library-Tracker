@@ -10,6 +10,7 @@ import pandas as pd
 from classes.excel import Excel
 from classes.custom_sheet import CustomSheet
 from classes.helper import Helper
+from classes.helper import keyboard_interrupt
 
 
 class Tracker(Helper):
@@ -591,13 +592,14 @@ class Tracker(Helper):
             "Closed Test",
             "Public Test",
             "Public Testing",
+            "Directors' Commentary",
         ]
         name = name.lower()
         for string in keyword_ignore_list:
             if re.search(rf"\b{string.lower()}\b", name):
                 return True
         # ignore list
-        if name in self.ignore_list:
+        if self.unicode_remover(name) in self.ignore_list:
             return True
         return False
 
@@ -1227,6 +1229,7 @@ class Tracker(Helper):
             exit()
         choices[res - 1]["func"]()
 
+    @keyboard_interrupt
     def run(self):
         """
         Main run function.
@@ -1237,17 +1240,14 @@ class Tracker(Helper):
         #     os.system("mode con cols=68 lines=40")
         print("Starting Game Tracker")
         # starts function run with CTRL + C Exit being possible without causing an error
-        try:
-            self.refresh_steam_games(self.steam_id)
-            self.steam_deck_check()
-            self.check_playstation_json()
-            self.output_completion_data()
-            self.requests_loop()
-            self.steam_deck_data_checker()
-            self.pick_task()
-            self.excel.open_file_input()
-        except KeyboardInterrupt:
-            print("\nClosing")
+        self.refresh_steam_games(self.steam_id)
+        self.steam_deck_check()
+        self.check_playstation_json()
+        self.output_completion_data()
+        self.requests_loop()
+        self.steam_deck_data_checker()
+        self.pick_task()
+        self.excel.open_file_input()
 
 
 if __name__ == "__main__":
