@@ -95,7 +95,8 @@ class Tracker(Helper):
         results = HowLongToBeat().search(game_name)
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
-            time_to_beat = float(str(best_element.gameplay_main).replace("½", ".5"))
+            string_time = str(best_element.gameplay_main).replace("½", ".5")
+            time_to_beat = float(string_time)
             time_to_beat_unit = best_element.gameplay_main_unit
             if time_to_beat_unit == None:
                 return "No Data"
@@ -195,27 +196,23 @@ class Tracker(Helper):
                 print(dict)
                 exit()
             if "data" in dict[str(app_id)].keys():
-                keys = dict[str(app_id)]["data"].keys()
-                info_dict["name"] = dict[str(app_id)]["data"]["name"]
+                game_info = dict[str(app_id)]["data"]
+                keys = game_info.keys()
+                info_dict["name"] = game_info["name"]
                 # get developer
                 if "developers" in keys:
-                    info_dict["developers"] = ", ".join(
-                        dict[str(app_id)]["data"]["developers"]
-                    )
+                    info_dict["developers"] = ", ".join(game_info["developers"])
                 else:
                     info_dict["developers"] = None
                 # get publishers
                 if "publishers" in keys:
-                    info_dict["publishers"] = ", ".join(
-                        dict[str(app_id)]["data"]["publishers"]
-                    )
+                    info_dict["publishers"] = ", ".join(game_info["publishers"])
                 else:
                     info_dict["publishers"] = None
                 # get genre
                 if "genres" in keys:
-                    info_dict["genre"] = ", ".join(
-                        get_json_desc(dict[str(app_id)]["data"]["genres"])
-                    )
+                    genres = get_json_desc(game_info["genres"])
+                    info_dict["genre"] = ", ".join(genres)
                     # early access
                     if "Early Access" in info_dict["genre"]:
                         info_dict["early_access"] = "Yes"
@@ -225,30 +222,22 @@ class Tracker(Helper):
                     info_dict["genre"] = None
                 # get metacritic
                 if "metacritic" in keys:
-                    info_dict["metacritic"] = dict[str(app_id)]["data"]["metacritic"][
-                        "score"
-                    ]
+                    info_dict["metacritic"] = game_info["metacritic"]["score"]
                 else:
                     info_dict["metacritic"] = None
                 # get release year
                 if "release_date" in keys:
-                    release_date = dict[str(app_id)]["data"]["release_date"]["date"]
+                    release_date = game_info["release_date"]["date"]
                     release_date = self.get_year(release_date)
                     info_dict["release_date"] = release_date
                 else:
                     info_dict["release_date"] = None
                 # get price_info
                 if "price_overview" in keys:
-                    price = dict[str(app_id)]["data"]["price_overview"][
-                        "final_formatted"
-                    ]
-                    discount = dict[str(app_id)]["data"]["price_overview"][
-                        "discount_percent"
-                    ]
-                    on_sale = (
-                        dict[str(app_id)]["data"]["price_overview"]["discount_percent"]
-                        > 0
-                    )
+                    price_data = game_info["price_overview"]
+                    price = price_data["final_formatted"]
+                    discount = price_data["discount_percent"]
+                    on_sale = price_data["discount_percent"] > 0
                     info_dict["price"] = price
                     info_dict["discount"] = discount
                     info_dict["on_sale"] = on_sale
@@ -258,25 +247,22 @@ class Tracker(Helper):
                     info_dict["on_sale"] = None
                 # get linux compat
                 if "platforms" in keys:
-                    info_dict["linux_compat"] = dict[str(app_id)]["data"]["platforms"][
-                        "linux"
-                    ]
+                    info_dict["linux_compat"] = game_info["platforms"]["linux"]
                 else:
                     info_dict["linux_compat"] = False
                 if "categories" in keys:
-                    info_dict["categories"] = ", ".join(
-                        get_json_desc(dict[str(app_id)]["data"]["categories"])
-                    )
+                    categories = get_json_desc(game_info["categories"])
+                    info_dict["categories"] = ", ".join(categories)
                 else:
                     info_dict["categories"] = None
                 # drm info
                 if "drm_notice" in keys:
-                    info_dict["drm_notice"] = dict[str(app_id)]["data"]["drm_notice"]
+                    info_dict["drm_notice"] = game_info["drm_notice"]
                 else:
                     info_dict["drm_notice"] = None
                 # external account
                 if "ext_user_account_notice" in keys:
-                    info_dict["ext_user_account_notice"] = dict[str(app_id)]["data"][
+                    info_dict["ext_user_account_notice"] = game_info[
                         "ext_user_account_notice"
                     ]
                 else:
@@ -368,7 +354,12 @@ class Tracker(Helper):
 
     def requests_loop(self, skip_filled=1, check_status=0):
         """
-        Loops through games in row_idx and gets missing data for time to beat and Metacritic score.
+        Loops through games in row_idx and gets missing data for
+        time to beat, Metacritic score and additional game info from Steam API.
+
+        Use `skip_filled` to skip non blank entries.
+
+        Use `check_status` to opnly check games with a with specific play status.
         """
         # creates checklist
         check_list = []
@@ -524,7 +515,6 @@ class Tracker(Helper):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-
         print("\nSteam Library Tracking")
         response = self.get_owned_steam_games(steam_id)
         if response:
@@ -549,6 +539,7 @@ class Tracker(Helper):
                 if "playtime_linux_forever" in game.keys():
                     linux_minutes_played = game["playtime_linux_forever"]
                 cur_play_status = self.games.get_cell(game_name, "Play Status")
+                # checks if play status should change
                 play_status = self.play_status(cur_play_status, hours_played)
                 app_id = game["appid"]
                 if game_name in self.games.row_idx.keys():
@@ -956,6 +947,8 @@ class Tracker(Helper):
         prob_compl = "Probable Completion"
         hours = self.games.easy_indirect_cell(prob_compl, "Hours Played")
         ttb = self.games.easy_indirect_cell(prob_compl, "Time To Beat in Hours")
+        days_since = "Days Since Updated"
+        date_updated = self.games.easy_indirect_cell(days_since, "Date Updated")
         # sets excel column values
         column_info = {
             "My Rating": "",
@@ -973,6 +966,7 @@ class Tracker(Helper):
             "Linux Hours": linux_hours_played,
             "App ID": app_id,
             "Store Link": store_link_hyperlink,
+            "Days Since Updated": f"={date_updated}-TODAY()",
             "Date Updated": self.formatted_date,
             "Date Added": self.formatted_date,
         }
@@ -1260,10 +1254,15 @@ class Tracker(Helper):
         for count, choice in enumerate(choices):
             print(f"{count+1}. {choice['text']}")
         msg = "\nPress Enter without a number to open the excel sheet.\n"
-        res = self.ask_for_integer(msg, num_range=(1, len(choices)), allow_blank=True)
+        res = self.ask_for_integer(
+            msg,
+            num_range=(1, len(choices)),
+            allow_blank=True,
+        )
         if res == "":
             os.startfile(self.excel.file_path)
             exit()
+        # calls the function for the selected choice
         choices[res - 1]["func"]()
 
     @keyboard_interrupt
