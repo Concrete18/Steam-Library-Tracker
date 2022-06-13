@@ -38,29 +38,48 @@ class CustomSheet(Sheet):
             start_color="F2F2F2", end_color="F2F2F2", fill_type="solid"
         )
         for column in self.col_idx.keys():
-            cell = self.cur_sheet.cell(
-                row=self.row_idx[game_name], column=self.col_idx[column]
-            )
+            row_i = self.row_idx[game_name]
+            col_i = self.col_idx[column]
+            cell = self.cur_sheet.cell(row_i, col_i)
             # Percent
             if self.list_in_string(
-                ["percent", "discount", "Rating Comparison", "Probable Completion"],
+                [
+                    "percent",
+                    "discount",
+                    "Rating Comparison",
+                    "Probable Completion",
+                ],
                 column,
             ):
                 cell.style = "Percent"
+            # interger
+            elif self.list_in_string(
+                [
+                    "Days Since Updated",
+                ],
+                column,
+            ):
+                cell.number_format = "0"
+            # 1 decimal place
+            elif self.list_in_string(
+                [
+                    "hours played",
+                    # "Days Since Updated",
+                ],
+                column,
+            ):
+                cell.number_format = "#,#0.0"
             # currency
             elif self.list_in_string(["price", "msrp"], column):
                 cell.style = "Currency"
-            # 1 decimal place
-            if self.list_in_string(["hours played"], column):
-                cell.number_format = "#,#0.0"
+            # date
+            elif self.list_in_string(["last updated", "date"], column):
+                cell.number_format = "MM/DD/YYYY"
             # fill
             if self.list_in_string(
                 ["Rating Comparison", "Probable Completion"], column
             ):
                 cell.fill = light_grey_fill
-            # date
-            elif self.list_in_string(["last updated", "date"], column):
-                cell.number_format = "MM/DD/YYYY"
             # centering
             dont_center = [
                 "Name",
