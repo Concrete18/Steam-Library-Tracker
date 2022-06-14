@@ -27,7 +27,8 @@ class Tracker(Helper):
     steam_id = str(data["settings"]["steam_id"])
     excel_filename = data["settings"]["excel_filename"]
     playstation_data_link = data["settings"]["playstation_data_link"]
-    ignore_list = [string.lower() for string in data["ignore_list"]]
+    name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
+    appid_ignore_list = data["appid_ignore_list"]
     # class initgenre_column
     excel = Excel(excel_filename, log_file="configs/excel.log")
     games = CustomSheet(excel, "Game Name", sheet_name="Games")
@@ -143,7 +144,7 @@ class Tracker(Helper):
             review_score = "Page Error"
         return review_score
 
-    def get_app_id(self, game, app_list={}):
+    def get_appid(self, game, app_list={}):
         """
         Checks the Steam App list for a game
         and returns its app id if it exists as entered.
@@ -173,9 +174,9 @@ class Tracker(Helper):
         else:
             return "Invalid Date"
 
-    def get_game_info(self, app_id, debug=False):
+    def get_game_info(self, appid, debug=False):
         """
-        Gets game info with steam api using a `app_id`.
+        Gets game info with steam api using a `appid`.
         """
 
         def get_json_desc(data):
@@ -183,7 +184,7 @@ class Tracker(Helper):
 
         main_url = "https://store.steampowered.com/"
         api_action = "api/appdetails"
-        url_vars = f"?appids={app_id}&l=english"
+        url_vars = f"?appids={appid}&l=english"
         url = main_url + api_action + url_vars
         self.api_sleeper("steam_app_details")
         response = self.request_url(url)
@@ -195,8 +196,8 @@ class Tracker(Helper):
             if debug:
                 print(dict)
                 exit()
-            if "data" in dict[str(app_id)].keys():
-                game_info = dict[str(app_id)]["data"]
+            if "data" in dict[str(appid)].keys():
+                game_info = dict[str(appid)]["data"]
                 keys = game_info.keys()
                 info_dict["name"] = game_info["name"]
                 # get developer
@@ -344,13 +345,13 @@ class Tracker(Helper):
         """
         self.games.update_cell(game, "Date Updated", self.formatted_date)
 
-    def get_store_link(self, app_id):
+    def get_store_link(self, appid):
         """
-        Generates a steam store link to the games page using it's `app_id`.
+        Generates a steam store link to the games page using it's `appid`.
         """
-        if not app_id or app_id == "None":
+        if not appid or appid == "None":
             return False
-        return f"https://store.steampowered.com/app/{app_id}/"
+        return f"https://store.steampowered.com/app/{appid}/"
 
     def requests_loop(self, skip_filled=1, check_status=0):
         """
@@ -419,10 +420,10 @@ class Tracker(Helper):
                     if metacritic_score != None:
                         self.set_metacritic(game_name, metacritic_score)
                 # gets steam info if an app id exists and Steam is platform
-                app_id = self.games.get_cell(game_name, "App ID")
-                if not app_id:
-                    app_id = self.get_app_id(game_name)
-                steam_info = self.get_game_info(app_id)
+                appid = self.games.get_cell(game_name, "App ID")
+                if not appid:
+                    appid = self.get_appid(game_name)
+                steam_info = self.get_game_info(appid)
                 platform = self.games.get_cell(game_name, "Platform")
                 if not steam_info or platform != "Steam":
                     pass
@@ -529,7 +530,8 @@ class Tracker(Helper):
             self.added_games = []
             for game in response.json()["response"]["games"]:
                 game_name = game["name"]
-                if self.should_ignore(game_name):
+                appid = game["appid"]
+                if self.should_ignore(game_name, appid):
                     continue
                 # sets play time eariler so it only needs to be set up once
                 minutes_played = game["playtime_forever"]
@@ -541,7 +543,7 @@ class Tracker(Helper):
                 cur_play_status = self.games.get_cell(game_name, "Play Status")
                 # checks if play status should change
                 play_status = self.play_status(cur_play_status, hours_played)
-                app_id = game["appid"]
+                appid = game["appid"]
                 if game_name in self.games.row_idx.keys():
                     # removes existing games
                     if game_name in self.removed:
@@ -557,7 +559,7 @@ class Tracker(Helper):
                         game_name,
                         minutes_played,
                         linux_minutes_played,
-                        app_id,
+                        appid,
                         play_status,
                     )
             if self.removed:
@@ -603,35 +605,43 @@ class Tracker(Helper):
                 data = json.load(file)
         return True
 
-    def should_ignore(self, name):
+    def should_ignore(self, name=None, appid=None):
         """
         Returns True if `name` has any keywords found in it or
-        it is in the `ignore_list`.
+        it is in the `name_ignore_list`.
+        TODO Update this
         """
-        # keyword check
-        keyword_ignore_list = [
-            "demo",
-            "beta",
-            "Youtube",
-            "Playtest",
-            "PreOrder",
-            "Pre-Order",
-            "Soundtrack",
-            "Test Server",
-            "Bonus Content",
-            "Trial Edition",
-            "Closed Test",
-            "Public Test",
-            "Public Testing",
-            "Directors' Commentary",
-        ]
-        name = name.lower()
-        for string in keyword_ignore_list:
-            if re.search(rf"\b{string.lower()}\b", name):
-                return True
-        # ignore list
-        if self.unicode_remover(name) in self.ignore_list:
+        # return False if name and appid is not given
+        if not name and not appid:
+            return False
+        # appid ignore list
+        if appid and appid in self.appid_ignore_list:
             return True
+        if name:
+            # name ignore list
+            filtered_name = self.unicode_remover(name)
+            if filtered_name and filtered_name.lower() in self.name_ignore_list:
+                return True
+            # keyword check
+            keyword_ignore_list = [
+                "demo",
+                "beta",
+                "Youtube",
+                "Playtest",
+                "PreOrder",
+                "Pre-Order",
+                "Soundtrack",
+                "Test Server",
+                "Bonus Content",
+                "Trial Edition",
+                "Closed Test",
+                "Public Test",
+                "Public Testing",
+                "Directors' Commentary",
+            ]
+            for string in keyword_ignore_list:
+                if re.search(rf"\b{string.lower()}\b", name.lower()):
+                    return True
         return False
 
     @staticmethod
@@ -666,7 +676,7 @@ class Tracker(Helper):
             # skip if it any are true
             game_exists = [
                 # should be ignored
-                self.should_ignore(game_name),
+                self.should_ignore(name=game_name),
                 # added this session
                 game_name in added_games,
                 # already exist
@@ -714,14 +724,14 @@ class Tracker(Helper):
         self.data["last_runs"][name] = self.cur_date.strftime("%m/%d/%Y")
         self.save_json_output(self.data, self.config)
 
-    def steam_deck_compat(self, app_id):
+    def steam_deck_compat(self, appid):
         """
         Gets a games steam deck verification and other compatibility data
-        by `app_id`.
+        by `appid`.
         """
         main_url = "https://store.steampowered.com/"
         action_url = "saleaction/ajaxgetdeckappcompatibilityreport"
-        url_var = f"?nAppID={app_id}"
+        url_var = f"?nAppID={appid}"
         url = main_url + action_url + url_var
         data = self.request_url(url).json()
         if not data:
@@ -752,7 +762,7 @@ class Tracker(Helper):
                 print(f"\nNext Steam Deck Check in {days_till_check} days")
                 return
         print("\nSteam Deck Compatibility Check")
-        ignore_list = self.data["steam_deck_ignore_list"]
+        steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
         updated_games = []
         empty_results = []
         for game_name in tqdm(
@@ -761,12 +771,12 @@ class Tracker(Helper):
             unit="games",
             dynamic_ncols=True,
         ):
-            if game_name in ignore_list:
+            if game_name in steam_deck_ignore_list:
                 continue
-            app_id = self.games.get_cell(game_name, "App ID")
-            if not app_id:
+            appid = self.games.get_cell(game_name, "App ID")
+            if not appid:
                 continue
-            status = self.steam_deck_compat(app_id)
+            status = self.steam_deck_compat(appid)
             self.api_sleeper("steam_deck")
             if not status:
                 empty_results.append(game_name)
@@ -796,9 +806,9 @@ class Tracker(Helper):
             print(line.split("\t"))
             values = line.split("\t")
             if len(values) == 3:
-                app_id, game_name, status = line.split("\t")
+                appid, game_name, status = line.split("\t")
             elif len(values) == 4:
-                app_id, game_name, ignore, status = line.split("\t")
+                appid, game_name, ignore, status = line.split("\t")
             if self.set_steam_deck(game_name, status):
                 print("failed on", game_name, status)
         self.excel.save_excel()
@@ -906,7 +916,7 @@ class Tracker(Helper):
         game_name=None,
         minutes_played="",
         linux_minutes_played="",
-        app_id="",
+        appid="",
         play_status="",
         platform="Steam",
         save=False,
@@ -916,6 +926,7 @@ class Tracker(Helper):
 
         If save is True, it will save after adding the game.
         """
+        print(f"Adding {game_name}")
         play_status = "Unplayed"
         hours_played = ""
         if minutes_played:
@@ -927,7 +938,7 @@ class Tracker(Helper):
             linux_hours_played = self.hours_played(linux_minutes_played)
         # store link setup
         store_link_hyperlink = ""
-        store_link = self.get_store_link(app_id)
+        store_link = self.get_store_link(appid)
         if store_link:
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store Link")'
         # sets vr support value
@@ -958,19 +969,19 @@ class Tracker(Helper):
             "VR Support": vr_support,
             "Early Access": early_access,
             "Steam Deck Status": steam_deck_status,
-            "Time To Beat in Hours": self.get_time_to_beat(game_name),
-            "Metacritic": self.get_metacritic(game_name, "Steam"),
+            # "Time To Beat in Hours": self.get_time_to_beat(game_name),
+            # "Metacritic": self.get_metacritic(game_name, "Steam"),
             "Rating Comparison": f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
             "Probable Completion": f'=IFERROR({hours}/{ttb},"Missing Data")',
             "Hours Played": hours_played,
             "Linux Hours": linux_hours_played,
-            "App ID": app_id,
+            "App ID": appid,
             "Store Link": store_link_hyperlink,
             "Days Since Updated": f"={date_updated}-TODAY()",
             "Date Updated": self.formatted_date,
             "Date Added": self.formatted_date,
         }
-        steam_info = self.get_game_info(app_id)
+        steam_info = self.get_game_info(appid)
         if steam_info:
             columns = [
                 "Publishers",
@@ -1081,9 +1092,9 @@ class Tracker(Helper):
             my_rating = self.games.get_cell(game, "My Rating")
             if my_rating == None:
                 continue
-            app_id = self.games.get_cell(game, "App ID")
-            if my_rating >= rating_limit and app_id:
-                game_dict = self.get_game_info(app_id)
+            appid = self.games.get_cell(game, "App ID")
+            if my_rating >= rating_limit and appid:
+                game_dict = self.get_game_info(appid)
                 if not game_dict:
                     continue
                 game_dict["my_rating"] = my_rating
