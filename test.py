@@ -22,16 +22,16 @@ class TestStringMethods(unittest.TestCase):
         for date, bool in date_tests.items():
             self.assertEqual(tester.get_year(date), bool)
 
-    def test_get_app_id(self):
-        print("\n", "get_app_id")
+    def test_get_appid(self):
+        print("\n", "get_appid")
         tester = Tracker()
-        app_id_tests = {
+        appid_tests = {
             "Inscryption": 1092790,
             "Dishonored 2": 403640,
             "Deep Rock Galactic": 548430,
         }
-        for name, answer in app_id_tests.items():
-            self.assertEqual(tester.get_app_id(name), answer)
+        for name, answer in appid_tests.items():
+            self.assertEqual(tester.get_appid(name), answer)
 
     def test_get_game_info(self):
         print("\n", "get_game_info")
@@ -58,11 +58,11 @@ class TestStringMethods(unittest.TestCase):
         print("\n", "steam_deck_compat")
         tester = Tracker()
         passes = ["VERIFIED", "PLAYABLE", "UNSUPPORTED", "UNKNOWN"]
-        app_ids = [1145360, 1167630, 667970, 1579380]
-        for app_id in app_ids:
-            self.assertIn(tester.steam_deck_compat(app_id), passes)
-        invalid_app_id = 9**30
-        self.assertFalse(tester.steam_deck_compat(invalid_app_id))
+        appids = [1145360, 1167630, 667970, 1579380]
+        for appid in appids:
+            self.assertIn(tester.steam_deck_compat(appid), passes)
+        invalid_appid = 9**30
+        self.assertFalse(tester.steam_deck_compat(invalid_appid))
 
     def test_hours_played(self):
         print("\n", "hours_played")
@@ -109,11 +109,11 @@ class TestStringMethods(unittest.TestCase):
             "752590": "https://store.steampowered.com/app/752590/",
             "629730": "https://store.steampowered.com/app/629730/",
         }
-        for app_id, answer in store_link_tests.items():
-            self.assertEqual(tester.get_store_link(app_id), answer)
+        for appid, answer in store_link_tests.items():
+            self.assertEqual(tester.get_store_link(appid), answer)
             # tests that the url exists
             response = tester.request_url(answer)
-            self.assertIn(app_id, response.url)
+            self.assertIn(appid, response.url)
             self.assertTrue(response)
         # test for broken link that redirects due to app id not being found
         invalid_url = "https://store.steampowered.com/app/6546546545465484213211545730/"
@@ -134,9 +134,15 @@ class TestStringMethods(unittest.TestCase):
     def test_should_ignore(self):
         print("\n", "should_ignore")
         tester = Tracker()
-        self.assertTrue(tester.should_ignore("Game Beta"))
-        self.assertTrue(tester.should_ignore("Squad - Public Testing"))
-        self.assertFalse(tester.should_ignore("This is a great game"))
+        # return true
+        self.assertTrue(tester.should_ignore(name="Game Beta"))
+        self.assertTrue(tester.should_ignore(appid=61600))
+        self.assertTrue(tester.should_ignore(name="Squad - Public Testing"))
+        self.assertTrue(tester.should_ignore(name="Half-Life 2: Lost Coast"))
+        # return false
+        self.assertFalse(tester.should_ignore(appid=616846846846465465465465400))
+        self.assertFalse(tester.should_ignore(name="This is a great game"))
+        self.assertFalse(tester.should_ignore())
 
     def test_play_status(self):
         print("\n", "play_status")
