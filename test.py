@@ -134,15 +134,22 @@ class TestStringMethods(unittest.TestCase):
     def test_should_ignore(self):
         print("\n", "should_ignore")
         tester = Tracker()
-        # return true
-        self.assertTrue(tester.should_ignore(name="Game Beta"))
+        ignore_names = ["Half-Life 2: Lost Coast"]
+        tester.name_ignore_list = [string.lower() for string in ignore_names]
+        tester.appid_ignore_list = [61600, 12345864489]
+        # empty args return false
+        self.assertFalse(tester.should_ignore())
+        # appid return true
         self.assertTrue(tester.should_ignore(appid=61600))
+        self.assertTrue(tester.should_ignore(appid=12345864489))
+        # appid return false
+        self.assertFalse(tester.should_ignore(appid=345643))
+        # name return true
+        self.assertTrue(tester.should_ignore(name="Game Beta"))
         self.assertTrue(tester.should_ignore(name="Squad - Public Testing"))
         self.assertTrue(tester.should_ignore(name="Half-Life 2: Lost Coast"))
-        # return false
-        self.assertFalse(tester.should_ignore(appid=616846846846465465465465400))
+        # name return false
         self.assertFalse(tester.should_ignore(name="This is a great game"))
-        self.assertFalse(tester.should_ignore())
 
     def test_play_status(self):
         print("\n", "play_status")

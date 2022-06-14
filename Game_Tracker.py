@@ -626,21 +626,21 @@ class Tracker(Helper):
             keyword_ignore_list = [
                 "demo",
                 "beta",
-                "Youtube",
-                "Playtest",
-                "PreOrder",
-                "Pre-Order",
-                "Soundtrack",
-                "Test Server",
-                "Bonus Content",
-                "Trial Edition",
-                "Closed Test",
-                "Public Test",
-                "Public Testing",
-                "Directors' Commentary",
+                "youtube",
+                "playtest",
+                "preorder",
+                "pre-order",
+                "soundtrack",
+                "yest server",
+                "Bonus content",
+                "yrial edition",
+                "vlosed test",
+                "public test",
+                "public testing",
+                "directors' commentary",
             ]
             for string in keyword_ignore_list:
-                if re.search(rf"\b{string.lower()}\b", name.lower()):
+                if re.search(rf"\b{string}\b", name.lower()):
                     return True
         return False
 
