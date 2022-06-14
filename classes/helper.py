@@ -293,5 +293,6 @@ class Helper(Logger):
 
 if __name__ == "__main__":
     App = Helper()
-    response = App.request_url("https://store.steampowered.com/app/752564654590/")
-    print(response.url)
+    # response = App.request_url("https://store.steampowered.com/app/752564654590/")
+    # print(response.url)
+    # print(App.unicode_remover("Half-Life 2: Lost Coast"))
