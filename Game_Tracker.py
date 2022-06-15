@@ -574,7 +574,7 @@ class Tracker(Helper):
             return True
 
     @staticmethod
-    def hash_file(file_path, buf_size=65536):
+    def hash_file(file_path, buf_size: int = 65536):
         """
         Creates a hash for the given `file_path`.
         """
@@ -605,11 +605,16 @@ class Tracker(Helper):
                 data = json.load(file)
         return True
 
-    def should_ignore(self, name=None, appid=None):
+    def should_ignore(self, name: str = None, appid: int = None) -> bool:
         """
-        Returns True if `name` has any keywords found in it or
-        it is in the `name_ignore_list`.
-        TODO Update this
+        Checks if the item should be ignored based on name or appid.
+
+        Returns False if neither are given and
+        priortizes checking appid if both are given.
+
+        `Name` check looks for keywords and if the name is in the name_ignore_list.
+
+        `Appid` check looks for the appid in the appid_ignore_list.
         """
         # return False if name and appid is not given
         if not name and not appid:
