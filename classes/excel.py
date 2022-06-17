@@ -1,12 +1,9 @@
 from logging.handlers import RotatingFileHandler
 import logging as lg
+import shutil, os, sys, time, openpyxl, zipfile
 from pathlib import Path
-from time import sleep
 import datetime as dt
 import pandas as pd
-import shutil, os, sys
-import openpyxl
-import zipfile
 
 
 class Excel:
@@ -118,7 +115,7 @@ class Excel:
                             if use_print:
                                 print("Make sure the excel sheet is closed.", end="\r")
                             first_run = False
-                        sleep(1)
+                        time.sleep(1)
             except KeyboardInterrupt:
                 self.log(f"Save Cancelled", "warning")
                 if use_print:
@@ -161,7 +158,9 @@ class Excel:
 
 
 class Sheet:
-    def __init__(self, excel_object, column_name, sheet_name=None) -> None:
+    def __init__(
+        self, excel_object, column_name, sheet_name=None, options=None
+    ) -> None:
         """
         Allows interacting with any one sheet within the excel_object given.
 
@@ -189,6 +188,23 @@ class Sheet:
         self.row_idx = self.get_row_index(self.column_name)
         # error checking
         self.missing_columns = []
+        # formatting options
+        self.options = options
+        if not self.options:
+            self.options = {
+                "shrink_to_fit_cell": True,
+                "fill": [],
+                "percent": [
+                    "%",
+                    "Percent",
+                ],
+                "currency": ["Price", "MSRP", "Cost"],
+                "integer": ["ID", "Number"],
+                "count_days": ["Days Till", "Days Since"],
+                "date": ["Last Updated", "Date"],
+                "decimal": ["Hours"],
+                "not_centered": ["Name"],
+            }
 
     @staticmethod
     def indirect_cell(left=0, right=0, manual_set=0):
@@ -299,7 +315,7 @@ class Sheet:
         """
         self.row_idx[col_key] = self.cur_sheet._current_row
 
-    def update_cell(self, row_val, col_val, new_val, blank=False, save=False):
+    def update_cell(self, row_val, col_val, new_val, replace=True, save=False):
         """
         Updates the cell based on `row_val` and `col_val` to `new_val`.
 
@@ -307,16 +323,17 @@ class Sheet:
 
         Saves after change if `save` is True.
         """
-        row_key, column_key = self.get_row_col_index(row_val, col_val)
-        if row_key is not None and column_key is not None:
-            current_value = self.cur_sheet.cell(row=row_key, column=column_key).value
-            if blank and current_value is not None:
+        row_key, col_key = self.get_row_col_index(row_val, col_val)
+        if row_key is not None and col_key is not None:
+            cur_val = self.cur_sheet.cell(row=row_key, column=col_key).value
+            # returns False if replace is False and the current value is not none
+            if not replace and cur_val is not None:
                 return False
             # updates only if cell will actually be changed
             if new_val == "":
                 new_val = None
-            if current_value != new_val:
-                self.cur_sheet.cell(row=row_key, column=column_key).value = new_val
+            if cur_val != new_val:
+                self.cur_sheet.cell(row=row_key, column=col_key).value = new_val
                 if save:
                     self.excel.save_excel(use_print=False, backup=False)
                 else:
@@ -379,3 +396,174 @@ class Sheet:
         self.cur_sheet.delete_column(column)
         self.excel.changes_made = True
         return True
+
+    # formatting
+
+    def set_border(self, cell, style="thin"):
+        """
+        ph
+        """
+        border = openpyxl.styles.Border(
+            left=openpyxl.styles.Side(style=style),
+            right=openpyxl.styles.Side(style=style),
+            top=openpyxl.styles.Side(style=style),
+            bottom=openpyxl.styles.Side(style=style),
+            outline=True,
+        )
+        cell.border = border
+
+    def set_align(self, cell, hori="left", vert="center", shrink_to_fit=False):
+        """
+        ph
+        """
+        new_align = openpyxl.styles.alignment.Alignment(
+            horizontal=hori,
+            vertical=vert,
+            text_rotation=0,
+            wrap_text=False,
+            shrink_to_fit=shrink_to_fit,
+            indent=0,
+        )
+        cell.alignment = new_align
+
+    def set_fill(self, cell, color="000000", fill_type="solid"):
+        """
+        ph
+        """
+        new_fill = openpyxl.styles.PatternFill(
+            start_color=color,
+            end_color=color,
+            fill_type=fill_type,
+        )
+        cell.fill = new_fill
+
+    def set_style(self, cell, format="general"):
+        """
+        ph
+        """
+        if format == "percent":
+            cell.style = "Percent"
+        elif format == "currency":
+            cell.style = "Currency"
+        else:
+            cell.style = "General"
+
+    def set_number_format(self, cell, format):
+        """
+        ph
+        """
+        if format == "integer":
+            cell.number_format = "0"
+        elif format == "decimal":
+            cell.number_format = "#,#0.0"
+
+    def set_date_format(self, cell, format="MM/DD/YYYY"):
+        """
+        ph
+        """
+        if format == "MM/DD/YYYY":
+            cell.number_format = "MM/DD/YYYY"
+
+    def format_picker(self, column):
+        """
+        ph
+        """
+        actions = []
+        # centering
+        if "not_centered" in self.options.keys():
+            if column in self.options["not_centered"]:
+                actions.append("left_align")
+            else:
+                actions.append("center_align")
+        # fill
+        if "black_fill" in self.options.keys():
+            if self.list_in_string(self.options["fill"], column):
+                actions.append("black_fill")
+        if "grey_fill" in self.options.keys():
+            if self.list_in_string(self.options["fill"], column):
+                actions.append("light_grey_fill")
+        # percent
+        if "percent" in self.options.keys():
+            if self.list_in_string(self.options["percent"], column):
+                actions.append("percent")
+                return actions
+        # currency
+        if "currency" in self.options.keys():
+            if self.list_in_string(self.options["currency"], column):
+                actions.append("currency")
+                return actions
+        if "integer" in self.options.keys():
+            if column in self.options["integer"]:
+                actions.append("integer")
+                return actions
+        # decimal
+        # TODO allow variable decimal place
+        if "decimal" in self.options.keys():
+            if column in self.options["decimal"]:
+                actions.append("decimal")
+                return actions
+        # countdown
+        if "count_days" in self.options.keys():
+            if column in self.options["count_days"]:
+                actions.append("count_days")
+                return actions
+        # dates
+        if "date" in self.options.keys():
+            if self.list_in_string(self.options["date"], column):
+                actions.append("date")
+                return actions
+        return actions
+
+    def format_cells(self, column_name=None, column_list=None):
+        """
+        Auto formats each cell for the given row using `column_name`.
+        """
+        # return early if options is not valid
+        if not self.options:
+            return False
+        column_list = self.col_idx.keys()
+        for column in column_list:
+            row_i = self.row_idx[column_name]
+            col_i = self.col_idx[column]
+            cell = self.cur_sheet.cell(row=row_i, column=col_i)
+
+            # gets list of actions to complete on cell
+            actions = self.format_picker(cell, column)
+
+            # TODO decide if switching to dictionary with each as
+            # key to action is best instead
+
+            # border
+            if "default_border" in actions:
+                self.set_border(cell)
+            # alignment
+            if "left_align" in actions:
+                self.set_align(cell, hori="left", vert="center")
+            elif "center_align" in actions:
+                self.set_align(cell, hori="center", vert="center")
+            elif "right_align" in actions:
+                self.set_align(cell, hori="right", vert="center")
+            # fill
+            if "black_fill" in actions:
+                self.set_fill(cell, color="fffff")
+            elif "light_grey_fill" in actions:
+                self.set_fill(cell, color="F2F2F2")
+            # percent
+            if "percent" in actions:
+                self.set_style(cell, format="percent")
+            # currency
+            elif "currency" in actions:
+                self.set_style(cell, format="currency")
+            # integer
+            elif "integer" in actions:
+                self.set_number_format(cell, format="integer")
+            # decimal
+            elif "decimal" in actions:
+                # TODO add decimal increase/decrease
+                self.set_number_format(cell, format="decimal")
+            # countdown
+            elif "count_days" in actions:
+                cell.number_format = '# "Days"'
+            # dates
+            elif "default_border" in actions:
+                self.set_date_format(cell, "")
