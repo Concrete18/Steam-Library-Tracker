@@ -8,8 +8,7 @@ import datetime as dt
 import pandas as pd
 
 # classes
-from classes.excel import Excel
-from classes.custom_sheet import CustomSheet
+from classes.excel import Excel, Sheet
 from classes.helper import Helper
 from classes.helper import keyboard_interrupt
 
@@ -29,9 +28,33 @@ class Tracker(Helper):
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     appid_ignore_list = data["appid_ignore_list"]
-    # class initgenre_column
+    # class init
+    options = {
+        "shrink_to_fit_cell": True,
+        "fill": ["Rating Comparison", "Probable Completion"],
+        "percent": [
+            "%",
+            "Percent",
+            "Discount",
+            "Rating Comparison",
+            "Probable Completion",
+        ],
+        "currency": ["Price", "MSRP", "Cost"],
+        "integer": ["ID", "Number"],
+        "count_days": ["Days Till Release", "Days Since Update"],
+        "date": ["Last Updated", "Date"],
+        "decimal": ["Hours Played"],
+        "not_centered": [
+            "Name",
+            "Tags",
+            "Game Name",
+            "Developers",
+            "Publishers",
+            "Genre",
+        ],
+    }
     excel = Excel(excel_filename, log_file="configs/excel.log")
-    games = CustomSheet(excel, "Game Name", sheet_name="Games")
+    games = Sheet(excel, "Game Name", sheet_name="Games", options=options)
     # current date and time setup
     cur_date = dt.datetime.now()
     formatted_date = cur_date.strftime("%#m/%#d/%Y")
@@ -215,6 +238,7 @@ class Tracker(Helper):
                     genres = get_json_desc(game_info["genres"])
                     info_dict["genre"] = ", ".join(genres)
                     # early access
+                    # TODO does not update when changed
                     if "Early Access" in info_dict["genre"]:
                         info_dict["early_access"] = "Yes"
                     else:
@@ -963,7 +987,7 @@ class Tracker(Helper):
         prob_compl = "Probable Completion"
         hours = self.games.easy_indirect_cell(prob_compl, "Hours Played")
         ttb = self.games.easy_indirect_cell(prob_compl, "Time To Beat in Hours")
-        days_since = "Days Since Updated"
+        days_since = "Days Since Update"
         date_updated = self.games.easy_indirect_cell(days_since, "Date Updated")
         # sets excel column values
         column_info = {
@@ -974,15 +998,15 @@ class Tracker(Helper):
             "VR Support": vr_support,
             "Early Access": early_access,
             "Steam Deck Status": steam_deck_status,
-            # "Time To Beat in Hours": self.get_time_to_beat(game_name),
-            # "Metacritic": self.get_metacritic(game_name, "Steam"),
+            "Time To Beat in Hours": self.get_time_to_beat(game_name),
+            "Metacritic": self.get_metacritic(game_name, "Steam"),
             "Rating Comparison": f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
             "Probable Completion": f'=IFERROR({hours}/{ttb},"Missing Data")',
             "Hours Played": hours_played,
             "Linux Hours": linux_hours_played,
             "App ID": appid,
             "Store Link": store_link_hyperlink,
-            "Days Since Updated": f"={date_updated}-TODAY()",
+            "Days Since Update": f"={date_updated}-TODAY()",
             "Date Updated": self.formatted_date,
             "Date Added": self.formatted_date,
         }
