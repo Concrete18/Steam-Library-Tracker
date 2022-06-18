@@ -1,6 +1,7 @@
 from logging.handlers import RotatingFileHandler
 import logging as lg
 import shutil, os, sys, time, openpyxl, zipfile
+from openpyxl.styles import Border, Alignment, PatternFill
 from pathlib import Path
 import datetime as dt
 import pandas as pd
@@ -79,7 +80,7 @@ class Excel:
         )
         return df
 
-    def save_excel(self, use_print=True, backup=True):
+    def save_excel(self, use_print=True, force_save=False, backup=True):
         """
         Backs up the excel file before saving the changes if `backup` is True.
 
@@ -88,7 +89,7 @@ class Excel:
         `use_print` determines if info for the saving progress will be printed.
         """
         # only saves if any changes were made
-        if self.changes_made:
+        if self.changes_made or force_save:
             try:
                 # backups the file before saving.
                 if backup:
@@ -403,39 +404,23 @@ class Sheet:
         """
         ph
         """
-        border = openpyxl.styles.Border(
+        cell.border = Border(
             left=openpyxl.styles.Side(style=style),
             right=openpyxl.styles.Side(style=style),
             top=openpyxl.styles.Side(style=style),
             bottom=openpyxl.styles.Side(style=style),
             outline=True,
         )
-        cell.border = border
-
-    def set_align(self, cell, hori="left", vert="center", shrink_to_fit=False):
-        """
-        ph
-        """
-        new_align = openpyxl.styles.alignment.Alignment(
-            horizontal=hori,
-            vertical=vert,
-            text_rotation=0,
-            wrap_text=False,
-            shrink_to_fit=shrink_to_fit,
-            indent=0,
-        )
-        cell.alignment = new_align
 
     def set_fill(self, cell, color="000000", fill_type="solid"):
         """
         ph
         """
-        new_fill = openpyxl.styles.PatternFill(
+        cell.fill = PatternFill(
             start_color=color,
             end_color=color,
             fill_type=fill_type,
         )
-        cell.fill = new_fill
 
     def set_style(self, cell, format="general"):
         """
@@ -448,39 +433,40 @@ class Sheet:
         else:
             cell.style = "General"
 
-    def set_number_format(self, cell, format):
-        """
-        ph
-        """
-        if format == "integer":
-            cell.number_format = "0"
-        elif format == "decimal":
-            cell.number_format = "#,#0.0"
-
     def set_date_format(self, cell, format="MM/DD/YYYY"):
         """
-        ph
+        Sets a cell to a date format.
         """
         if format == "MM/DD/YYYY":
             cell.number_format = "MM/DD/YYYY"
 
     def format_picker(self, column):
         """
-        ph
+        Determines what formatting to apply to a column.
         """
         actions = []
-        # centering
-        if "not_centered" in self.options.keys():
-            if column in self.options["not_centered"]:
-                actions.append("left_align")
+        # border
+        actions.append("default_border")
+        # alignment
+        alignment = None
+        if "left_align" in self.options.keys():
+            if column in self.options["left_align"]:
+                alignment = "left_align"
+            else:
+                alignment = "center_align"
+        if "right_align" in self.options.keys():
+            if column in self.options["right_align"]:
+                actions.append("right_align")
             else:
                 actions.append("center_align")
+        if alignment:
+            actions.append(alignment)
         # fill
         if "black_fill" in self.options.keys():
-            if self.list_in_string(self.options["fill"], column):
+            if self.list_in_string(self.options["black_fill"], column):
                 actions.append("black_fill")
-        if "grey_fill" in self.options.keys():
-            if self.list_in_string(self.options["fill"], column):
+        elif "light_grey_fill" in self.options.keys():
+            if self.list_in_string(self.options["light_grey_fill"], column):
                 actions.append("light_grey_fill")
         # percent
         if "percent" in self.options.keys():
@@ -514,56 +500,51 @@ class Sheet:
                 return actions
         return actions
 
-    def format_cells(self, column_name=None, column_list=None):
+    def format_cells(self):
         """
         Auto formats each cell for the given row using `column_name`.
         """
         # return early if options is not valid
         if not self.options:
             return False
-        column_list = self.col_idx.keys()
-        for column in column_list:
-            row_i = self.row_idx[column_name]
+        columns = self.col_idx.keys()
+        for column in columns:
+            actions = self.format_picker(column)
+            # runs through all cells in a column and runs the actions
             col_i = self.col_idx[column]
-            cell = self.cur_sheet.cell(row=row_i, column=col_i)
-
-            # gets list of actions to complete on cell
-            actions = self.format_picker(cell, column)
-
-            # TODO decide if switching to dictionary with each as
-            # key to action is best instead
-
-            # border
-            if "default_border" in actions:
-                self.set_border(cell)
-            # alignment
-            if "left_align" in actions:
-                self.set_align(cell, hori="left", vert="center")
-            elif "center_align" in actions:
-                self.set_align(cell, hori="center", vert="center")
-            elif "right_align" in actions:
-                self.set_align(cell, hori="right", vert="center")
-            # fill
-            if "black_fill" in actions:
-                self.set_fill(cell, color="fffff")
-            elif "light_grey_fill" in actions:
-                self.set_fill(cell, color="F2F2F2")
-            # percent
-            if "percent" in actions:
-                self.set_style(cell, format="percent")
-            # currency
-            elif "currency" in actions:
-                self.set_style(cell, format="currency")
-            # integer
-            elif "integer" in actions:
-                self.set_number_format(cell, format="integer")
-            # decimal
-            elif "decimal" in actions:
-                # TODO add decimal increase/decrease
-                self.set_number_format(cell, format="decimal")
-            # countdown
-            elif "count_days" in actions:
-                cell.number_format = '# "Days"'
-            # dates
-            elif "default_border" in actions:
-                self.set_date_format(cell, "")
+            for row_i in self.row_idx.values():
+                cell = self.cur_sheet.cell(row=row_i, column=col_i)
+                # percent
+                if "percent" in actions:
+                    self.set_style(cell, format="percent")
+                # currency
+                elif "currency" in actions:
+                    self.set_style(cell, format="currency")
+                # integer
+                elif "integer" in actions:
+                    cell.number_format = "0"
+                # decimal
+                elif "decimal" in actions:
+                    # TODO add decimal increase/decrease
+                    cell.number_format = "#,#0.0"
+                # countdown
+                elif "count_days" in actions:
+                    cell.number_format = '# "Days"'
+                # dates
+                elif "default_border" in actions:
+                    self.set_date_format(cell, "")
+                # border
+                if "default_border" in actions:
+                    self.set_border(cell)
+                # alignment
+                if "left_align" in actions:
+                    cell.alignment = Alignment(horizontal="left")
+                elif "center_align" in actions:
+                    cell.alignment = Alignment(horizontal="center")
+                elif "right_align" in actions:
+                    cell.alignment = Alignment(horizontal="right")
+                # fill
+                if "black_fill" in actions:
+                    self.set_fill(cell, color="fffff")
+                elif "light_grey_fill" in actions:
+                    self.set_fill(cell, color="F2F2F2")

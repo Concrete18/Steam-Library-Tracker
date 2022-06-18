@@ -31,7 +31,7 @@ class Tracker(Helper):
     # class init
     options = {
         "shrink_to_fit_cell": True,
-        "fill": ["Rating Comparison", "Probable Completion"],
+        "light_grey_fill": ["Rating Comparison", "Probable Completion"],
         "percent": [
             "%",
             "Percent",
@@ -40,17 +40,36 @@ class Tracker(Helper):
             "Probable Completion",
         ],
         "currency": ["Price", "MSRP", "Cost"],
-        "integer": ["ID", "Number"],
+        "integer": ["App ID", "Number", "Release Year"],
         "count_days": ["Days Till Release", "Days Since Update"],
         "date": ["Last Updated", "Date"],
-        "decimal": ["Hours Played"],
-        "not_centered": [
-            "Name",
-            "Tags",
+        "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
+        "left_align": [
             "Game Name",
             "Developers",
             "Publishers",
             "Genre",
+        ],
+        "center_align": [
+            "My Rating",
+            "Metacritic",
+            "Rating Comparison",
+            "Play Status",
+            "Platform",
+            "VR Support",
+            "Early Access",
+            "Platform",
+            "Steam Deck Status",
+            "Hours Played",
+            "Linux Hours",
+            "Time To Beat in Hours",
+            "Probable Completion",
+            "Store Link",
+            "Release Year",
+            "App ID",
+            "Days Since Update",
+            "Date Updated",
+            "Date Added",
         ],
     }
     excel = Excel(excel_filename, log_file="configs/excel.log")
@@ -466,7 +485,7 @@ class Tracker(Helper):
                 if steam_info["release_date"]:
                     self.set_release_year(game_name, steam_info["release_date"])
                 else:
-                    self.set_release_year(game_name, "No Release Year")
+                    self.set_release_year(game_name, "No Year")
                 # developer
                 if steam_info["developers"]:
                     self.set_developer(game_name, steam_info["developers"])
@@ -484,7 +503,7 @@ class Tracker(Helper):
                     if not self.games.get_cell(game_name, self.metacritic_col):
                         self.set_metacritic(game_name, "No Score")
             else:
-                self.set_release_year(game_name, "No Release Year")
+                self.set_release_year(game_name, "No Year")
                 self.set_genre(game, "No Data")
                 self.set_developer(game_name, "No Data")
                 self.set_publisher(game_name, "No Data")
@@ -901,7 +920,6 @@ class Tracker(Helper):
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
             self.logger.info(msg)
-        self.games.format_cells(game_name)
 
     def manually_add_game(self):
         """
@@ -1026,7 +1044,6 @@ class Tracker(Helper):
         self.games.add_new_line(column_info, game_name)
         self.added_games.append(game_name)
         self.total_games_added += 1
-        self.games.format_cells(game_name)
         if save:
             print("saved")
             self.excel.save_excel()
@@ -1042,6 +1059,7 @@ class Tracker(Helper):
         if self.total_games_updated > 0:
             print(f"\nGames Updated: {self.total_games_updated}")
         if self.excel.changes_made:
+            self.games.format_cells()
             self.excel.save_excel()
         else:
             print("\nNo Steam games were added or updated.")
@@ -1330,5 +1348,8 @@ if __name__ == "__main__":
         # print(App.get_steam_id('Varnock'))
         # App.steam_deck_check()
         # App.get_game_info(1290000, debug=True)
+        # exit()
         pass
+    # App.games.format_cells()
+    # App.excel.save_excel(force_save=True)
     App.run()
