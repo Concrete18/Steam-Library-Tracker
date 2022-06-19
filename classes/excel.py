@@ -189,7 +189,10 @@ class Sheet:
         self.row_idx = self.get_row_index(self.column_name)
         # error checking
         self.missing_columns = []
-        # formatting options
+        # formatting init
+        # column format actions init
+        self.column_formats = None
+        # options
         self.options = options
         if not self.options:
             self.options = {
@@ -500,51 +503,93 @@ class Sheet:
                 return actions
         return actions
 
-    def format_cells(self):
+    def get_column_formats(self):
         """
-        Auto formats each cell for the given row using `column_name`.
+        Gets the formats to use for each column.
+        """
+        format_actions = {}
+        for column in self.col_idx.keys():
+            actions = self.format_picker(column)
+            if column not in format_actions.keys():
+                format_actions[column] = actions
+        return format_actions
+
+    def format_header(self):
+        """
+        ph
+        """
+        # TODO finish format_header function
+        for action in self.options:
+            pass
+        for column in self.col_idx.keys():
+            col_i = self.col_idx[column]
+            self.format_cell(self, column, 1, col_i)
+
+    def format_cell(self, column, row_i, col_i):
+        """
+        ph
+        """
+        cell = self.cur_sheet.cell(row=row_i, column=col_i)
+        # gets format_actions if it has not be set yet
+        if not self.column_formats:
+            self.column_formats = self.get_column_formats()
+        formatting = self.column_formats[column]
+        # percent
+        if "percent" in formatting:
+            self.set_style(cell, format="percent")
+        # currency
+        elif "currency" in formatting:
+            self.set_style(cell, format="currency")
+        # integer
+        elif "integer" in formatting:
+            cell.number_format = "0"
+        # decimal
+        elif "decimal" in formatting:
+            # TODO add decimal increase/decrease
+            cell.number_format = "#,#0.0"
+        # countdown
+        elif "count_days" in formatting:
+            cell.number_format = '# "Days"'
+        # dates
+        elif "default_border" in formatting:
+            self.set_date_format(cell, "")
+        # border
+        if "default_border" in formatting:
+            self.set_border(cell)
+        # alignment
+        if "left_align" in formatting:
+            cell.alignment = Alignment(horizontal="left")
+        elif "center_align" in formatting:
+            cell.alignment = Alignment(horizontal="center")
+        elif "right_align" in formatting:
+            cell.alignment = Alignment(horizontal="right")
+        # fill
+        if "black_fill" in formatting:
+            self.set_fill(cell, color="fffff")
+        elif "light_grey_fill" in formatting:
+            self.set_fill(cell, color="F2F2F2")
+
+    def format_row(self, row_identifier):
+        """
+        ph
+        """
+        for column in self.col_idx.keys():
+            row_i = self.row_idx[row_identifier]
+            col_i = self.col_idx[column]
+            self.format_cell(self, column, row_i, col_i)
+
+    def format_all_cells(self):
+        """
+        Auto formats all cells.
         """
         # return early if options is not valid
         if not self.options:
             return False
-        columns = self.col_idx.keys()
-        for column in columns:
-            actions = self.format_picker(column)
+        self.format_header()
+        for column in self.col_idx.keys():
             # runs through all cells in a column and runs the actions
+            # TODO check for a way to make it use openpyxl more
             col_i = self.col_idx[column]
             for row_i in self.row_idx.values():
                 cell = self.cur_sheet.cell(row=row_i, column=col_i)
-                # percent
-                if "percent" in actions:
-                    self.set_style(cell, format="percent")
-                # currency
-                elif "currency" in actions:
-                    self.set_style(cell, format="currency")
-                # integer
-                elif "integer" in actions:
-                    cell.number_format = "0"
-                # decimal
-                elif "decimal" in actions:
-                    # TODO add decimal increase/decrease
-                    cell.number_format = "#,#0.0"
-                # countdown
-                elif "count_days" in actions:
-                    cell.number_format = '# "Days"'
-                # dates
-                elif "default_border" in actions:
-                    self.set_date_format(cell, "")
-                # border
-                if "default_border" in actions:
-                    self.set_border(cell)
-                # alignment
-                if "left_align" in actions:
-                    cell.alignment = Alignment(horizontal="left")
-                elif "center_align" in actions:
-                    cell.alignment = Alignment(horizontal="center")
-                elif "right_align" in actions:
-                    cell.alignment = Alignment(horizontal="right")
-                # fill
-                if "black_fill" in actions:
-                    self.set_fill(cell, color="fffff")
-                elif "light_grey_fill" in actions:
-                    self.set_fill(cell, color="F2F2F2")
+                self.set_border(cell, "thick")

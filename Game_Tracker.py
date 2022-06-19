@@ -1,5 +1,4 @@
 import random, time, json, os, re, sys, hashlib, webbrowser, subprocess
-from black import main
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -9,8 +8,7 @@ import pandas as pd
 
 # classes
 from classes.excel import Excel, Sheet
-from classes.helper import Helper
-from classes.helper import keyboard_interrupt
+from classes.helper import Helper, keyboard_interrupt
 
 
 class Tracker(Helper):
@@ -320,73 +318,73 @@ class Tracker(Helper):
         """
         Sets `game`'s release year cell to `release_year`.
         """
-        self.games.update_cell(game, self.release_col, release_year)
+        return self.games.update_cell(game, self.release_col, release_year)
 
     def set_genre(self, game, genre):
         """
         Sets `game`'s genre cell to `genre`.
         """
-        self.games.update_cell(game, self.genre_col, genre)
+        return self.games.update_cell(game, self.genre_col, genre)
 
     def set_early_access(self, game, value):
         """
         Sets `game`'s early access cell to `value`.
         """
-        self.games.update_cell(game, self.ea_col, value)
+        return self.games.update_cell(game, self.ea_col, value)
 
     def set_publisher(self, game, value):
         """
         Sets `game`'s publisher cell to `value`.
         """
-        self.games.update_cell(game, self.pub_col, value)
+        return self.games.update_cell(game, self.pub_col, value)
 
     def set_developer(self, game, value):
         """
         Sets `game`'s developer cell to `value`.
         """
-        self.games.update_cell(game, self.dev_col, value)
+        return self.games.update_cell(game, self.dev_col, value)
 
     def set_metacritic(self, game, score):
         """
         Sets `game`'s metacritic score to `score`.
         """
-        self.games.update_cell(game, self.metacritic_col, score)
+        return self.games.update_cell(game, self.metacritic_col, score)
 
     def set_time_to_beat(self, game, time_to_beat):
         """
         Sets `game`'s Time to beat cell to `time_to_beat`.
         """
-        self.games.update_cell(game, self.time_to_beat_col, time_to_beat)
+        return self.games.update_cell(game, self.time_to_beat_col, time_to_beat)
 
     def set_steam_deck(self, game, status):
         """
         Sets `game`'s Steam Deck Status to `status`.
         """
-        self.games.update_cell(game, "Steam Deck Status", status)
+        return self.games.update_cell(game, "Steam Deck Status", status)
 
     def set_hours_played(self, game_name, hours_played):
         """
         Sets `game`'s Hours Played cell to `hours_played`.
         """
-        self.games.update_cell(game_name, "Hours Played", hours_played)
+        return self.games.update_cell(game_name, "Hours Played", hours_played)
 
     def set_linux_hours_played(self, game_name, hours_played):
         """
         Sets `game`'s Linux Hours cell to `hours_played`.
         """
-        self.games.update_cell(game_name, "Linux Hours", hours_played)
+        return self.games.update_cell(game_name, "Linux Hours", hours_played)
 
     def set_play_status(self, game_name, play_status):
         """
         Sets `game`'s Play Status cell to `play_status`.
         """
-        self.games.update_cell(game_name, "Play Status", play_status)
+        return self.games.update_cell(game_name, "Play Status", play_status)
 
     def set_date_updated(self, game):
         """
         Sets `game`'s Date Updated cell to the current date.
         """
-        self.games.update_cell(game, "Date Updated", self.formatted_date)
+        return self.games.update_cell(game, "Date Updated", self.formatted_date)
 
     def get_store_link(self, appid):
         """
@@ -608,6 +606,8 @@ class Tracker(Helper):
             if self.removed:
                 print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
                 for game in self.removed:
+                    # TODO check if games app id matches another change its
+                    # name to the new name
                     status = self.games.get_cell(game, "Play Status")
                     if status is not None:
                         if "Removed | " not in status:
@@ -909,6 +909,7 @@ class Tracker(Helper):
             self.set_linux_hours_played(game_name, current_linux_hours_played)
             self.set_date_updated(game_name)
             self.set_play_status(game_name, play_status)
+            self.games.format_row(game_name)
             self.total_games_updated += 1
             # updated game logging
             hours_played = current_hours_played - previous_hours_played
@@ -1046,6 +1047,7 @@ class Tracker(Helper):
         self.total_games_added += 1
         if save:
             print("saved")
+            self.games.format_row()
             self.excel.save_excel()
 
     def output_completion_data(self):
@@ -1059,7 +1061,6 @@ class Tracker(Helper):
         if self.total_games_updated > 0:
             print(f"\nGames Updated: {self.total_games_updated}")
         if self.excel.changes_made:
-            self.games.format_cells()
             self.excel.save_excel()
         else:
             print("\nNo Steam games were added or updated.")
@@ -1293,6 +1294,10 @@ class Tracker(Helper):
                 "func": self.manually_add_game,
             },
             {
+                "text": "Update All Cell Formatting",
+                "func": self.games.format_all_cells,
+            },
+            {
                 "text": "Update the Playstation Data",
                 "func": self.update_playstation_data,
             },
@@ -1348,6 +1353,8 @@ if __name__ == "__main__":
         # print(App.get_steam_id('Varnock'))
         # App.steam_deck_check()
         # App.get_game_info(1290000, debug=True)
+        # status = App.steam_deck_compat(1533420)
+        # print(status)
         # exit()
         pass
     # App.games.format_cells()
