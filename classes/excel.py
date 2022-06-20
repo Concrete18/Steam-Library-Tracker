@@ -1,7 +1,7 @@
 from logging.handlers import RotatingFileHandler
 import logging as lg
 import shutil, os, sys, time, openpyxl, zipfile
-from openpyxl.styles import Border, Alignment, PatternFill
+from openpyxl.styles import Border, Alignment, PatternFill, Font
 from pathlib import Path
 import datetime as dt
 import pandas as pd
@@ -519,11 +519,18 @@ class Sheet:
         ph
         """
         # TODO finish format_header function
-        for action in self.options:
-            pass
+        header_options = self.options["header"]
+        font_size = header_options["font_size"]
+        bold_font = header_options["bold"]
         for column in self.col_idx.keys():
             col_i = self.col_idx[column]
-            self.format_cell(self, column, 1, col_i)
+            cell = self.cur_sheet.cell(row=1, column=col_i)
+            cell.font = Font(
+                name="Calibri",
+                size=font_size,
+                bold=bold_font,
+                # color="FF000000",
+            )
 
     def format_cell(self, column, row_i, col_i):
         """
@@ -576,7 +583,7 @@ class Sheet:
         for column in self.col_idx.keys():
             row_i = self.row_idx[row_identifier]
             col_i = self.col_idx[column]
-            self.format_cell(self, column, row_i, col_i)
+            self.format_cell(column, row_i, col_i)
 
     def format_all_cells(self):
         """
