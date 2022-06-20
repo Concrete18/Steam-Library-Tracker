@@ -29,6 +29,7 @@ class Tracker(Helper):
     # class init
     options = {
         "shrink_to_fit_cell": True,
+        "header": {"bold": True, "font_size": 16},
         "light_grey_fill": ["Rating Comparison", "Probable Completion"],
         "percent": [
             "%",
@@ -214,10 +215,12 @@ class Tracker(Helper):
         else:
             return "Invalid Date"
 
-    def get_game_info(self, appid, debug=False):
+    def get_game_info(self, appid):
         """
         Gets game info with steam api using a `appid`.
         """
+        if not appid:
+            return None
 
         def get_json_desc(data):
             return [item["description"] for item in data]
@@ -230,89 +233,85 @@ class Tracker(Helper):
         response = self.request_url(url)
         if not response:
             return None
-        else:
-            info_dict = {}
-            dict = response.json()
-            if debug:
-                print(dict)
-                exit()
-            if "data" in dict[str(appid)].keys():
-                game_info = dict[str(appid)]["data"]
-                keys = game_info.keys()
-                info_dict["name"] = game_info["name"]
-                # get developer
-                if "developers" in keys:
-                    info_dict["developers"] = ", ".join(game_info["developers"])
+        info_dict = {}
+        dict = response.json()
+        if "data" in dict[str(appid)].keys():
+            game_info = dict[str(appid)]["data"]
+            keys = game_info.keys()
+            info_dict["name"] = game_info["name"]
+            # get developer
+            if "developers" in keys:
+                info_dict["developers"] = ", ".join(game_info["developers"])
+            else:
+                info_dict["developers"] = None
+            # get publishers
+            if "publishers" in keys:
+                info_dict["publishers"] = ", ".join(game_info["publishers"])
+            else:
+                info_dict["publishers"] = None
+            # get genre
+            if "genres" in keys:
+                genres = get_json_desc(game_info["genres"])
+                info_dict["genre"] = ", ".join(genres)
+                # early access
+                # TODO does not update when changed
+                if "Early Access" in info_dict["genre"]:
+                    info_dict["early_access"] = "Yes"
                 else:
-                    info_dict["developers"] = None
-                # get publishers
-                if "publishers" in keys:
-                    info_dict["publishers"] = ", ".join(game_info["publishers"])
-                else:
-                    info_dict["publishers"] = None
-                # get genre
-                if "genres" in keys:
-                    genres = get_json_desc(game_info["genres"])
-                    info_dict["genre"] = ", ".join(genres)
-                    # early access
-                    # TODO does not update when changed
-                    if "Early Access" in info_dict["genre"]:
-                        info_dict["early_access"] = "Yes"
-                    else:
-                        info_dict["early_access"] = "No"
-                else:
-                    info_dict["genre"] = None
-                # get metacritic
-                if "metacritic" in keys:
-                    info_dict["metacritic"] = game_info["metacritic"]["score"]
-                else:
-                    info_dict["metacritic"] = None
-                # get release year
-                if "release_date" in keys:
-                    release_date = game_info["release_date"]["date"]
-                    release_date = self.get_year(release_date)
-                    info_dict["release_date"] = release_date
-                else:
-                    info_dict["release_date"] = None
-                # get price_info
-                if "price_overview" in keys:
-                    price_data = game_info["price_overview"]
-                    price = price_data["final_formatted"]
-                    discount = price_data["discount_percent"]
-                    on_sale = price_data["discount_percent"] > 0
-                    info_dict["price"] = price
-                    info_dict["discount"] = discount
-                    info_dict["on_sale"] = on_sale
-                else:
-                    info_dict["price"] = None
-                    info_dict["discount"] = None
-                    info_dict["on_sale"] = None
-                # get linux compat
-                if "platforms" in keys:
-                    info_dict["linux_compat"] = game_info["platforms"]["linux"]
-                else:
-                    info_dict["linux_compat"] = False
-                if "categories" in keys:
-                    categories = get_json_desc(game_info["categories"])
-                    info_dict["categories"] = ", ".join(categories)
-                else:
-                    info_dict["categories"] = None
-                # drm info
-                if "drm_notice" in keys:
-                    info_dict["drm_notice"] = game_info["drm_notice"]
-                else:
-                    info_dict["drm_notice"] = None
-                # external account
-                if "ext_user_account_notice" in keys:
-                    info_dict["ext_user_account_notice"] = game_info[
-                        "ext_user_account_notice"
-                    ]
-                else:
-                    info_dict["ext_user_account_notice"] = None
-                # runs unicode remover on all values
-                final_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
-                return final_dict
-        return False
+                    info_dict["early_access"] = "No"
+            else:
+                info_dict["genre"] = None
+            # get metacritic
+            if "metacritic" in keys:
+                info_dict["metacritic"] = game_info["metacritic"]["score"]
+            else:
+                info_dict["metacritic"] = None
+            # get release year
+            if "release_date" in keys:
+                release_date = game_info["release_date"]["date"]
+                release_date = self.get_year(release_date)
+                info_dict["release_date"] = release_date
+            else:
+                info_dict["release_date"] = None
+            # get price_info
+            if "price_overview" in keys:
+                price_data = game_info["price_overview"]
+                price = price_data["final_formatted"]
+                discount = price_data["discount_percent"]
+                on_sale = price_data["discount_percent"] > 0
+                info_dict["price"] = price
+                info_dict["discount"] = discount
+                info_dict["on_sale"] = on_sale
+            else:
+                info_dict["price"] = None
+                info_dict["discount"] = None
+                info_dict["on_sale"] = None
+            # get linux compat
+            if "platforms" in keys:
+                info_dict["linux_compat"] = game_info["platforms"]["linux"]
+            else:
+                info_dict["linux_compat"] = False
+            if "categories" in keys:
+                categories = get_json_desc(game_info["categories"])
+                info_dict["categories"] = ", ".join(categories)
+            else:
+                info_dict["categories"] = None
+            # drm info
+            if "drm_notice" in keys:
+                info_dict["drm_notice"] = game_info["drm_notice"]
+            else:
+                info_dict["drm_notice"] = None
+            # external account
+            if "ext_user_account_notice" in keys:
+                info_dict["ext_user_account_notice"] = game_info[
+                    "ext_user_account_notice"
+                ]
+            else:
+                info_dict["ext_user_account_notice"] = None
+            # runs unicode remover on all values
+            final_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
+            return final_dict
+        return None
 
     def set_release_year(self, game, release_year):
         """
@@ -450,12 +449,14 @@ class Tracker(Helper):
                 dynamic_ncols=True,
             ):
                 # How long to beat check
-                if not self.games.get_cell(game_name, self.time_to_beat_col):
+                cur_valid = self.games.get_cell(game_name, self.time_to_beat_col)
+                if not cur_valid:
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat != None:
                         self.set_time_to_beat(game_name, time_to_beat)
                 # metacritic score check
-                if not self.games.get_cell(game_name, self.metacritic_col):
+                cur_valid = self.games.get_cell(game_name, self.metacritic_col)
+                if not cur_valid:
                     platform = self.games.get_cell(game_name, "Platform")
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score != None:
@@ -465,51 +466,49 @@ class Tracker(Helper):
                 if not appid:
                     appid = self.get_appid(game_name)
                 steam_info = self.get_game_info(appid)
-                platform = self.games.get_cell(game_name, "Platform")
-                if not steam_info or platform != "Steam":
-                    pass
-                # genre
-                if steam_info["genre"]:
-                    self.set_genre(game_name, steam_info["genre"])
-                    # early access
-                    if "Early Access" in steam_info["genre"]:
-                        self.set_early_access(game, "Yes")
+                if steam_info:
+                    # genre
+                    if steam_info["genre"]:
+                        self.set_genre(game_name, steam_info["genre"])
+                        # early access
+                        if "Early Access" in steam_info["genre"]:
+                            self.set_early_access(game, "Yes")
+                        else:
+                            self.set_early_access(game, "No")
                     else:
-                        self.set_early_access(game, "No")
-                else:
-                    self.set_genre(game, "No Genre")
-                    self.set_early_access(game, "Unknown")
-                # release year
-                if steam_info["release_date"]:
-                    self.set_release_year(game_name, steam_info["release_date"])
+                        self.set_genre(game, "No Genre")
+                        self.set_early_access(game, "Unknown")
+                    # release year
+                    if steam_info["release_date"]:
+                        self.set_release_year(game_name, steam_info["release_date"])
+                    else:
+                        self.set_release_year(game_name, "No Year")
+                    # developer
+                    if steam_info["developers"]:
+                        self.set_developer(game_name, steam_info["developers"])
+                    else:
+                        self.set_developer(game_name, "No Developer")
+                    # publishers
+                    if steam_info["publishers"]:
+                        self.set_publisher(game_name, steam_info["publishers"])
+                    else:
+                        self.set_publisher(game_name, "No Publisher")
+                    # metacritic
+                    if steam_info["metacritic"]:
+                        self.set_metacritic(game_name, steam_info["metacritic"])
+                    else:
+                        if not self.games.get_cell(game_name, self.metacritic_col):
+                            self.set_metacritic(game_name, "No Score")
                 else:
                     self.set_release_year(game_name, "No Year")
-                # developer
-                if steam_info["developers"]:
-                    self.set_developer(game_name, steam_info["developers"])
-                else:
-                    self.set_developer(game_name, "No Developer")
-                # publishers
-                if steam_info["publishers"]:
-                    self.set_publisher(game_name, steam_info["publishers"])
-                else:
-                    self.set_publisher(game_name, "No Publisher")
-                # metacritic
-                if steam_info["metacritic"]:
-                    self.set_metacritic(game_name, steam_info["metacritic"])
-                else:
-                    if not self.games.get_cell(game_name, self.metacritic_col):
-                        self.set_metacritic(game_name, "No Score")
-            else:
-                self.set_release_year(game_name, "No Year")
-                self.set_genre(game, "No Data")
-                self.set_developer(game_name, "No Data")
-                self.set_publisher(game_name, "No Data")
-                self.set_early_access(game_name, "No")
-            running_interval -= 1
-            if running_interval == 0:
-                running_interval = save_interval
-                self.excel.save_excel(use_print=False, backup=False)
+                    self.set_genre(game_name, "No Data")
+                    self.set_developer(game_name, "No Data")
+                    self.set_publisher(game_name, "No Data")
+                    self.set_early_access(game_name, "No")
+                running_interval -= 1
+                if running_interval == 0:
+                    running_interval = save_interval
+                    self.excel.save_excel(use_print=False, backup=False)
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
