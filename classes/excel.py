@@ -3,7 +3,6 @@ import logging as lg
 import shutil, os, sys, time, openpyxl, zipfile
 from openpyxl.styles import Border, Alignment, PatternFill, Font
 from pathlib import Path
-import datetime as dt
 import pandas as pd
 
 
@@ -44,13 +43,18 @@ class Excel:
                 os.rename(f"{self.file_path}.bak", self.file_path)
         # logger setup
         self.use_logging = use_logging
+        datefmt = "%m-%d-%Y %I:%M:%S %p"
         log_formatter = lg.Formatter(
-            "%(asctime)s %(levelname)s %(message)s", datefmt="%m-%d-%Y %I:%M:%S %p"
+            "%(asctime)s %(levelname)s %(message)s", datefmt=datefmt
         )
         self.logger = lg.getLogger(__name__)
         self.logger.setLevel(log_level)  # Log Level
-        max_bytes = 5 * 1024 * 1024
-        my_handler = RotatingFileHandler(log_file, maxBytes=max_bytes, backupCount=2)
+        max_gigs = 2
+        my_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_gigs * 1024 * 1024,
+            backupCount=2,
+        )
         my_handler.setFormatter(log_formatter)
         self.logger.addHandler(my_handler)
 
@@ -272,16 +276,6 @@ class Sheet:
             return any(x.lower() in string.lower() for x in list)
         else:
             return any(x in string for x in list)
-
-    def create_excel_date(self, datetime=None):
-        """
-        Creates an date string in an excel friendly format.
-
-        Defaults to the current date.
-        """
-        if datetime == None:
-            datetime = dt.datetime.now()
-        return datetime.strftime("%m/%d/%Y")
 
     def get_row_col_index(self, row_value, column_value):
         """
