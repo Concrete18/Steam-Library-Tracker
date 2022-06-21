@@ -40,7 +40,7 @@ class Tracker(Helper):
         ],
         "currency": ["Price", "MSRP", "Cost"],
         "integer": ["App ID", "Number", "Release Year"],
-        "count_days": ["Days Till Release", "Days Since Update"],
+        "count_days": ["Days Till Release"],
         "date": ["Last Updated", "Date"],
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
         "left_align": [
@@ -66,16 +66,12 @@ class Tracker(Helper):
             "Store Link",
             "Release Year",
             "App ID",
-            "Days Since Update",
             "Date Updated",
             "Date Added",
         ],
     }
     excel = Excel(excel_filename, log_file="configs/excel.log")
     games = Sheet(excel, "Game Name", sheet_name="Games", options=options)
-    # current date and time setup
-    cur_date = dt.datetime.now()
-    formatted_date = cur_date.strftime("%#m/%#d/%Y")
     # api call logger
     play_status_choices = {
         "1": "Played",
@@ -383,7 +379,7 @@ class Tracker(Helper):
         """
         Sets `game`'s Date Updated cell to the current date.
         """
-        return self.games.update_cell(game, "Date Updated", self.formatted_date)
+        return self.games.update_cell(game, "Date Updated", dt.datetime.now())
 
     def get_store_link(self, appid):
         """
@@ -768,7 +764,8 @@ class Tracker(Helper):
         """
         Updates json by `name` with the current date.
         """
-        self.data["last_runs"][name] = self.cur_date.strftime("%m/%d/%Y")
+        date = dt.datetime.now().strftime("%m/%d/%Y")
+        self.data["last_runs"][name] = date
         self.save_json_output(self.data, self.config)
 
     def steam_deck_compat(self, appid):
@@ -1005,8 +1002,6 @@ class Tracker(Helper):
         prob_compl = "Probable Completion"
         hours = self.games.easy_indirect_cell(prob_compl, "Hours Played")
         ttb = self.games.easy_indirect_cell(prob_compl, "Time To Beat in Hours")
-        days_since = "Days Since Update"
-        date_updated = self.games.easy_indirect_cell(days_since, "Date Updated")
         # sets excel column values
         column_info = {
             "My Rating": "",
@@ -1024,9 +1019,8 @@ class Tracker(Helper):
             "Linux Hours": linux_hours_played,
             "App ID": appid,
             "Store Link": store_link_hyperlink,
-            "Days Since Update": f"={date_updated}-TODAY()",
-            "Date Updated": self.formatted_date,
-            "Date Added": self.formatted_date,
+            "Date Updated": dt.datetime.now(),
+            "Date Added": dt.datetime.now(),
         }
         steam_info = self.get_game_info(appid)
         if steam_info:
