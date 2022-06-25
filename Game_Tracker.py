@@ -1040,9 +1040,9 @@ class Tracker(Helper):
         # TODO change to dict with name and appid
         self.added_games.append(game_name)
         self.total_games_added += 1
+        self.games.format_row(game_name)
         if save:
             print("saved")
-            self.games.format_row()
             self.excel.save_excel()
 
     def output_completion_data(self):

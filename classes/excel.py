@@ -457,9 +457,9 @@ class Sheet:
                 alignment = "center_align"
         if "right_align" in option_keys:
             if column in self.options["right_align"]:
-                actions.append("right_align")
+                alignment = "right_align"
             else:
-                actions.append("center_align")
+                alignment = "center_align"
         if alignment:
             actions.append(alignment)
         # fill
@@ -586,6 +586,7 @@ class Sheet:
     def format_all_cells(self):
         """
         Auto formats all cells.
+        TODO check for a way to make it use openpyxl more
         """
         # return early if options is not valid
         if not self.options:
@@ -593,7 +594,6 @@ class Sheet:
         self.format_header()
         for column in self.col_idx.keys():
             # runs through all cells in a column and runs the actions
-            # TODO check for a way to make it use openpyxl more
             col_i = self.col_idx[column]
             for row_i in self.row_idx.values():
                 cell = self.cur_sheet.cell(row=row_i, column=col_i)
