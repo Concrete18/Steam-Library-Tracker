@@ -601,8 +601,10 @@ class Tracker(Helper):
             if self.removed:
                 print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
                 for game in self.removed:
-                    # TODO check if games app id matches another change its
-                    # name to the new name
+                    appid = self.games.get_cell(game, "App ID")
+                    if appid in self.added_games:
+                        pass
+                        # TODO rename games if name changed and app id matches
                     status = self.games.get_cell(game, "Play Status")
                     if status is not None:
                         if "Removed | " not in status:
@@ -970,7 +972,6 @@ class Tracker(Helper):
 
         If save is True, it will save after adding the game.
         """
-        print(f"Adding {game_name}")
         play_status = "Unplayed"
         hours_played = ""
         if minutes_played:
@@ -1036,6 +1037,7 @@ class Tracker(Helper):
                 if column.lower() in steam_info.keys():
                     column_info[column] = steam_info[column.lower()]
         self.games.add_new_line(column_info, game_name)
+        # TODO change to dict with name and appid
         self.added_games.append(game_name)
         self.total_games_added += 1
         if save:

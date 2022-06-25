@@ -136,6 +136,7 @@ dmypy.json
 *.png
 *.pkl
 # custom files
+*.lnk
 config.json
 playstation_games.json
 favorite_games.json
