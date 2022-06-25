@@ -325,12 +325,13 @@ class Sheet:
         if row_key is not None and col_key is not None:
             cur_val = self.cur_sheet.cell(row=row_key, column=col_key).value
             # returns False if replace is False and the current value is not none
-            if not replace and cur_val is not None:
+            if not replace and cur_val:
                 return False
             # updates only if cell will actually be changed
             if new_val == "":
                 new_val = None
             if cur_val != new_val:
+                # FIXME datetime objects cause issues with this
                 self.cur_sheet.cell(row=row_key, column=col_key).value = new_val
                 if save:
                     self.excel.save_excel(use_print=False, backup=False)
@@ -441,17 +442,20 @@ class Sheet:
         """
         Determines what formatting to apply to a column.
         """
+        option_keys = self.options.keys()
         actions = []
         # border
         actions.append("default_border")
         # alignment
         alignment = None
-        if "left_align" in self.options.keys():
+        if "default_align" in option_keys:
+            alignment = self.options["default_align"]
+        if "left_align" in option_keys:
             if column in self.options["left_align"]:
                 alignment = "left_align"
             else:
                 alignment = "center_align"
-        if "right_align" in self.options.keys():
+        if "right_align" in option_keys:
             if column in self.options["right_align"]:
                 actions.append("right_align")
             else:
@@ -459,39 +463,39 @@ class Sheet:
         if alignment:
             actions.append(alignment)
         # fill
-        if "black_fill" in self.options.keys():
+        if "black_fill" in option_keys:
             if self.list_in_string(self.options["black_fill"], column):
                 actions.append("black_fill")
-        elif "light_grey_fill" in self.options.keys():
+        elif "light_grey_fill" in option_keys:
             if self.list_in_string(self.options["light_grey_fill"], column):
                 actions.append("light_grey_fill")
         # percent
-        if "percent" in self.options.keys():
+        if "percent" in option_keys:
             if self.list_in_string(self.options["percent"], column):
                 actions.append("percent")
                 return actions
         # currency
-        if "currency" in self.options.keys():
+        if "currency" in option_keys:
             if self.list_in_string(self.options["currency"], column):
                 actions.append("currency")
                 return actions
-        if "integer" in self.options.keys():
+        if "integer" in option_keys:
             if column in self.options["integer"]:
                 actions.append("integer")
                 return actions
         # decimal
         # TODO allow variable decimal place
-        if "decimal" in self.options.keys():
+        if "decimal" in option_keys:
             if column in self.options["decimal"]:
                 actions.append("decimal")
                 return actions
         # countdown
-        if "count_days" in self.options.keys():
+        if "count_days" in option_keys:
             if column in self.options["count_days"]:
                 actions.append("count_days")
                 return actions
         # dates
-        if "date" in self.options.keys():
+        if "date" in option_keys:
             if self.list_in_string(self.options["date"], column):
                 actions.append("date")
                 return actions
