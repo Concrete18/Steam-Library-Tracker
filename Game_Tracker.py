@@ -22,6 +22,7 @@ class Tracker(Helper):
         data = json.load(file)
     steam_api_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
+    vanity_url = data["settings"]["vanity_url"]
     excel_filename = data["settings"]["excel_filename"]
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
@@ -29,6 +30,7 @@ class Tracker(Helper):
     # class init
     options = {
         "shrink_to_fit_cell": True,
+        "default_align": "center_align",
         "header": {"bold": True, "font_size": 16},
         "light_grey_fill": ["Rating Comparison", "Probable Completion"],
         "percent": [
@@ -48,26 +50,6 @@ class Tracker(Helper):
             "Developers",
             "Publishers",
             "Genre",
-        ],
-        "center_align": [
-            "My Rating",
-            "Metacritic",
-            "Rating Comparison",
-            "Play Status",
-            "Platform",
-            "VR Support",
-            "Early Access",
-            "Platform",
-            "Steam Deck Status",
-            "Hours Played",
-            "Linux Hours",
-            "Time To Beat in Hours",
-            "Probable Completion",
-            "Store Link",
-            "Release Year",
-            "App ID",
-            "Date Updated",
-            "Date Added",
         ],
     }
     excel = Excel(excel_filename, log_file="configs/excel.log")
@@ -95,6 +77,13 @@ class Tracker(Helper):
         ea_col := "Early Access",
     ]
 
+    def __init__(self) -> None:
+        """
+        ph
+        """
+        if not self.steam_id:
+            self.update_steam_id()
+
     def config_check(self):
         """
         Checks to see if the config data is usable.
@@ -106,6 +95,18 @@ class Tracker(Helper):
             return False, errors
         else:
             return True, None
+
+    def update_steam_id(self):
+        """
+        Updates the steam id in the config using the given vanity url if present.
+        """
+        if not self.vanity_url:
+            raise "Steam ID and Vanity URL is blank. Please enter at one of them."
+        steam_id = self.get_steam_id(self.vanity_url)
+        if steam_id:
+            pass
+            self.data["settings"]["steam_id"] = steam_id
+            self.save_json_output(self.data, self.config)
 
     def get_steam_id(self, vanity_url):
         """
@@ -533,7 +534,7 @@ class Tracker(Helper):
 
     def get_owned_steam_games(self, steam_id=0):
         """
-        ph
+        Gets the games owned by the given `steam_id`.
         """
         # asks for a steam id if the given one is invalid
         while len(steam_id) != 17:
