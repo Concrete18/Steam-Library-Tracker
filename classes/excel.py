@@ -400,7 +400,7 @@ class Sheet:
 
     def set_border(self, cell, style="thin"):
         """
-        ph
+        Sets the given `cell` border to cover all sides with the given `style`.
         """
         cell.border = Border(
             left=openpyxl.styles.Side(style=style),
@@ -412,7 +412,7 @@ class Sheet:
 
     def set_fill(self, cell, color="000000", fill_type="solid"):
         """
-        ph
+        Sets the given `cell` to have fill with `color` and `fill_type`
         """
         cell.fill = PatternFill(
             start_color=color,
@@ -422,7 +422,7 @@ class Sheet:
 
     def set_style(self, cell, format="general"):
         """
-        ph
+        Sets the given `cell` to the given `format` or general by default.
         """
         if format == "percent":
             cell.style = "Percent"
@@ -514,9 +514,8 @@ class Sheet:
 
     def format_header(self):
         """
-        ph
+        Formats the top header of the sheet.
         """
-        # TODO finish format_header function
         header_options = self.options["header"]
         font_size = header_options["font_size"]
         bold_font = header_options["bold"]
@@ -532,7 +531,7 @@ class Sheet:
 
     def format_cell(self, column, row_i, col_i):
         """
-        ph
+        Formats a cell based on the `column` name using `row_i` and `col_i`.
         """
         cell = self.cur_sheet.cell(row=row_i, column=col_i)
         # gets format_actions if it has not be set yet
@@ -576,8 +575,10 @@ class Sheet:
 
     def format_row(self, row_identifier):
         """
-        ph
+        Formats the entire row by `row_identifier`
         """
+        if not row_identifier:
+            raise "Row identifier was not give."
         for column in self.col_idx.keys():
             row_i = self.row_idx[row_identifier]
             col_i = self.col_idx[column]
@@ -597,4 +598,4 @@ class Sheet:
             col_i = self.col_idx[column]
             for row_i in self.row_idx.values():
                 cell = self.cur_sheet.cell(row=row_i, column=col_i)
-                self.set_border(cell, "thick")
+                self.set_border(cell, "thin")
