@@ -52,6 +52,18 @@ class TestStringMethods(unittest.TestCase):
         for name, answer in metacritic_tests.items():
             self.assertEqual(tester.get_metacritic(name, "pc"), answer)
 
+    def test_get_time_to_beat(self):
+        print("\n", "get_time_to_beat")
+        tester = Tracker()
+        time_to_beat_tests = {
+            "Dishonored 2": 12.5,
+            "Deep Rock Galactic": 62.0,
+            "Inscryption": 12.0,
+            "Not a Real Game": "Not Found",
+        }
+        for name, answer in time_to_beat_tests.items():
+            self.assertEqual(tester.get_time_to_beat(name), answer)
+
     def test_steam_deck_compat(self):
         print("\n", "steam_deck_compat")
         tester = Tracker()
