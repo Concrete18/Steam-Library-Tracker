@@ -602,10 +602,6 @@ class Tracker(Helper):
             if self.removed:
                 print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
                 for game in self.removed:
-                    appid = self.games.get_cell(game, "App ID")
-                    if appid in self.added_games:
-                        pass
-                        # TODO rename games if name changed and app id matches
                     status = self.games.get_cell(game, "Play Status")
                     if status is not None:
                         if "Removed | " not in status:

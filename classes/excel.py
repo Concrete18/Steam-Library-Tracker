@@ -20,13 +20,15 @@ class Excel:
         log_level=lg.DEBUG,
     ):
         """
-        Allows retreiving, adding, updating, deleting and formatting cells within Excel.
+        Allows retreiving, adding, updating, deleting and
+        formatting cells within Excel.
 
         `excel_filename` is the path to the excel file.
 
         `log_file` sets the path for logging.
 
-        `log_level` Sets the logging level of this logger. level must be an int or a str.
+        `log_level` Sets the logging level of this logger.
+        level must be an int or a str.
         """
         # workbook setup
         self.file_path = Path(excel_filename)
@@ -88,7 +90,8 @@ class Excel:
         """
         Backs up the excel file before saving the changes if `backup` is True.
 
-        It will keep trying to save until it completes in case of permission errors caused by the file being open.
+        It will keep trying to save until it completes in case of permission
+        errors caused by the file being open.
 
         `use_print` determines if info for the saving progress will be printed.
         """
@@ -98,7 +101,8 @@ class Excel:
                 # backups the file before saving.
                 if backup:
                     if not self.backed_up:
-                        shutil.copy(self.file_path, Path(self.file_path.name + ".bak"))
+                        backup_path = Path(self.file_path.name + ".bak")
+                        shutil.copy(self.file_path, backup_path)
                         self.backed_up = True
                         self.log(f"Excel file backed up", "info")
                 # saves the file once it is closed
@@ -118,7 +122,8 @@ class Excel:
                     except PermissionError:
                         if first_run:
                             if use_print:
-                                print("Make sure the excel sheet is closed.", end="\r")
+                                msg = "Make sure the excel sheet is closed."
+                                print(msg, end="\r")
                             first_run = False
                         time.sleep(1)
             except KeyboardInterrupt:
@@ -148,7 +153,8 @@ class Excel:
 
     def open_file_input(self):
         """
-        Opens the excel file if it exists after enter is pressed during the input.
+        Opens the excel file if it exists after enter is
+        pressed during the input.
         """
         if not self.ext_terminal:
             self.save_excel()
@@ -173,7 +179,8 @@ class Sheet:
 
         `sheet_name` Name of the sheet to use.
 
-        `column_name` Name of the main column you intend to use for identifying rows.
+        `column_name` Name of the main column you intend to use for
+        identifying rows.
         """
         self.wb = excel_object.wb
         self.excel = excel_object
@@ -217,7 +224,8 @@ class Sheet:
     @staticmethod
     def indirect_cell(left=0, right=0, manual_set=0):
         """
-        Returns a string for setting an indirect cell location to a number `left` or `right`.
+        Returns a string for setting an indirect cell location to
+        a number `left` or `right`.
 
         Only one direction can be greater then 0.
         """
@@ -236,9 +244,11 @@ class Sheet:
         """
         Allows setting up an indirect cell formula.
 
-        Set `cur_col`to the column name of the column the formula is going into.
+        Set `cur_col`to the column name of the column theformula is going
+        into.
 
-        Set `near_col` to the column name of the column you are wanting to reference.
+        Set `near_col` to the column name of the column you are wanting
+        to reference.
         """
         diff = self.col_idx[ref_col] - self.col_idx[cur_col]
         return self.indirect_cell(manual_set=diff)
@@ -260,17 +270,19 @@ class Sheet:
         """
         row_idx = {}
         total_rows = len(self.cur_sheet["A"])
-        for i in range(1, total_rows):
-            title = self.cur_sheet.cell(row=i + 1, column=self.col_idx[col_name]).value
+        for row in range(1, total_rows):
+            column = self.col_idx[col_name]
+            title = self.cur_sheet.cell(row=row + 1, column=column).value
             if title is not None:
-                row_idx[title] = i + 1
+                row_idx[title] = row + 1
         return row_idx
 
     def list_in_string(self, list, string, lowercase=True):
         """
         Returns True if any entry in the given `list` is in the given `string`.
 
-        Setting `lowercase` to True allows you to make the check set all to lowercase.
+        Setting `lowercase` to True allows you to make the check
+        set all to lowercase.
         """
         if lowercase:
             return any(x.lower() in string.lower() for x in list)
@@ -281,7 +293,8 @@ class Sheet:
         """
         Gets the row and column index for the given values if they exist.
 
-        Will return the `row_value` and `column_value` if they are numbers already.
+        Will return the `row_value` and `column_value` if they are
+        numbers already.
         """
         row_key, column_key = None, None
         # row key setup
@@ -343,9 +356,11 @@ class Sheet:
 
     def add_new_line(self, cell_dict, column_key, save=False):
         """
-        Adds the given dictionary, as `cell_dict`, onto a new line within the excel sheet.
+        Adds the given dictionary, as `cell_dict`, onto a new line
+        within the excel sheet.
 
-        If dictionary keys match existing columns within the set sheet, it will add the value to that column.
+        If dictionary keys match existing columns within the set sheet,
+        it will add the value to that column.
 
         Use `debug` to print info if a column in the `cell_dict` does not exist.
 
