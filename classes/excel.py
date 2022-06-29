@@ -14,9 +14,9 @@ class Excel:
 
     def __init__(
         self,
-        excel_filename,
-        use_logging=True,
-        log_file="excel.log",
+        excel_filename: str,
+        use_logging: bool = True,
+        log_file: str = "excel.log",
         log_level=lg.DEBUG,
     ):
         """
@@ -60,7 +60,7 @@ class Excel:
         my_handler.setFormatter(log_formatter)
         self.logger.addHandler(my_handler)
 
-    def log(self, msg, type="info"):
+    def log(self, msg: str, type: str = "info"):
         """
         Logs `msg` with set `type` if `use_logging` is True.
         """
@@ -86,7 +86,12 @@ class Excel:
         )
         return df
 
-    def save_excel(self, use_print=True, force_save=False, backup=True):
+    def save_excel(
+        self,
+        use_print: bool = True,
+        force_save: bool = False,
+        backup: bool = True,
+    ):
         """
         Backs up the excel file before saving the changes if `backup` is True.
 
@@ -101,7 +106,7 @@ class Excel:
                 # backups the file before saving.
                 if backup:
                     if not self.backed_up:
-                        backup_path = Path(self.file_path.name + ".bak")
+                        backup_path = f"{self.file_path}.bak"
                         shutil.copy(self.file_path, backup_path)
                         self.backed_up = True
                         self.log(f"Excel file backed up", "info")
@@ -137,7 +142,7 @@ class Excel:
                 self.logger.info(msg)
                 print(msg)
 
-    def open_excel(self, save=True):
+    def open_excel(self, save: bool = True):
         """
         Opens the current excel file if it still exists and then exits.
 
@@ -170,7 +175,11 @@ class Excel:
 
 class Sheet:
     def __init__(
-        self, excel_object, column_name, sheet_name=None, options=None
+        self,
+        excel_object: object,
+        column_name: str,
+        sheet_name: str = None,
+        options: dict = None,
     ) -> None:
         """
         Allows interacting with any one sheet within the excel_object given.
@@ -222,7 +231,7 @@ class Sheet:
             }
 
     @staticmethod
-    def indirect_cell(left=0, right=0, manual_set=0):
+    def indirect_cell(left: int = 0, right: int = 0, manual_set: int = 0):
         """
         Returns a string for setting an indirect cell location to
         a number `left` or `right`.
@@ -240,7 +249,7 @@ class Sheet:
             raise "Left and Right can't both be greater then 0."
         return f'INDIRECT("RC[{num}]",0)'
 
-    def easy_indirect_cell(self, cur_col, ref_col):
+    def easy_indirect_cell(self, cur_col: str, ref_col: str):
         """
         Allows setting up an indirect cell formula.
 
@@ -264,7 +273,7 @@ class Sheet:
                 col_index[title] = i
         return col_index
 
-    def get_row_index(self, col_name):
+    def get_row_index(self, col_name: str):
         """
         Creates the row index based on `column_name`.
         """
@@ -277,7 +286,7 @@ class Sheet:
                 row_idx[title] = row + 1
         return row_idx
 
-    def list_in_string(self, list, string, lowercase=True):
+    def list_in_string(self, list: list, string: str, lowercase: bool = True):
         """
         Returns True if any entry in the given `list` is in the given `string`.
 
@@ -289,7 +298,7 @@ class Sheet:
         else:
             return any(x in string for x in list)
 
-    def get_row_col_index(self, row_value, column_value):
+    def get_row_col_index(self, row_value: str or int, column_value: str or int):
         """
         Gets the row and column index for the given values if they exist.
 
@@ -309,7 +318,7 @@ class Sheet:
             column_key = column_value
         return row_key, column_key
 
-    def get_cell(self, row_value, column_value):
+    def get_cell(self, row_value: str or int, column_value: str or int):
         """
         Gets the cell value based on the `row_value` and `column_value`.
         """
@@ -320,13 +329,20 @@ class Sheet:
         else:
             return None
 
-    def update_index(self, col_key):
+    def update_index(self, col_key: str):
         """
         Updates the current row with the `column_key` in the `row_idx` variable.
         """
         self.row_idx[col_key] = self.cur_sheet._current_row
 
-    def update_cell(self, row_val, col_val, new_val, replace=True, save=False):
+    def update_cell(
+        self,
+        row_val: str,
+        col_val: str,
+        new_val: str or int,
+        replace: bool = True,
+        save: bool = False,
+    ):
         """
         Updates the cell based on `row_val` and `col_val` to `new_val`.
 
@@ -354,7 +370,12 @@ class Sheet:
         else:
             return False
 
-    def add_new_line(self, cell_dict, column_key, save=False):
+    def add_new_line(
+        self,
+        cell_dict: dict,
+        column_key: str,
+        save: bool = False,
+    ):
         """
         Adds the given dictionary, as `cell_dict`, onto a new line
         within the excel sheet.
@@ -367,15 +388,15 @@ class Sheet:
         Saves after change if `save` is True.
         """
         # missing column checker
-        for column in cell_dict.keys():
-            if column not in self.col_idx and column not in self.missing_columns:
-                self.missing_columns.append(column)
-                msg = f"add_new_line: Missing {column} in {self.sheet_name} sheet"
+        for col in cell_dict.keys():
+            if col not in self.col_idx and col not in self.missing_columns:
+                self.missing_columns.append(col)
+                msg = f"add_new_line: Missing {col} in {self.sheet_name} sheet"
                 self.excel.log(msg, "warning")
         append_list = []
-        for column in self.col_idx:
-            if column in cell_dict:
-                append_list.append(cell_dict[column])
+        for col in self.col_idx:
+            if col in cell_dict:
+                append_list.append(cell_dict[col])
             else:
                 append_list.append("")
         self.cur_sheet.append(append_list)
@@ -386,7 +407,7 @@ class Sheet:
             self.excel.changes_made = True
         return True
 
-    def delete_by_row(self, col_val, save=False):
+    def delete_by_row(self, col_val: str, save: bool = False):
         """
         Deletes row by `column_value`.
         """
@@ -400,7 +421,7 @@ class Sheet:
             self.excel.changes_made = True
         return True
 
-    def delete_by_column(self, column_name):
+    def delete_by_column(self, column_name: str):
         """
         Deletes column by `column_name`.
         """
@@ -413,7 +434,7 @@ class Sheet:
 
     # formatting
 
-    def set_border(self, cell, style="thin"):
+    def set_border(self, cell: object, style: str = "thin"):
         """
         Sets the given `cell` border to cover all sides with the given `style`.
         """
@@ -425,7 +446,12 @@ class Sheet:
             outline=True,
         )
 
-    def set_fill(self, cell, color="000000", fill_type="solid"):
+    def set_fill(
+        self,
+        cell: object,
+        color: str = "000000",
+        fill_type: str = "solid",
+    ):
         """
         Sets the given `cell` to have fill with `color` and `fill_type`
         """
@@ -435,7 +461,7 @@ class Sheet:
             fill_type=fill_type,
         )
 
-    def set_style(self, cell, format="general"):
+    def set_style(self, cell: object, format: str = "general"):
         """
         Sets the given `cell` to the given `format` or general by default.
         """
@@ -446,14 +472,14 @@ class Sheet:
         else:
             cell.style = "General"
 
-    def set_date_format(self, cell, format="MM/DD/YYYY"):
+    def set_date_format(self, cell: object, format: str = "MM/DD/YYYY"):
         """
         Sets a cell to a date format.
         """
         if format == "MM/DD/YYYY":
             cell.number_format = "MM/DD/YYYY"
 
-    def format_picker(self, column):
+    def format_picker(self, column: str):
         """
         Determines what formatting to apply to a column.
         """
@@ -544,7 +570,7 @@ class Sheet:
                 # color="FF000000",
             )
 
-    def format_cell(self, column, row_i, col_i):
+    def format_cell(self, column: str, row_i: int, col_i: int):
         """
         Formats a cell based on the `column` name using `row_i` and `col_i`.
         """
@@ -588,7 +614,7 @@ class Sheet:
         elif "light_grey_fill" in formatting:
             self.set_fill(cell, color="F2F2F2")
 
-    def format_row(self, row_identifier):
+    def format_row(self, row_identifier: str):
         """
         Formats the entire row by `row_identifier`
         """
