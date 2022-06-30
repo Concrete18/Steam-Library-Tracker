@@ -569,7 +569,6 @@ class Tracker(Helper):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-        print("\nSteam Library Tracking")
         response = self.get_owned_steam_games(steam_id)
         if response:
             # checks for games that changed names or no longer exist
@@ -807,19 +806,26 @@ class Tracker(Helper):
         category_id = results["resolved_category"]
         return categories[category_id]
 
-    def steam_deck_check(self, force_run=False):
+    def should_run_steam_deck_update(self):
+        """
+        Returns True if the steam_deck_check function should run.
+
+        Checks if enough time has passed since the last run.
+        """
+        last_check_string = self.data["last_runs"]["steam_deck_check"]
+        last_check = self.string_to_date(last_check_string)
+        days_since = self.days_since(last_check)
+        check_freq = self.data["settings"]["steam_deck_check_freq"]
+        if days_since < check_freq:
+            days_till_check = check_freq - days_since
+            print(f"\nNext Steam Deck Check in {days_till_check} days")
+            return False
+        return True
+
+    def steam_deck_check(self):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
-        if not force_run:
-            last_check_string = self.data["last_runs"]["steam_deck_check"]
-            last_check = self.string_to_date(last_check_string)
-            days_since = self.days_since(last_check)
-            check_freq = self.data["settings"]["steam_deck_check_freq"]
-            if days_since < check_freq:
-                days_till_check = check_freq - days_since
-                print(f"\nNext Steam Deck Check in {days_till_check} days")
-                return
         print("\nSteam Deck Compatibility Check")
         steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
         updated_games = []
@@ -1309,22 +1315,20 @@ class Tracker(Helper):
         print("Starting Game Tracker")
         # starts function run with CTRL + C Exit being possible without causing an error
         self.refresh_steam_games(self.steam_id)
-        self.steam_deck_check()
+        if self.should_run_steam_deck_update():
+            self.steam_deck_check()
         self.check_playstation_json()
         self.output_completion_data()
         self.missing_info_check()
         choices = [
-            ("Update Game", self.custom_update_game),
-            ("Pick Random Game", self.pick_random_game),
-            (
-                "Check Steam Deck Game Status",
-                lambda: self.steam_deck_check(force_run=True),
-            ),
             ("Add Game", self.manually_add_game),
-            ("Update All Cell Formatting", self.games.format_all_cells),
+            ("Update Game", self.custom_update_game),
+            ("Check Steam Deck Game Status", self.steam_deck_check),
+            ("Pick Random Game", self.pick_random_game),
             ("Update the Playstation Data", self.update_playstation_data),
             ("Check Favorite Games Sales", self.get_favorite_games_sales),
             ("View Favorite Games Sales", self.view_favorite_games_sales),
+            ("Update All Cell Formatting", self.games.format_all_cells),
             ("Open Log", self.open_log),
         ]
         self.pick_task(choices)
@@ -1333,12 +1337,10 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    if not App.ext_terminal:
-        # App.view_favorite_games_sales()
-        # print(App.get_steam_id('Varnock'))
-        # App.steam_deck_check()
-        # App.get_game_info(1290000)
-        # status = App.steam_deck_compat(1533420)
-        # print(status)
-        pass
+    # App.view_favorite_games_sales()
+    # print(App.get_steam_id('RobinHorn'))
+    # App.steam_deck_check()
+    # App.get_game_info(1290000)
+    # status = App.steam_deck_compat(1533420)
+    # print(status)
     App.run()
