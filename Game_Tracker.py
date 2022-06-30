@@ -1263,62 +1263,25 @@ class Tracker(Helper):
         osCommandString = "notepad.exe configs/tracker.log"
         os.system(osCommandString)
 
-    def pick_task(self):
+    def pick_task(self, choices):
         """
         Allows picking a task to do next using a matching number.
         """
         print("\nWhat do you want to do next?\n")
-        choices = [
-            {
-                "text": "Update Game",
-                "func": self.custom_update_game,
-            },
-            {
-                "text": "Pick Random Game",
-                "func": self.pick_random_game,
-            },
-            {
-                "text": "Check Steam Deck Game Status",
-                "func": lambda: self.steam_deck_check(force_run=True),
-            },
-            {
-                "text": "Add Game",
-                "func": self.manually_add_game,
-            },
-            {
-                "text": "Update All Cell Formatting",
-                "func": self.games.format_all_cells,
-            },
-            {
-                "text": "Update the Playstation Data",
-                "func": self.update_playstation_data,
-            },
-            {
-                "text": "Check Favorite Games Sales",
-                "func": self.get_favorite_games_sales,
-            },
-            {
-                "text": "View Favorite Games Sales",
-                "func": self.view_favorite_games_sales,
-            },
-            {
-                "text": "Open Log",
-                "func": self.open_log,
-            },
-        ]
-        for count, choice in enumerate(choices):
-            print(f"{count+1}. {choice['text']}")
+        for count, (choice, action) in enumerate(choices):
+            print(f"{count+1}. {choice}")
         msg = "\nPress Enter without a number to open the excel sheet.\n"
-        res = self.ask_for_integer(
+        num = self.ask_for_integer(
             msg,
             num_range=(1, len(choices)),
             allow_blank=True,
         )
-        if res == "":
+        choice_num = num - 1
+        if choice_num == "":
             os.startfile(self.excel.file_path)
             exit()
-        # calls the function for the selected choice
-        choices[res - 1]["func"]()
+        # runs chosen function
+        choices[choice_num][1]()
 
     @keyboard_interrupt
     def run(self):
@@ -1334,7 +1297,21 @@ class Tracker(Helper):
         self.check_playstation_json()
         self.output_completion_data()
         self.requests_loop()
-        self.pick_task()
+        choices = [
+            ("Update Game", self.custom_update_game),
+            ("Pick Random Game", self.pick_random_game),
+            (
+                "Check Steam Deck Game Status",
+                lambda: self.steam_deck_check(force_run=True),
+            ),
+            ("Add Game", self.manually_add_game),
+            ("Update All Cell Formatting", self.games.format_all_cells),
+            ("Update the Playstation Data", self.update_playstation_data),
+            ("Check Favorite Games Sales", self.get_favorite_games_sales),
+            ("View Favorite Games Sales", self.view_favorite_games_sales),
+            ("Open Log", self.open_log),
+        ]
+        self.pick_task(choices)
         self.excel.open_file_input()
 
 
