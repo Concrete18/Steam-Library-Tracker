@@ -66,6 +66,7 @@ class Helper(Logger):
             self.logger.warning(msg)
             time.sleep(5)
             self.request_url(url, headers, second_try=True)
+            return False
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
