@@ -72,6 +72,8 @@ class Tracker(Helper):
         pub_col := "Publishers",
         dev_col := "Developers",
         metacritic_col := "Metacritic",
+        # TODO enable steam review once it can be aquired
+        # steam_score_col := "Steam Review Score",
         time_to_beat_col := "Time To Beat in Hours",
         release_col := "Release Year",
         ea_col := "Early Access",
@@ -288,6 +290,7 @@ class Tracker(Helper):
                 info_dict["linux_compat"] = game_info["platforms"]["linux"]
             else:
                 info_dict["linux_compat"] = False
+            # categories
             if "categories" in keys:
                 categories = get_json_desc(game_info["categories"])
                 info_dict["categories"] = ", ".join(categories)
@@ -346,6 +349,12 @@ class Tracker(Helper):
         """
         return self.games.update_cell(game, self.metacritic_col, score)
 
+    def set_steam_score(self, game, score):
+        """
+        Sets `game`'s steam review score to `score`.
+        """
+        return self.games.update_cell(game, self.steam_score_col, score)
+
     def set_time_to_beat(self, game, time_to_beat):
         """
         Sets `game`'s Time to beat cell to `time_to_beat`.
@@ -390,7 +399,7 @@ class Tracker(Helper):
             return False
         return f"https://store.steampowered.com/app/{appid}/"
 
-    def requests_loop(self, skip_filled=1, check_status=0):
+    def missing_info_check(self, skip_filled=1, check_status=0):
         """
         Loops through games in row_idx and gets missing data for
         time to beat, Metacritic score and additional game info from Steam API.
@@ -463,6 +472,7 @@ class Tracker(Helper):
                 if not appid:
                     appid = self.get_appid(game_name)
                 steam_info = self.get_game_info(appid)
+                # TODO find steam review scores using steam api
                 if steam_info:
                     # genre
                     if steam_info["genre"]:
@@ -490,6 +500,12 @@ class Tracker(Helper):
                         self.set_publisher(game_name, steam_info["publishers"])
                     else:
                         self.set_publisher(game_name, "No Publisher")
+                    # steam review
+                    if steam_info["steam_score"]:
+                        self.set_steam_score(game_name, steam_info["steam_score"])
+                    else:
+                        if not self.games.get_cell(game_name, self.steam_score_col):
+                            self.set_steam_score(game_name, "No Score")
                     # metacritic
                     if steam_info["metacritic"]:
                         self.set_metacritic(game_name, steam_info["metacritic"])
@@ -831,10 +847,10 @@ class Tracker(Helper):
             print("\nUpdated Games:")
             for game in updated_games:
                 print(game)
-            self.excel.save_excel()
             if empty_results:
-                print("The following Games failed to retrieve data.")
+                print("\nThe following Games failed to retrieve data.")
                 print(", ".join(empty_results))
+            self.excel.save_excel()
         else:
             print("No Steam Deck Status Changes")
         self.update_last_run("steam_deck_check")
@@ -1296,7 +1312,7 @@ class Tracker(Helper):
         self.steam_deck_check()
         self.check_playstation_json()
         self.output_completion_data()
-        self.requests_loop()
+        self.missing_info_check()
         choices = [
             ("Update Game", self.custom_update_game),
             ("Pick Random Game", self.pick_random_game),
@@ -1321,11 +1337,8 @@ if __name__ == "__main__":
         # App.view_favorite_games_sales()
         # print(App.get_steam_id('Varnock'))
         # App.steam_deck_check()
-        # App.get_game_info(1290000, debug=True)
+        # App.get_game_info(1290000)
         # status = App.steam_deck_compat(1533420)
         # print(status)
-        # exit()
         pass
-    # App.games.format_cells()
-    # App.excel.save_excel(force_save=True)
     App.run()
