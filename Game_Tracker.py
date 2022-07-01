@@ -240,18 +240,20 @@ class Tracker(Helper):
             info_dict["name"] = game_info["name"]
             # get developer
             if "developers" in keys:
-                info_dict["developers"] = ", ".join(game_info["developers"])
+                output = self.word_and_list(game_info["developers"])
+                info_dict["developers"] = output
             else:
                 info_dict["developers"] = None
             # get publishers
             if "publishers" in keys:
-                info_dict["publishers"] = ", ".join(game_info["publishers"])
+                output = self.word_and_list(game_info["publishers"])
+                info_dict["publishers"] = output
             else:
                 info_dict["publishers"] = None
             # get genre
             if "genres" in keys:
                 genres = get_json_desc(game_info["genres"])
-                info_dict["genre"] = ", ".join(genres)
+                info_dict["genre"] = self.word_and_list(genres)
                 # early access
                 # TODO does not update when changed
                 if "Early Access" in info_dict["genre"]:
@@ -293,7 +295,7 @@ class Tracker(Helper):
             # categories
             if "categories" in keys:
                 categories = get_json_desc(game_info["categories"])
-                info_dict["categories"] = ", ".join(categories)
+                info_dict["categories"] = self.word_and_list(categories)
             else:
                 info_dict["categories"] = None
             # drm info
@@ -615,7 +617,8 @@ class Tracker(Helper):
                         play_status,
                     )
             if self.removed:
-                print(f'\nUnaccounted Steam games:\n{", ".join(self.removed)}')
+                output = self.word_and_list(self.removed)
+                print(f"\nUnaccounted Steam games:\n{output}")
                 for game in self.removed:
                     status = self.games.get_cell(game, "Play Status")
                     if status is not None:
@@ -855,7 +858,8 @@ class Tracker(Helper):
                 print(game)
             if empty_results:
                 print("\nThe following Games failed to retrieve data.")
-                print(", ".join(empty_results))
+                output = self.word_and_list(empty_results)
+                print(output)
             self.excel.save_excel()
         else:
             print("No Steam Deck Status Changes")
@@ -1066,14 +1070,15 @@ class Tracker(Helper):
 
     def output_completion_data(self):
         """
-        Shows total games added and updated games with info.
+        Shows total games updated and added.
         """
-        if self.total_games_added > 0:
+        if self.total_games_updated:
+            print(f"\nGames Updated: {self.total_games_updated}")
+        if self.total_games_added:
             print(f"\nGames Added: {self.total_games_added}")
             if self.added_games:
-                print(", ".join(self.added_games))
-        if self.total_games_updated > 0:
-            print(f"\nGames Updated: {self.total_games_updated}")
+                output = self.word_and_list(self.added_games)
+                print(output)
         if self.excel.changes_made:
             self.excel.save_excel()
         else:
@@ -1084,7 +1089,7 @@ class Tracker(Helper):
         Shows a list of Play Status's to choose from.
         Respond with the playstatus or numerical postion of the status from the list.
         """
-        prompt = ", ".join(self.play_status_choices.values()) + "\n:"
+        prompt = self.word_and_list(self.play_status_choices.values()) + "\n:"
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
