@@ -141,6 +141,17 @@ class TestStringMethods(unittest.TestCase):
         for string, result in url_tests.items():
             self.assertEqual(tester.url_sanitize(string), result)
 
+    def test_word_and_list(self):
+        print("\n", "word_and_list")
+        tester = Tracker()
+        list_tests = [
+            (["Test1"], "Test1"),
+            (["Test1", "Test2"], "Test1 and Test2"),
+            (["Test1", "Test2", "Test3"], "Test1, Test2 and Test3"),
+        ]
+        for list, result in list_tests:
+            self.assertEqual(tester.word_and_list(list), result)
+
     def test_should_ignore(self):
         print("\n", "should_ignore")
         tester = Tracker()
