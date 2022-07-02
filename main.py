@@ -1303,11 +1303,11 @@ class Tracker(Helper):
             num_range=(1, len(choices)),
             allow_blank=True,
         )
-        choice_num = num - 1
-        if choice_num == "":
+        if num == "":
             os.startfile(self.excel.file_path)
             exit()
         # runs chosen function
+        choice_num = num - 1
         choices[choice_num][1]()
 
     @keyboard_interrupt

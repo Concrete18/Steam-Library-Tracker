@@ -2,7 +2,7 @@ import unittest
 import datetime as dt
 
 # classes
-from Game_Tracker import Tracker
+from main import Tracker
 
 
 class TestStringMethods(unittest.TestCase):
