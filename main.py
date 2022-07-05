@@ -46,14 +46,14 @@ class Tracker(Helper):
         "date": ["Last Updated", "Date"],
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
         "left_align": [
-            "Game Name",
+            "Name",
             "Developers",
             "Publishers",
             "Genre",
         ],
     }
     excel = Excel(excel_filename, log_file="configs/excel.log")
-    games = Sheet(excel, "Game Name", sheet_name="Games", options=options)
+    games = Sheet(excel, "Name", sheet_name="Games", options=options)
     # api call logger
     play_status_choices = {
         "1": "Played",
@@ -72,8 +72,8 @@ class Tracker(Helper):
         pub_col := "Publishers",
         dev_col := "Developers",
         metacritic_col := "Metacritic",
-        # TODO enable steam review once it can be aquired
-        # steam_score_col := "Steam Review Score",
+        steam_rev_per_col := "Steam Review Percent",
+        steam_rev_total_col := "Steam Review Total",
         time_to_beat_col := "Time To Beat in Hours",
         release_col := "Release Year",
         ea_col := "Early Access",
@@ -214,12 +214,63 @@ class Tracker(Helper):
         else:
             return "Invalid Date"
 
-    def get_game_info(self, appid):
+    def get_steam_review(self, store_link: str):
+        """
+        Scrapes the games review percent and total reviews from
+        the steam store page using `store_link`.
+        """
+        self.api_sleeper("steam_review_scrape")
+        response = self.request_url(store_link)
+        soup = BeautifulSoup(response.text, "html.parser")
+        hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
+        results = soup.find_all(class_=hidden_review_class)
+        if len(results) == 1:
+            text = results[0].text.strip()
+        elif len(results) > 1:
+            text = results[1].text.strip()
+        else:
+            return "No Reviews", "No Reviews"
+        parsed_data = text[2:26].split("% of the ")
+        # get percent
+        review_perc = parsed_data[0]
+        if review_perc.isnumeric():
+            if review_perc == "100":
+                percent = 1
+            else:
+                percent = float(f".{review_perc}")
+        else:
+            percent = "Not Enough Reviews"
+        # get total
+        if len(parsed_data) > 1:
+            cleaned_num = parsed_data[1].replace(",", "")
+            total = int(re.search(r"\d+", cleaned_num).group())
+        else:
+            total = "No Reviews"
+        return percent, total
+
+    def get_game_info(self, appid, game_name=None):
         """
         Gets game info with steam api using a `appid`.
         """
+        info_dict = {
+            "developers": "No Data",
+            "publishers": "No Data",
+            "genre": "No Data",
+            "early_access": "No",
+            "metacritic": "No Data",
+            "steam_review_percent": "No Reviews",
+            "steam_review_total": "No Reviews",
+            "release_date": "No Year",
+            "price": "No Data",
+            "discount": "No Data",
+            "on_sale": "No Data",
+            "linux_compat": "Unsupported",
+            "drm_notice": "No Data",
+            "categories": "No Data",
+            "ext_user_account_notice": "No Data",
+        }
         if not appid:
-            return None
+            return info_dict
 
         def get_json_desc(data):
             return [item["description"] for item in data]
@@ -231,9 +282,17 @@ class Tracker(Helper):
         self.api_sleeper("steam_app_details")
         response = self.request_url(url)
         if not response:
-            return None
-        info_dict = {}
+            return info_dict
         dict = response.json()
+        # steam review data
+        if game_name:
+            hyperlink = self.games.get_cell(game_name, "Store Link")
+            if hyperlink:
+                store_link = self.games.extract_hyperlink(hyperlink)
+                percent, total = self.get_steam_review(store_link)
+                info_dict["steam_review_percent"] = percent
+                info_dict["steam_review_total"] = total
+        # info_dict setup
         if "data" in dict[str(appid)].keys():
             game_info = dict[str(appid)]["data"]
             keys = game_info.keys()
@@ -242,14 +301,10 @@ class Tracker(Helper):
             if "developers" in keys:
                 output = self.word_and_list(game_info["developers"])
                 info_dict["developers"] = output
-            else:
-                info_dict["developers"] = None
             # get publishers
             if "publishers" in keys:
                 output = self.word_and_list(game_info["publishers"])
                 info_dict["publishers"] = output
-            else:
-                info_dict["publishers"] = None
             # get genre
             if "genres" in keys:
                 genres = get_json_desc(game_info["genres"])
@@ -258,22 +313,14 @@ class Tracker(Helper):
                 # TODO does not update when changed
                 if "Early Access" in info_dict["genre"]:
                     info_dict["early_access"] = "Yes"
-                else:
-                    info_dict["early_access"] = "No"
-            else:
-                info_dict["genre"] = None
             # get metacritic
             if "metacritic" in keys:
                 info_dict["metacritic"] = game_info["metacritic"]["score"]
-            else:
-                info_dict["metacritic"] = None
             # get release year
             if "release_date" in keys:
                 release_date = game_info["release_date"]["date"]
                 release_date = self.get_year(release_date)
                 info_dict["release_date"] = release_date
-            else:
-                info_dict["release_date"] = None
             # get price_info
             if "price_overview" in keys:
                 price_data = game_info["price_overview"]
@@ -283,37 +330,25 @@ class Tracker(Helper):
                 info_dict["price"] = price
                 info_dict["discount"] = discount
                 info_dict["on_sale"] = on_sale
-            else:
-                info_dict["price"] = None
-                info_dict["discount"] = None
-                info_dict["on_sale"] = None
             # get linux compat
-            if "platforms" in keys:
+            if "linux_compat" in keys:
                 info_dict["linux_compat"] = game_info["platforms"]["linux"]
-            else:
-                info_dict["linux_compat"] = False
             # categories
             if "categories" in keys:
                 categories = get_json_desc(game_info["categories"])
                 info_dict["categories"] = self.word_and_list(categories)
-            else:
-                info_dict["categories"] = None
             # drm info
             if "drm_notice" in keys:
                 info_dict["drm_notice"] = game_info["drm_notice"]
-            else:
-                info_dict["drm_notice"] = None
             # external account
             if "ext_user_account_notice" in keys:
                 info_dict["ext_user_account_notice"] = game_info[
                     "ext_user_account_notice"
                 ]
-            else:
-                info_dict["ext_user_account_notice"] = None
             # runs unicode remover on all values
-            final_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
-            return final_dict
-        return None
+            info_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
+            return info_dict
+        return info_dict
 
     def set_release_year(self, game, release_year):
         """
@@ -350,12 +385,6 @@ class Tracker(Helper):
         Sets `game`'s metacritic score to `score`.
         """
         return self.games.update_cell(game, self.metacritic_col, score)
-
-    def set_steam_score(self, game, score):
-        """
-        Sets `game`'s steam review score to `score`.
-        """
-        return self.games.update_cell(game, self.steam_score_col, score)
 
     def set_time_to_beat(self, game, time_to_beat):
         """
@@ -412,8 +441,8 @@ class Tracker(Helper):
         """
         # creates checklist
         check_list = []
-        for game in self.games.row_idx:
-            play_status = self.games.get_cell(game, "Play Status")
+        for game_name in self.games.row_idx:
+            play_status = self.games.get_cell(game_name, "Play Status")
             if check_status:
                 if play_status not in [
                     "Unplayed",
@@ -425,12 +454,12 @@ class Tracker(Helper):
                     continue
             if skip_filled:
                 for column in self.to_check:
-                    cell = self.games.get_cell(game, column)
-                    if cell == None and game not in check_list:
-                        check_list.append(game)
+                    cell = self.games.get_cell(game_name, column)
+                    if cell == None and game_name not in check_list:
+                        check_list.append(game_name)
                         continue
             else:
-                check_list.append(game)
+                check_list.append(game_name)
         # checks if data should be updated
         missing_data = len(check_list)
         auto_run = 50
@@ -469,57 +498,61 @@ class Tracker(Helper):
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score != None:
                         self.set_metacritic(game_name, metacritic_score)
-                # gets steam info if an app id exists and Steam is platform
+                # gets steam info if an app id exists
                 appid = self.games.get_cell(game_name, "App ID")
                 if not appid:
                     appid = self.get_appid(game_name)
-                steam_info = self.get_game_info(appid)
-                # TODO find steam review scores using steam api
-                if steam_info:
-                    # genre
-                    if steam_info["genre"]:
-                        self.set_genre(game_name, steam_info["genre"])
-                        # early access
-                        if "Early Access" in steam_info["genre"]:
-                            self.set_early_access(game, "Yes")
-                        else:
-                            self.set_early_access(game, "No")
+                    if appid:
+                        self.games.update_cell(game_name, "App ID", appid)
+                steam_info = self.get_game_info(appid, game_name)
+                # genre
+                if steam_info["genre"]:
+                    self.set_genre(game_name, steam_info["genre"])
+                    # early access
+                    if "Early Access" in steam_info["genre"]:
+                        self.set_early_access(game_name, "Yes")
                     else:
-                        self.set_genre(game, "No Genre")
-                        self.set_early_access(game, "Unknown")
-                    # release year
-                    if steam_info["release_date"]:
-                        self.set_release_year(game_name, steam_info["release_date"])
-                    else:
-                        self.set_release_year(game_name, "No Year")
-                    # developer
-                    if steam_info["developers"]:
-                        self.set_developer(game_name, steam_info["developers"])
-                    else:
-                        self.set_developer(game_name, "No Developer")
-                    # publishers
-                    if steam_info["publishers"]:
-                        self.set_publisher(game_name, steam_info["publishers"])
-                    else:
-                        self.set_publisher(game_name, "No Publisher")
-                    # steam review
-                    if steam_info["steam_score"]:
-                        self.set_steam_score(game_name, steam_info["steam_score"])
-                    else:
-                        if not self.games.get_cell(game_name, self.steam_score_col):
-                            self.set_steam_score(game_name, "No Score")
-                    # metacritic
-                    if steam_info["metacritic"]:
-                        self.set_metacritic(game_name, steam_info["metacritic"])
-                    else:
-                        if not self.games.get_cell(game_name, self.metacritic_col):
-                            self.set_metacritic(game_name, "No Score")
+                        self.set_early_access(game_name, "No")
+                else:
+                    self.set_genre(game_name, "No Genre")
+                    self.set_early_access(game_name, "Unknown")
+                # release year
+                if steam_info["release_date"]:
+                    self.set_release_year(game_name, steam_info["release_date"])
                 else:
                     self.set_release_year(game_name, "No Year")
-                    self.set_genre(game_name, "No Data")
-                    self.set_developer(game_name, "No Data")
-                    self.set_publisher(game_name, "No Data")
-                    self.set_early_access(game_name, "No")
+                # developer
+                if steam_info["developers"]:
+                    self.set_developer(game_name, steam_info["developers"])
+                else:
+                    self.set_developer(game_name, "No Developer")
+                # publishers
+                if steam_info["publishers"]:
+                    self.set_publisher(game_name, steam_info["publishers"])
+                else:
+                    self.set_publisher(game_name, "No Publisher")
+                # steam review percent
+                col = self.steam_rev_per_col
+                if "steam_review_percent" in steam_info.keys():
+                    percent = steam_info["steam_review_percent"]
+                    self.games.update_cell(game_name, col, percent)
+                else:
+                    if not self.games.get_cell(game_name, col):
+                        self.games.update_cell(game_name, col, "No Reviews")
+                # steam review total
+                col = self.steam_rev_total_col
+                if "steam_review_total" in steam_info.keys():
+                    total = steam_info["steam_review_total"]
+                    self.games.update_cell(game_name, col, total)
+                else:
+                    if not self.games.get_cell(game_name, col):
+                        self.games.update_cell(game_name, col, "No Reviews")
+                # metacritic
+                if steam_info["metacritic"]:
+                    self.set_metacritic(game_name, steam_info["metacritic"])
+                else:
+                    if not self.games.get_cell(game_name, self.metacritic_col):
+                        self.set_metacritic(game_name, "No Score")
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -1029,7 +1062,7 @@ class Tracker(Helper):
         # sets excel column values
         column_info = {
             "My Rating": "",
-            "Game Name": game_name,
+            "Name": game_name,
             "Play Status": play_status,
             "Platform": platform,
             "VR Support": vr_support,
@@ -1046,7 +1079,7 @@ class Tracker(Helper):
             "Date Updated": dt.datetime.now(),
             "Date Added": dt.datetime.now(),
         }
-        steam_info = self.get_game_info(appid)
+        steam_info = self.get_game_info(appid, game_name)
         if steam_info:
             columns = [
                 "Publishers",
@@ -1161,7 +1194,7 @@ class Tracker(Helper):
                 continue
             appid = self.games.get_cell(game, "App ID")
             if my_rating >= rating_limit and appid:
-                game_dict = self.get_game_info(appid)
+                game_dict = self.get_game_info(appid, game)
                 if not game_dict:
                     continue
                 game_dict["my_rating"] = my_rating
@@ -1318,7 +1351,7 @@ class Tracker(Helper):
         self.config_check()
         self.arg_func()
         print("Starting Game Tracker")
-        # starts function run with CTRL + C Exit being possible without causing an error
+        # runs script with CTRL + C clean program end
         self.refresh_steam_games(self.steam_id)
         if self.should_run_steam_deck_update():
             self.steam_deck_check()
@@ -1342,10 +1375,4 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.view_favorite_games_sales()
-    # print(App.get_steam_id('RobinHorn'))
-    # App.steam_deck_check()
-    # App.get_game_info(1290000)
-    # status = App.steam_deck_compat(1533420)
-    # print(status)
     App.run()
