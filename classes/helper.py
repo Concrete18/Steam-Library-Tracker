@@ -53,6 +53,22 @@ class Logger:
 
 
 class Helper(Logger):
+    @staticmethod
+    def benchmark(func):
+        """
+        Prints `func` name and a benchmark for runtime.
+        """
+
+        def wrapped(*args, **kwargs):
+            start = time.perf_counter()
+            value = func(*args, **kwargs)
+            end = time.perf_counter()
+            elapsed = round(end - start, 2)
+            print(f"{func.__name__} Completion Time: {elapsed}")
+            return value
+
+        return wrapped
+
     def request_url(self, url, headers=None, second_try=False):
         """
         Quick data request with check for success.
