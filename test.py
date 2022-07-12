@@ -81,6 +81,7 @@ class TestStringMethods(unittest.TestCase):
             800: 13.3,
             30: 0.5,
             2940: 49,
+            0: None,
         }
         for minutes_played, answer in time_hours_played.items():
             self.assertEqual(tester.hours_played(minutes_played), answer)
@@ -129,6 +130,64 @@ class TestStringMethods(unittest.TestCase):
         invalid_url = "https://store.steampowered.com/app/6546546545465484213211545730/"
         response = tester.request_url(invalid_url)
         self.assertNotIn("6546546545465484213211545730", response.url)
+
+    def test_get_steam_review(self):
+        print("\n", "get_steam_review")
+        tester = Tracker()
+        steam_review_tests = [
+            752590,
+            1161580,
+            230410,
+            752590,
+        ]
+        for appid in steam_review_tests:
+            percent, total = tester.get_steam_review(appid=appid)
+            self.assertIsInstance(percent, float)
+            self.assertIsInstance(total, int)
+        percent, total = tester.get_steam_review(appid=752590)
+        self.assertIsInstance(percent, float)
+        self.assertIsInstance(total, int)
+
+    def test_get_game_info(self):
+        print("\n", "get_game_info")
+        tester = Tracker()
+        default_dict = {
+            "developers": "No Data",
+            "publishers": "No Data",
+            "genre": "No Data",
+            "early_access": "No",
+            "metacritic": "No Data",
+            "steam_review_percent": "No Reviews",
+            "steam_review_total": "No Reviews",
+            "release_date": "No Year",
+            "price": "No Data",
+            "discount": "No Data",
+            "on_sale": "No Data",
+            "linux_compat": "Unsupported",
+            "drm_notice": "No Data",
+            "categories": "No Data",
+            "ext_user_account_notice": "No Data",
+        }
+        appid_tests = [752590, 1161580, 230410]
+        for appid in appid_tests:
+            game_info = tester.get_game_info(appid=appid)
+            self.assertIsInstance(game_info["developers"], str)
+            self.assertIsInstance(game_info["publishers"], str)
+            self.assertIsInstance(game_info["genre"], str)
+            self.assertIn(game_info["early_access"], ["Yes", "No"])
+            self.assertIsInstance(game_info["metacritic"], int)
+            self.assertIsInstance(game_info["steam_review_percent"], float)
+            self.assertIsInstance(game_info["steam_review_total"], int)
+            self.assertIsInstance(game_info["release_date"], str)
+            self.assertIsInstance(game_info["price"], int)
+            self.assertIsInstance(game_info["discount"], float)
+            self.assertIn(game_info["on_sale"], ["Yes", "No"])
+            self.assertIsInstance(game_info["linux_compat"], str)
+            self.assertIsInstance(game_info["drm_notice"], str)
+            self.assertIsInstance(game_info["categories"], str)
+            self.assertIsInstance(game_info["ext_user_account_notice"], str)
+        # TODO ph comment
+        self.assertEqual(tester.get_game_info(None, None), default_dict)
 
     def test_url_sanitize(self):
         print("\n", "url_sanitize")
