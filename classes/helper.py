@@ -1,5 +1,6 @@
 from difflib import SequenceMatcher
-import time, json, requests, re
+import time, json, requests, re, shutil
+from pathlib import Path
 import datetime as dt
 
 # logging
@@ -25,7 +26,29 @@ def keyboard_interrupt(func):
     return wrapped
 
 
+def setup():
+    """
+    ph
+    """
+    # 76561197969291006
+    # B5E7FD4EB5954CB3972F90230A222929
+    config_folder = Path("configs")
+    config_folder.mkdir(exist_ok=True)
+    shutil.copyfile("config_template.json", Path("configs/config.json"))
+    shutil.copyfile("Game_Library_Template.xlsx", "Game Library.xlsx")
+    print("Open the config and update the following info:")
+    print("steam_id\nsteam_api_key")
+    print("\nOnce updated run again.")
+    input("Press Enter to Close.")
+    exit()
+
+
 class Logger:
+
+    # run setup if config does not exist
+    config_folder = Path("configs")
+    if not config_folder.exists():
+        setup()
 
     # logger setup
     log_formatter = lg.Formatter(
@@ -34,7 +57,9 @@ class Logger:
     logger = lg.getLogger(__name__)
     logger.setLevel(lg.DEBUG)  # Log Level
     my_handler = RotatingFileHandler(
-        "configs/tracker.log", maxBytes=5 * 1024 * 1024, backupCount=2
+        "configs/tracker.log",
+        maxBytes=5 * 1024 * 1024,
+        backupCount=2,
     )
     my_handler.setFormatter(log_formatter)
     logger.addHandler(my_handler)
@@ -118,6 +143,9 @@ class Helper(Logger):
         """
         Converts `minutes_played` to a hours played in decimal form.
         """
+        hours_played = round(minutes_played / 60, 1)
+        if hours_played == 0.0:
+            return None
         return round(minutes_played / 60, 1)
 
     @staticmethod
