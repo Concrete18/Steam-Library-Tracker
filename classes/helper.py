@@ -28,10 +28,8 @@ def keyboard_interrupt(func):
 
 def setup():
     """
-    ph
+    Sets up the config and excel file.
     """
-    # 76561197969291006
-    # B5E7FD4EB5954CB3972F90230A222929
     config_folder = Path("configs")
     config_folder.mkdir(exist_ok=True)
     shutil.copyfile("config_template.json", Path("configs/config.json"))
