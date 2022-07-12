@@ -34,13 +34,19 @@ WIP
 
 ## Setup
 
-Install dependencies with the following command.
+1. Install dependencies with the following command.
 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-Once the program runs it should create your config file where you need to enter your steam ID and Steam API Key. Once this is done feel free to set up any of the other optional settings and then run again. This should run through your Steam Games and fill your newly created excel file.
+2. Run program so it can create your config file where you need to enter your steam ID and Steam API Key.
+
+3. (Optional) Set up any of the other optional settings within the config.
+
+4. Run Program again. This should run through your Steam Games and fill your newly created excel file.
+
+5. Enjoy!
 
 ## Todo
 
