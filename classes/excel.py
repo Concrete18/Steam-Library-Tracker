@@ -127,6 +127,7 @@ class Excel:
                             if use_print:
                                 print(f'Save Complete.{34*" "}')
                                 self.changes_made = False
+                            return True
                         else:
                             print("File no longer exists. Save Cancelled")
                         break
