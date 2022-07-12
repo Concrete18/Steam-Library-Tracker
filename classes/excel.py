@@ -30,7 +30,7 @@ class Excel:
 
     def __init__(
         self,
-        excel_filename: str,
+        filename: str,
         use_logging: bool = True,
         log_file: str = "excel.log",
         log_level=lg.DEBUG,
@@ -39,7 +39,7 @@ class Excel:
         Allows retreiving, adding, updating, deleting and
         formatting cells within Excel.
 
-        `excel_filename` is the path to the excel file.
+        `filename` is the path to the excel file.
 
         `use_logging` allows disabling all logs when running.
 
@@ -49,7 +49,7 @@ class Excel:
         level must be an int or a str.
         """
         # workbook setup
-        self.file_path = Path(excel_filename)
+        self.file_path = Path(filename)
         try:
             self.wb = openpyxl.load_workbook(self.file_path)
         except zipfile.BadZipFile:
@@ -90,30 +90,7 @@ class Excel:
             if type == "error":
                 self.logger.error(msg)
 
-    def create_dataframe(
-        self,
-        date_columns: list = None,
-        na_values: list = None,
-    ):
-        """
-        Creates a panda dataframe using the current used sheet.
-
-        `date_columns` sets the columns with dates.
-
-        `na_values` sets what should be considered N/A values that are ignored.
-
-        """
-        file_loc = self.file_path
-        df = pd.read_excel(
-            file_loc,
-            engine="openpyxl",
-            sheet_name=None,
-            parse_dates=date_columns,
-            na_values=na_values,
-        )
-        return df
-
-    def save_excel(
+    def save(
         self,
         use_print: bool = True,
         force_save: bool = False,
@@ -178,7 +155,7 @@ class Excel:
         Saves changes if `save` is True.
         """
         if save:
-            self.save_excel()
+            self.save()
         if self.file_path.exists:
             os.startfile(self.file_path)
         else:
@@ -191,13 +168,13 @@ class Excel:
         pressed during the input.
         """
         if not self.ext_terminal:
-            self.save_excel()
+            self.save()
             exit()
         try:
             input("\nPress Enter to open the excel sheet.\n")
         except KeyboardInterrupt:
             print("Closing...")
-            self.save_excel()
+            self.save()
             exit()
         self.open_excel()
 
@@ -260,6 +237,23 @@ class Sheet:
                 "decimal": ["Hours"],
                 "not_centered": ["Name"],
             }
+
+    def create_dataframe(self, date_cols: list = None, na_vals: list = None):
+        """
+        Creates a panda dataframe using the current used sheet.
+
+        `date_cols` sets the columns with dates.
+
+        `na_vals` sets what should be considered N/A values that are ignored.
+        """
+        df = pd.read_excel(
+            self.excel.file_path,
+            engine="openpyxl",
+            sheet_name=self.sheet_name,
+            parse_dates=date_cols,
+            na_values=na_vals,
+        )
+        return df
 
     @staticmethod
     def indirect_cell(left: int = 0, right: int = 0, manual_set: int = 0):
@@ -409,7 +403,8 @@ class Sheet:
         """
         row_key, col_key = self.get_row_col_index(row_val, col_val)
         if row_key is not None and col_key is not None:
-            cur_val = self.cur_sheet.cell(row=row_key, column=col_key).value
+            cell = self.cur_sheet.cell(row=row_key, column=col_key)
+            cur_val = cell.value
             # returns False if replace is False and the current value is not none
             if not replace and cur_val:
                 return False
@@ -418,9 +413,11 @@ class Sheet:
                 new_val = None
             if cur_val != new_val:
                 # FIXME datetime objects cause issues with this
+                if cell.is_date:
+                    pass
                 self.cur_sheet.cell(row=row_key, column=col_key).value = new_val
                 if save:
-                    self.excel.save_excel(use_print=False, backup=False)
+                    self.excel.save(use_print=False, backup=False)
                 else:
                     self.excel.changes_made = True
                 return True
@@ -462,7 +459,7 @@ class Sheet:
         self.cur_sheet.append(append_list)
         self.update_index(column_key)
         if save:
-            self.excel.save_excel(use_print=False, backup=False)
+            self.excel.save(use_print=False, backup=False)
         else:
             self.excel.changes_made = True
         return True
@@ -479,7 +476,7 @@ class Sheet:
         self.cur_sheet.delete_rows(row)
         self.excel.changes_made = True
         if save:
-            self.excel.save_excel(use_print=False, backup=False)
+            self.excel.save(use_print=False, backup=False)
         return True
 
     def delete_by_column(self, column_name: str):
