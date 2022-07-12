@@ -9,6 +9,7 @@ import pandas as pd
 # classes
 from classes.excel import Excel, Sheet
 from classes.helper import Helper, keyboard_interrupt
+from classes.statisitics import Stat
 
 
 class Tracker(Helper):
@@ -60,12 +61,15 @@ class Tracker(Helper):
         "2": "Playing",
         "3": "Waiting",
         "4": "Finished",
-        "5": "Quit",
-        "6": "Unplayed",
-        "7": "Ignore",
+        "5": "Endless",
+        "6": "Must Play",
+        "7": "Quit",
+        "8": "Unplayed",
+        "9": "Ignore",
     }
+
     # misc
-    json_path = Path("configs\playstation_games.json")
+    ps_json = Path("configs\playstation_games.json")
     # columns
     to_check = [
         genre_col := "Genre",
@@ -214,12 +218,13 @@ class Tracker(Helper):
         else:
             return "Invalid Date"
 
-    def get_steam_review(self, store_link: str):
+    def get_steam_review(self, appid: int):
         """
         Scrapes the games review percent and total reviews from
-        the steam store page using `store_link`.
+        the steam store page using `appid` or `store_link`.
         """
         self.api_sleeper("steam_review_scrape")
+        store_link = self.get_store_link(appid)
         response = self.request_url(store_link)
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
@@ -285,13 +290,9 @@ class Tracker(Helper):
             return info_dict
         dict = response.json()
         # steam review data
-        if game_name:
-            hyperlink = self.games.get_cell(game_name, "Store Link")
-            if hyperlink:
-                store_link = self.games.extract_hyperlink(hyperlink)
-                percent, total = self.get_steam_review(store_link)
-                info_dict["steam_review_percent"] = percent
-                info_dict["steam_review_total"] = total
+        percent, total = self.get_steam_review(appid=appid)
+        info_dict["steam_review_percent"] = percent
+        info_dict["steam_review_total"] = total
         # info_dict setup
         if "data" in dict[str(appid)].keys():
             game_info = dict[str(appid)]["data"]
@@ -556,11 +557,11 @@ class Tracker(Helper):
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
-                    self.excel.save_excel(use_print=False, backup=False)
+                    self.excel.save(use_print=False, backup=False)
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
-            self.excel.save_excel()
+            self.excel.save()
 
     @staticmethod
     def play_status(play_status: str, hours_played: float):
@@ -615,7 +616,13 @@ class Tracker(Helper):
             self.total_games_updated = 0
             self.total_games_added = 0
             self.added_games = []
-            for game in response.json()["response"]["games"]:
+            owned_games = response.json()["response"]["games"]
+            for game in tqdm(
+                iterable=owned_games,
+                ascii=True,
+                unit="games",
+                dynamic_ncols=True,
+            ):
                 game_name = game["name"]
                 appid = game["appid"]
                 if self.should_ignore(game_name, appid):
@@ -675,14 +682,14 @@ class Tracker(Helper):
                 md5.update(data)
         return md5.hexdigest()
 
-    def check_for_changes(self, json_path):
+    def check_for_changes(self, ps_json):
         """
         Checks for changes to the json file.
         """
         with open(self.config) as file:
             data = json.load(file)
         previous_hash = data["settings"]["playstation_hash"]
-        new_hash = self.hash_file(json_path)
+        new_hash = self.hash_file(ps_json)
         if new_hash == previous_hash:
             print("\nNo PlayStation games were added or updated.")
             return False
@@ -789,7 +796,7 @@ class Tracker(Helper):
         total_games_added = len(added_games)
         print(f"Added {total_games_added} PS4/PS5 Games.")
         if total_games_added > 0:
-            self.excel.save_excel()
+            self.excel.save()
 
     def create_dataframe(self, table):
         """
@@ -827,7 +834,7 @@ class Tracker(Helper):
         action_url = "saleaction/ajaxgetdeckappcompatibilityreport"
         url_var = f"?nAppID={appid}"
         url = main_url + action_url + url_var
-        data = self.request_url(url).json()
+        data = self.request_url(url)
         if not data:
             return False
         categories = {
@@ -836,7 +843,7 @@ class Tracker(Helper):
             2: "PLAYABLE",
             3: "VERIFIED",
         }
-        results = data["results"]
+        results = data.json()["results"]
         if not results:
             return False
         category_id = results["resolved_category"]
@@ -893,7 +900,7 @@ class Tracker(Helper):
                 print("\nThe following Games failed to retrieve data.")
                 output = self.word_and_list(empty_results)
                 print(output)
-            self.excel.save_excel()
+            self.excel.save()
         else:
             print("No Steam Deck Status Changes")
         self.update_last_run("steam_deck_check")
@@ -913,7 +920,7 @@ class Tracker(Helper):
                 appid, game_name, ignore, status = line.split("\t")
             if self.set_steam_deck(game_name, status):
                 print("failed on", game_name, status)
-        self.excel.save_excel()
+        self.excel.save()
 
     def check_playstation_json(self):
         """
@@ -921,16 +928,15 @@ class Tracker(Helper):
         it can add the new games to the sheet.
         """
         # checks if json exists
-        if not self.json_path.exists:
+        if not self.ps_json.exists():
             print("PlayStation Json does not exist.")
+            self.ps_json.touch()
             webbrowser.open_new(self.playstation_data_link)
             return None
-        # create hash file if it does not exist
-        if not self.json_path.exists:
-            self.json_path.touch()
-        if not self.check_for_changes(self.json_path):
+        if not self.check_for_changes(self.ps_json):
+            # TODO add log
             return None
-        with open(self.json_path) as file:
+        with open(self.ps_json) as file:
             data = json.load(file)
         print("\nChecking for new games for PS4 or PS5.")
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
@@ -958,6 +964,8 @@ class Tracker(Helper):
             previous_hours_played = 0
         else:
             previous_hours_played = float(previous_hours_played)
+        if not current_hours_played:
+            return
         if current_hours_played > previous_hours_played:
             self.set_hours_played(game_name, current_hours_played)
             self.set_linux_hours_played(game_name, current_linux_hours_played)
@@ -1099,21 +1107,21 @@ class Tracker(Helper):
         self.games.format_row(game_name)
         if save:
             print("saved")
-            self.excel.save_excel()
+            self.excel.save()
 
     def output_completion_data(self):
         """
         Shows total games updated and added.
         """
-        if self.total_games_updated:
+        if 0 < self.total_games_updated < 50:
             print(f"\nGames Updated: {self.total_games_updated}")
-        if self.total_games_added:
+        if 0 < self.total_games_added < 50:
             print(f"\nGames Added: {self.total_games_added}")
             if self.added_games:
                 output = self.word_and_list(self.added_games)
                 print(output)
         if self.excel.changes_made:
-            self.excel.save_excel()
+            self.excel.save()
         else:
             print("\nNo Steam games were added or updated.")
 
@@ -1300,7 +1308,7 @@ class Tracker(Helper):
             print("Left Play Status the same.")
         if updated:
             self.set_date_updated(game_idx)
-            self.excel.save_excel(backup=False)
+            self.excel.save(backup=False)
         else:
             print("No changes made.")
         response = input("Do you want to update another game? Type yes.\n")
@@ -1312,7 +1320,7 @@ class Tracker(Helper):
         Opens playstation data json file and web json with latest data
         for manual updating.
         """
-        subprocess.Popen(f'notepad "{self.json_path}"')
+        subprocess.Popen(f'notepad "{self.ps_json}"')
         webbrowser.open(self.playstation_data_link)
         webbrowser.open(r"https://store.playstation.com/")
         input("\nPress Enter when done.")
@@ -1358,9 +1366,32 @@ class Tracker(Helper):
         self.check_playstation_json()
         self.output_completion_data()
         self.missing_info_check()
+        # statistics setup
+        na_values = [
+            "No Data",
+            "Page Error",
+            "No Score",
+            "Not Found",
+            "No Reviews",
+            "No Publisher",
+            "No Developer",
+            "Invalid Date",
+            "No Year",
+        ]
+        df = self.games.create_dataframe(na_vals=na_values)
+        stats = Stat(df)
+
+        # TODO remove below
+        if not self.ext_terminal:
+            stats.get_game_statistics()
+            input()
+            exit()
+
+        # choice picker
         choices = [
             ("Add Game", self.manually_add_game),
             ("Update Game", self.custom_update_game),
+            ("Get Statistics", stats.get_game_statistics),
             ("Check Steam Deck Game Status", self.steam_deck_check),
             ("Pick Random Game", self.pick_random_game),
             ("Update the Playstation Data", self.update_playstation_data),
