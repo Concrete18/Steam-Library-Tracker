@@ -605,9 +605,11 @@ class Tracker(Helper):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
+        excel_saved = False
         response = self.get_owned_steam_games(steam_id)
         if response:
-            # checks for games that changed names or no longer exist
+            # creates filled removed list so it can be checked for
+            # games that changed names or no longer exist
             self.removed = [
                 str(game)
                 for game in self.games.row_idx.keys()
@@ -616,6 +618,7 @@ class Tracker(Helper):
             self.total_games_updated = 0
             self.total_games_added = 0
             self.added_games = []
+            checks = 0
             owned_games = response.json()["response"]["games"]
             for game in tqdm(
                 iterable=owned_games,
@@ -623,6 +626,7 @@ class Tracker(Helper):
                 unit="games",
                 dynamic_ncols=True,
             ):
+                checks += 1
                 game_name = game["name"]
                 appid = game["appid"]
                 if self.should_ignore(game_name, appid):
@@ -656,6 +660,10 @@ class Tracker(Helper):
                         appid,
                         play_status,
                     )
+                # saves each time the checks count is divisible by 20
+                if checks % 20 == 0:
+                    if self.excel.save(use_print=False):
+                        excel_saved = True
             if self.removed:
                 output = self.word_and_list(self.removed)
                 print(f"\nUnaccounted Steam games:\n{output}")
@@ -666,7 +674,7 @@ class Tracker(Helper):
                             removed_status = f"Removed | {status}"
                             self.set_play_status(game, removed_status)
                             self.set_date_updated(game)
-            return True
+        return excel_saved
 
     @staticmethod
     def hash_file(file_path, buf_size: int = 65536):
@@ -1381,11 +1389,11 @@ class Tracker(Helper):
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
 
-        # TODO remove below
-        if not self.ext_terminal:
-            stats.get_game_statistics()
-            input()
-            exit()
+        # # TODO remove below when done testing statistics
+        # if not self.ext_terminal:
+        #     stats.get_game_statistics()
+        #     input()
+        #     exit()
 
         # choice picker
         choices = [
