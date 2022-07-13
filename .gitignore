@@ -133,7 +133,6 @@ dmypy.json
 *.xlsx
 *.bak
 *.xml
-*.png
 *.pkl
 # custom files
 *.lnk
