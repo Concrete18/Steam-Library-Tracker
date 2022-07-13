@@ -9,33 +9,41 @@ Steam and Playstation Library Tracker allows keeping up with what you have playe
 
 WIP
 
+## Technology Used
+
+- Python Pandas
+- Matplotlib
+- API Requests with Requests
+- Web Scraping with Requests and BeautifulSoup
+- Custom Created module based on OpenPyXL
+
 ## Features
 
-* Auto Updating Steam Data
-* Playstation Library Ownership Tracking (No hours tracked like Steam)
-* Steam Deck Game Status Checker
-* Favorite Game Sale Checker
-* Random game picker
-* Library Statistics using Pandas and Matplotlib
+- Auto Updating Steam Data
+- Playstation Library Ownership Tracking (No hours tracked like Steam)
+- Steam Deck Game Status Checker
+- Favorite Game Sale Checker
+- Random game picker
+- Library Statistics using Pandas and Matplotlib
 
 ### Game Status Choices
 
-* Playing
-* Played
-* Finished
-* Unplayed
-* Must Play
-* Waiting
-* Quit
-* Ignore
+- Playing
+- Played
+- Finished
+- Unplayed
+- Must Play
+- Waiting
+- Quit
+- Ignore
 
 ## Setup
 
 1. Install dependencies with the following command.
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 2. Run program so it can create your config file where you need to enter your steam ID and Steam API Key.
 
@@ -51,4 +59,6 @@ WIP
 
 ## Documentation
 
-### 
+### Adding Playstation Games
+
+WIP
