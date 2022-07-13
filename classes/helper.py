@@ -32,8 +32,10 @@ def setup():
     """
     config_folder = Path("configs")
     config_folder.mkdir(exist_ok=True)
-    shutil.copyfile("config_template.json", Path("configs/config.json"))
-    shutil.copyfile("Game_Library_Template.xlsx", "Game Library.xlsx")
+    config_template = Path("templates\config_template.json")
+    excel_template = Path("templates\Game_Library_Template.xlsx")
+    shutil.copyfile(config_template, Path("configs/config.json"))
+    shutil.copyfile(excel_template, "Game Library.xlsx")
     print("Open the config and update the following info:")
     print("steam_id\nsteam_api_key")
     print("\nOnce updated run again.")
