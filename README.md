@@ -2,8 +2,8 @@
 
 Steam and Playstation Library Tracker allows keeping up with what you have played and want to play ect... Many different types of information are auto retrieved using API's and Scraping.
 
-    Adding playstation games is a side feature and is not as feature rich as
-    Steam games due to lack of an API compared to Steam.
+Adding playstation games is a side feature and is not as feature rich as
+Steam games due to lack of an API compared to Steam.
 
 ## Images
 
@@ -45,12 +45,9 @@ WIP
    pip install -r requirements.txt
    ```
 
-2. Run program so it can create your config file where you need to enter your steam ID and Steam API Key.
-
+2. Run main.py so it can create your config file where you need to enter your steam ID and Steam API Key.
 3. (Optional) Set up any of the other optional settings within the config.
-
-4. Run Program again. This should run through your Steam Games and fill your newly created excel file.
-
+4. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
 5. Enjoy!
 
 ## Todo
