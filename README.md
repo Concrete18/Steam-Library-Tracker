@@ -7,7 +7,9 @@ Steam games due to lack of an API compared to Steam.
 
 ## Images
 
-WIP
+![Console Preview](https://raw.githubusercontent.com/Concrete18/Game-Library-Tracker/main/images/Console.png)
+
+![Excel Preview](https://raw.githubusercontent.com/Concrete18/Game-Library-Tracker/main/images/excel.png)
 
 ## Technology Used
 
