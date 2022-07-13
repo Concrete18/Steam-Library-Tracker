@@ -484,6 +484,7 @@ class Tracker(Helper):
                 iterable=check_list,
                 ascii=True,
                 unit="games",
+                ncols=40,
                 dynamic_ncols=True,
             ):
                 # How long to beat check
@@ -642,7 +643,7 @@ class Tracker(Helper):
                 iterable=owned_games,
                 ascii=True,
                 unit="games",
-                dynamic_ncols=True,
+                ncols=100,
             ):
                 checks += 1
                 game_name = game["name"]
@@ -806,7 +807,7 @@ class Tracker(Helper):
             iterable=games,
             ascii=True,
             unit="games",
-            dynamic_ncols=True,
+            ncols=100,
         ):
             game_name = self.unicode_fix(game["name"])
             # skip if it any are true
@@ -913,7 +914,7 @@ class Tracker(Helper):
             iterable=self.games.row_idx,
             ascii=True,
             unit="games",
-            dynamic_ncols=True,
+            ncols=100,
         ):
             if game_name in steam_deck_ignore_list:
                 continue
@@ -1219,7 +1220,7 @@ class Tracker(Helper):
             iterable=self.games.row_idx.items(),
             ascii=True,
             unit="games",
-            dynamic_ncols=True,
+            ncols=100,
         ):
             my_rating = self.games.get_cell(game, "My Rating")
             if my_rating == None:
@@ -1403,13 +1404,6 @@ class Tracker(Helper):
         ]
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
-
-        # TODO remove below when done testing statistics
-        if not self.ext_terminal:
-            stats.get_game_statistics()
-            input()
-            exit()
-
         # choice picker
         choices = [
             ("Add Game", self.manually_add_game),
