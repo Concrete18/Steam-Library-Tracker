@@ -600,17 +600,33 @@ class Tracker(Helper):
         self.api_sleeper("steam_owned_games")
         return self.request_url(url)
 
+    def update_removed_games(self, removed_games):
+        """
+        Prints the games that were removed from steam and updates their
+        play status and date updated so they are easier to find.
+        The games are not removed in case the steam database changed the games
+        name so you can keep the data you had on from the original entry.
+        """
+        removed_games_str = self.word_and_list(removed_games)
+        print(f"\nUnaccounted Steam games:\n{removed_games_str}")
+        for game in removed_games:
+            status = self.games.get_cell(game, "Play Status")
+            if status is not None:
+                if "Removed | " not in status:
+                    removed_status = f"Removed | {status}"
+                    self.set_play_status(game, removed_status)
+                    self.set_date_updated(game)
+
     def refresh_steam_games(self, steam_id):
         """
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-        excel_saved = False
         response = self.get_owned_steam_games(steam_id)
         if response:
-            # creates filled removed list so it can be checked for
-            # games that changed names or no longer exist
-            self.removed = [
+            # creates a list of all games so found games can be removed and the
+            # list can be used later
+            removed_games = [
                 str(game)
                 for game in self.games.row_idx.keys()
                 if self.games.get_cell(game, "Platform") == "Steam"
@@ -619,7 +635,9 @@ class Tracker(Helper):
             self.total_games_added = 0
             self.added_games = []
             checks = 0
+            updated_games = []
             owned_games = response.json()["response"]["games"]
+            print(f"Found {len(owned_games)} Steam Games\n")
             for game in tqdm(
                 iterable=owned_games,
                 ascii=True,
@@ -643,15 +661,18 @@ class Tracker(Helper):
                 play_status = self.play_status(cur_play_status, hours_played)
                 appid = game["appid"]
                 if game_name in self.games.row_idx.keys():
-                    # removes existing games
-                    if game_name in self.removed:
-                        self.removed.remove(game_name)
-                    self.update_game(
+                    # removes existing games from the list that will only
+                    # include games that have been removed or had a name changed
+                    if game_name in removed_games:
+                        removed_games.remove(game_name)
+                    update_info = self.update_game(
                         game_name,
                         minutes_played,
                         linux_minutes_played,
                         play_status,
                     )
+                    if update_info:
+                        updated_games.append(update_info)
                 else:
                     self.add_game(
                         game_name,
@@ -662,19 +683,26 @@ class Tracker(Helper):
                     )
                 # saves each time the checks count is divisible by 20
                 if checks % 20 == 0:
-                    if self.excel.save(use_print=False):
-                        excel_saved = True
-            if self.removed:
-                output = self.word_and_list(self.removed)
-                print(f"\nUnaccounted Steam games:\n{output}")
-                for game in self.removed:
-                    status = self.games.get_cell(game, "Play Status")
-                    if status is not None:
-                        if "Removed | " not in status:
-                            removed_status = f"Removed | {status}"
-                            self.set_play_status(game, removed_status)
-                            self.set_date_updated(game)
-        return excel_saved
+                    self.excel.save(use_print=False)
+            # prints the total games updated and added
+            if 0 < self.total_games_updated < 50:
+                print(f"\nGames Updated: {self.total_games_updated}")
+                # prints each game that was updated with info
+                for game_info in updated_games:
+                    for line in game_info:
+                        print(line)
+            if 0 < self.total_games_added < 50:
+                print(f"\nGames Added: {self.total_games_added}")
+                if self.added_games:
+                    # prints each game that was added
+                    output = self.word_and_list(self.added_games)
+                    print(output)
+            if self.excel.changes_made:
+                self.excel.save()
+            else:
+                print("\nNo Steam games were updated or added.")
+            if removed_games:
+                self.update_removed_games(removed_games)
 
     @staticmethod
     def hash_file(file_path, buf_size: int = 65536):
@@ -985,12 +1013,16 @@ class Tracker(Helper):
             hours_played = current_hours_played - previous_hours_played
             added_time_played = self.convert_time_passed(hours_played * 60)
             overall_time_played = self.convert_time_passed(minutes_played)
-            print(f"\n > {game_name} updated.")
-            print(f"   Added {added_time_played}")
-            print(f"   Total Playtime: {overall_time_played}.")
+            update_info = [
+                f"\n > {game_name} updated.",
+                f"   Added {added_time_played}",
+                f"   Total Playtime: {overall_time_played}.",
+            ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
             self.logger.info(msg)
+            return update_info
+        return None
 
     def manually_add_game(self):
         """
@@ -1116,22 +1148,6 @@ class Tracker(Helper):
         if save:
             print("saved")
             self.excel.save()
-
-    def output_completion_data(self):
-        """
-        Shows total games updated and added.
-        """
-        if 0 < self.total_games_updated < 50:
-            print(f"\nGames Updated: {self.total_games_updated}")
-        if 0 < self.total_games_added < 50:
-            print(f"\nGames Added: {self.total_games_added}")
-            if self.added_games:
-                output = self.word_and_list(self.added_games)
-                print(output)
-        if self.excel.changes_made:
-            self.excel.save()
-        else:
-            print("\nNo Steam games were added or updated.")
 
     def play_status_picker(self):
         """
@@ -1372,7 +1388,6 @@ class Tracker(Helper):
         if self.should_run_steam_deck_update():
             self.steam_deck_check()
         self.check_playstation_json()
-        self.output_completion_data()
         self.missing_info_check()
         # statistics setup
         na_values = [
@@ -1389,11 +1404,11 @@ class Tracker(Helper):
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
 
-        # # TODO remove below when done testing statistics
-        # if not self.ext_terminal:
-        #     stats.get_game_statistics()
-        #     input()
-        #     exit()
+        # TODO remove below when done testing statistics
+        if not self.ext_terminal:
+            stats.get_game_statistics()
+            input()
+            exit()
 
         # choice picker
         choices = [
