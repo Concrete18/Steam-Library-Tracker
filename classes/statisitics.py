@@ -9,6 +9,10 @@ if __name__ == "__main__":
 class Stat:
     def __init__(self, dataframe):
         self.df = dataframe
+        # turns Genre section from string to series
+        self.df["Genre"] = self.df["Genre"].str.replace(" and ", ",")
+        self.df["Genre"] = self.df["Genre"].str.replace(" ", "")
+        self.df["Genre"] = self.df["Genre"].str.split(",")
 
     def get_game_statistics(self):
         """
@@ -23,9 +27,14 @@ class Stat:
         # playtime
         data["Playtime"] = {}
         hours_played = self.df["Hours Played"]
+        linux_hours = self.df["Linux Hours"]
+        # totals
         data["Playtime"]["Total Hours"] = round(hours_played.sum(), 1)
+        data["Playtime"]["Total Linux Hours"] = round(linux_hours.sum(), 1)
+        # averages
         data["Playtime"]["Average Hours"] = round(hours_played.mean(), 1)
         data["Playtime"]["Median Hours"] = round(hours_played.median(), 1)
+        # min max
         data["Playtime"]["Max Hours"] = round(hours_played.max(), 1)
         data["Playtime"]["Min Hours"] = round(hours_played.min(), 1)
         # play status
@@ -47,13 +56,7 @@ class Stat:
         )
         # genres
         # TODO finish genre counter
-        genres = self.df["Genre"]
-        genres_list = [
-            val.strip()
-            for sublist in genres.dropna().str.split(",").tolist()
-            for val in sublist
-        ]
-        print(genres_list)
+
         # print statistics and return stat dict
         print("Game Library Statistics")
         for section, dict in data.items():
@@ -170,13 +173,14 @@ if __name__ == "__main__":
         "No Developer",
         "Invalid Date",
         "No Year",
+        "NaN",
     ]
     games = Sheet(excel, "Name", sheet_name="Games")
     df = games.create_dataframe(na_vals=na_values)
 
     # run
     stats = Stat(df)
-    # stats.get_game_statistics()
-    stats.steam_rating_comparison()
+    stats.get_game_statistics()
+    # stats.steam_rating_comparison()
     # stats.my_rating_comparison()
     # stats.avg_rating_by_year()
