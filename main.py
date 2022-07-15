@@ -1,4 +1,4 @@
-import random, time, json, os, re, sys, hashlib, webbrowser, subprocess
+import random, time, json, os, re, sys, hashlib, webbrowser, subprocess, shutil
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -7,9 +7,10 @@ import datetime as dt
 import pandas as pd
 
 # classes
-from classes.excel import Excel, Sheet
 from classes.helper import Helper, keyboard_interrupt
+from classes.excel import Excel, Sheet
 from classes.statisitics import Stat
+from classes.logger import Logger
 
 
 class Tracker(Helper):
@@ -17,7 +18,29 @@ class Tracker(Helper):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()
+
     # config init
+    def setup():
+        """
+        Sets up the config and excel file.
+        """
+        config_folder = Path("configs")
+        config_folder.mkdir(exist_ok=True)
+        config_template = Path("templates\config_template.json")
+        excel_template = Path("templates\Game_Library_Template.xlsx")
+        shutil.copyfile(config_template, Path("configs/config.json"))
+        shutil.copyfile(excel_template, "Game Library.xlsx")
+        print("Open the config and update the following info:")
+        print("steam_id\nsteam_api_key")
+        print("\nOnce updated run again.")
+        input("Press Enter to Close.")
+        exit()
+
+    # run setup if config does not exist
+    config_folder = Path("configs")
+    if not config_folder.exists():
+        setup()
+
     config = Path("configs\config.json")
     with open(config) as file:
         data = json.load(file)
@@ -55,7 +78,11 @@ class Tracker(Helper):
     }
     excel = Excel(excel_filename, log_file="configs/excel.log")
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
-    # api call logger
+    # logging setup
+    Log = Logger()
+    update_log = Log.create_log("configs/Tracker.log")
+    error_log = Log.create_log("configs/Error.log")
+    # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
         "2": "Playing",
@@ -67,7 +94,6 @@ class Tracker(Helper):
         "8": "Unplayed",
         "9": "Ignore",
     }
-
     # misc
     ps_json = Path("configs\playstation_games.json")
     # columns
@@ -184,7 +210,7 @@ class Tracker(Helper):
             return review_score
         else:
             msg = f"Failed to check {url}"
-            self.logger.warning(msg)
+            self.error_log.warning(msg)
             review_score = "Page Error"
         return review_score
 
@@ -309,7 +335,9 @@ class Tracker(Helper):
             # get genre
             if "genres" in keys:
                 genres = get_json_desc(game_info["genres"])
-                info_dict["genre"] = self.word_and_list(genres)
+                # TODO check if this is needed
+                # info_dict["genre"] = self.word_and_list(genres)
+                info_dict["genre"] = ", ".join(genres)
                 # early access
                 # TODO does not update when changed
                 if "Early Access" in info_dict["genre"]:
@@ -928,6 +956,7 @@ class Tracker(Helper):
                 continue
             if self.set_steam_deck(game_name, status):
                 info = f"{game_name} was updated to {status}"
+                self.update_log.info(info)
                 updated_games.append(info)
         if updated_games:
             print("\nUpdated Games:")
@@ -1021,7 +1050,7 @@ class Tracker(Helper):
             ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
-            self.logger.info(msg)
+            self.update_log.info(msg)
             return update_info
         return None
 
@@ -1049,18 +1078,20 @@ class Tracker(Helper):
         hours_played = int(input("\nHow many hours have you played it?\n:") or 0)
         print("\nWhat Play Status should it have?")
         play_status = self.play_status_picker() or "Unset"
+        minutes_played = hours_played * 60
+        time_played = self.convert_time_passed(minutes_played)
         print(f"\nAdded Game:\n{game_name}")
         print(f"Platform: {platform}")
-        print(f"Hours Played: {hours_played}")
+        print(f"Time Played: {time_played}")
         print(f"Play Status: {play_status}")
         self.add_game(
             game_name=game_name,
-            minutes_played=hours_played * 60,
+            minutes_played=minutes_played,
             play_status=play_status,
             platform=platform,
             save=True,
         )
-        return game_name, hours_played * 60, play_status
+        return game_name, minutes_played, play_status
 
     def add_game(
         self,
@@ -1083,6 +1114,10 @@ class Tracker(Helper):
             hours_played = self.hours_played(minutes_played)
             # sets play status
             play_status = self.play_status(play_status, hours_played)
+            # logging
+            time_played = self.convert_time_passed(minutes_played)
+            info = f"Added {game_name} with {time_played} played."
+            self.update_log.info(info)
         linux_hours_played = ""
         if linux_minutes_played:
             linux_hours_played = self.hours_played(linux_minutes_played)
