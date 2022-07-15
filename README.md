@@ -44,7 +44,7 @@ Steam games due to lack of an API compared to Steam.
 
 ## To Do
 
-- [ ] Allow Some Features to be toggled.
+- [] Allow Some Features to be toggled.
 
 ## Documentation
 

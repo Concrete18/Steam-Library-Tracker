@@ -160,7 +160,7 @@ if __name__ == "__main__":
     with open(config) as file:
         data = json.load(file)
     excel_filename = data["settings"]["excel_filename"]
-    excel = Excel(excel_filename, log_file="configs/excel.log")
+    excel = Excel(excel_filename, log_file="logs/excel.log")
 
     # stat setup
     na_values = [

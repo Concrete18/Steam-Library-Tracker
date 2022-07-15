@@ -22,25 +22,33 @@ class Tracker(Helper):
     # config init
     def setup():
         """
-        Sets up the config and excel file.
+        Creates the config and excel file if they do not exist.
         """
-        config_folder = Path("configs")
-        config_folder.mkdir(exist_ok=True)
-        config_template = Path("templates\config_template.json")
-        excel_template = Path("templates\Game_Library_Template.xlsx")
-        shutil.copyfile(config_template, Path("configs/config.json"))
-        shutil.copyfile(excel_template, "Game Library.xlsx")
+        # TODO check if this works
+        all_clear = True
+        # config check
+        config = Path("configs/config.json")
+        if not config.exists():
+            config_template = Path("templates/config_template.json")
+            shutil.copyfile(config_template, config)
+            all_clear = False
+        # excel check
+        excel = Path("Game Library.xlsx")
+        if not excel.exists():
+            excel_template = Path("templates/Game_Library_Template.xlsx")
+            shutil.copyfile(excel_template, excel)
+            all_clear = False
+        # exits out of function early if all clear
+        if all_clear:
+            return
+        # instructions.
         print("Open the config and update the following info:")
         print("steam_id\nsteam_api_key")
         print("\nOnce updated run again.")
         input("Press Enter to Close.")
         exit()
 
-    # run setup if config does not exist
-    config_folder = Path("configs")
-    if not config_folder.exists():
-        setup()
-
+    setup()
     config = Path("configs\config.json")
     with open(config) as file:
         data = json.load(file)
@@ -76,12 +84,12 @@ class Tracker(Helper):
             "Genre",
         ],
     }
-    excel = Excel(excel_filename, log_file="configs/excel.log")
+    excel = Excel(excel_filename, log_file="logs/excel.log")
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
     # logging setup
     Log = Logger()
-    update_log = Log.create_log("configs/Tracker.log")
-    error_log = Log.create_log("configs/Error.log")
+    update_log = Log.create_log("logs/Tracker.log")
+    error_log = Log.create_log("logs/Error.log")
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
@@ -95,7 +103,7 @@ class Tracker(Helper):
         "9": "Ignore",
     }
     # misc
-    ps_json = Path("configs\playstation_games.json")
+    ps_data = Path("configs\playstation_games.json")
     # columns
     to_check = [
         genre_col := "Genre",
@@ -747,14 +755,14 @@ class Tracker(Helper):
                 md5.update(data)
         return md5.hexdigest()
 
-    def check_for_changes(self, ps_json):
+    def check_for_changes(self, ps_data):
         """
         Checks for changes to the json file.
         """
         with open(self.config) as file:
             data = json.load(file)
         previous_hash = data["settings"]["playstation_hash"]
-        new_hash = self.hash_file(ps_json)
+        new_hash = self.hash_file(ps_data)
         if new_hash == previous_hash:
             print("\nNo PlayStation games were added or updated.")
             return False
@@ -994,15 +1002,16 @@ class Tracker(Helper):
         it can add the new games to the sheet.
         """
         # checks if json exists
-        if not self.ps_json.exists():
-            print("PlayStation Json does not exist.")
-            self.ps_json.touch()
+        if not self.ps_data.exists():
+            print("\nPlayStation JSON does not exist.")
+            self.ps_data.touch()
             webbrowser.open_new(self.playstation_data_link)
-            return None
-        if not self.check_for_changes(self.ps_json):
+            webbrowser.open(r"https://store.playstation.com/")
+            return
+        if not self.check_for_changes(self.ps_data):
             # TODO add log
             return None
-        with open(self.ps_json) as file:
+        with open(self.ps_data) as file:
             data = json.load(file)
         print("\nChecking for new games for PS4 or PS5.")
         games = data["data"]["purchasedTitlesRetrieve"]["games"]
@@ -1380,7 +1389,7 @@ class Tracker(Helper):
         Opens playstation data json file and web json with latest data
         for manual updating.
         """
-        subprocess.Popen(f'notepad "{self.ps_json}"')
+        subprocess.Popen(f'notepad "{self.ps_data}"')
         webbrowser.open(self.playstation_data_link)
         webbrowser.open(r"https://store.playstation.com/")
         input("\nPress Enter when done.")
@@ -1388,7 +1397,7 @@ class Tracker(Helper):
 
     @staticmethod
     def open_log():
-        osCommandString = "notepad.exe configs/tracker.log"
+        osCommandString = "notepad.exe logs/Tracker.log"
         os.system(osCommandString)
 
     def pick_task(self, choices):

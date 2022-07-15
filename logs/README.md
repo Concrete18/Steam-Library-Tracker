@@ -1,1 +1,1 @@
-Allows adding the empty director
+Allows adding the empty directory

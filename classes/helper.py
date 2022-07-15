@@ -26,7 +26,7 @@ def keyboard_interrupt(func):
 class Helper:
 
     Log = Logger()
-    error_log = Log.create_log("configs/Error.log")
+    error_log = Log.create_log("logs/Error.log")
 
     @staticmethod
     def benchmark(func):
