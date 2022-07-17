@@ -342,8 +342,6 @@ class Tracker(Helper):
             # get genre
             if "genres" in keys:
                 genres = get_json_desc(game_info["genres"])
-                # TODO check if this is needed
-                # info_dict["genre"] = self.word_and_list(genres)
                 info_dict["genre"] = ", ".join(genres)
                 # early access
                 # TODO does not update when changed
@@ -681,7 +679,7 @@ class Tracker(Helper):
             owned_games = response.json()["response"]["games"]
             # save interval setup
             save_interval = 20
-            checks = save_interval
+            checks = save_interval - 1
             # game checking
             print(f"Found {len(owned_games)} Steam Games\n")
             for game in tqdm(
@@ -732,6 +730,7 @@ class Tracker(Helper):
                 if total_change > save_interval:
                     checks += 1
                     if checks % save_interval == 0:
+                        checks = save_interval
                         self.excel.save(use_print=False)
             # prints the total games updated and added
             if 0 < self.num_games_updated < 50:
