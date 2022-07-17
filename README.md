@@ -79,18 +79,10 @@ It is faster than adding the games manually but I am unable to automate it yet.
     Note:
     Hours are not tracked like Steam due to a lack of an API.
 
-### Steam Deck Game Status Checker
+### WIP Steam Deck Game Status Checker
 
-WIP
+### WIP Favorite Game Sale Checker
 
-### Favorite Game Sale Checker
+### WIP Random game picker
 
-WIP
-
-### Random game picker
-
-WIP
-
-### Library Statistics
-
-WIP
+### WIP Library Statistics
