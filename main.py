@@ -679,7 +679,7 @@ class Tracker(Helper):
             owned_games = response.json()["response"]["games"]
             # save interval setup
             save_interval = 20
-            checks = save_interval - 1
+            checks = save_interval
             # game checking
             print(f"Found {len(owned_games)} Steam Games\n")
             for game in tqdm(
@@ -728,10 +728,10 @@ class Tracker(Helper):
                 # total changes count is greater then a specific number
                 total_change = self.num_games_updated + self.num_games_added
                 if total_change > save_interval:
-                    checks += 1
                     if checks % save_interval == 0:
                         checks = save_interval
                         self.excel.save(use_print=False)
+                    checks += 1
             # prints the total games updated and added
             if 0 < self.num_games_updated < 50:
                 print(f"\nGames Updated: {self.num_games_updated}")
