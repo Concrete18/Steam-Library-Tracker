@@ -24,7 +24,6 @@ class Tracker(Helper):
         """
         Creates the config and excel file if they do not exist.
         """
-        # TODO check if this works
         all_clear = True
         # config check
         config = Path("configs/config.json")
@@ -447,6 +446,13 @@ class Tracker(Helper):
         """
         return self.games.update_cell(game_name, "Linux Hours", hours_played)
 
+    def set_last_playtime(self, game_name, set_last_playtime):
+        """
+        Sets `game`'s last play time to `set_last_playtime`.
+        """
+        column = "Last Play Time"
+        return self.games.update_cell(game_name, column, set_last_playtime)
+
     def set_play_status(self, game_name, play_status):
         """
         Sets `game`'s Play Status cell to `play_status`.
@@ -654,26 +660,29 @@ class Tracker(Helper):
                     self.set_play_status(game, removed_status)
                     self.set_date_updated(game)
 
-    def refresh_steam_games(self, steam_id):
+    def sync_steam_games(self, steam_id):
         """
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
         response = self.get_owned_steam_games(steam_id)
         if response:
-            # creates a list of all games so found games can be removed and the
-            # list can be used later
+            # creates a list of all games so found games can be removed from
+            # the list to detemine what was removed/renamed from steam
             removed_games = [
                 str(game)
                 for game in self.games.row_idx.keys()
                 if self.games.get_cell(game, "Platform") == "Steam"
             ]
-            self.total_games_updated = 0
-            self.total_games_added = 0
+            self.num_games_updated = 0
+            self.num_games_added = 0
             self.added_games = []
-            checks = 0
             updated_games = []
             owned_games = response.json()["response"]["games"]
+            # save interval setup
+            save_interval = 20
+            checks = save_interval
+            # game checking
             print(f"Found {len(owned_games)} Steam Games\n")
             for game in tqdm(
                 iterable=owned_games,
@@ -681,7 +690,6 @@ class Tracker(Helper):
                 unit="games",
                 ncols=100,
             ):
-                checks += 1
                 game_name = game["name"]
                 appid = game["appid"]
                 if self.should_ignore(game_name, appid):
@@ -718,18 +726,22 @@ class Tracker(Helper):
                         appid,
                         play_status,
                     )
-                # saves each time the checks count is divisible by 20
-                if checks % 20 == 0:
-                    self.excel.save(use_print=False)
+                # saves each time the checks count is divisible by 20 and
+                # total changes count is greater then a specific number
+                total_change = self.num_games_updated + self.num_games_added
+                if total_change > save_interval:
+                    checks += 1
+                    if checks % save_interval == 0:
+                        self.excel.save(use_print=False)
             # prints the total games updated and added
-            if 0 < self.total_games_updated < 50:
-                print(f"\nGames Updated: {self.total_games_updated}")
+            if 0 < self.num_games_updated < 50:
+                print(f"\nGames Updated: {self.num_games_updated}")
                 # prints each game that was updated with info
                 for game_info in updated_games:
                     for line in game_info:
                         print(line)
-            if 0 < self.total_games_added < 50:
-                print(f"\nGames Added: {self.total_games_added}")
+            if 0 < self.num_games_added < 50:
+                print(f"\nGames Added: {self.num_games_added}")
                 if self.added_games:
                     # prints each game that was added
                     output = self.word_and_list(self.added_games)
@@ -1009,7 +1021,6 @@ class Tracker(Helper):
             webbrowser.open(r"https://store.playstation.com/")
             return
         if not self.check_for_changes(self.ps_data):
-            # TODO add log
             return None
         with open(self.ps_data) as file:
             data = json.load(file)
@@ -1042,15 +1053,16 @@ class Tracker(Helper):
         if not current_hours_played:
             return
         if current_hours_played > previous_hours_played:
+            hours_played = current_hours_played - previous_hours_played
+            added_time_played = self.convert_time_passed(hours_played * 60)
             self.set_hours_played(game_name, current_hours_played)
             self.set_linux_hours_played(game_name, current_linux_hours_played)
+            self.set_last_playtime(game_name, added_time_played)
             self.set_date_updated(game_name)
             self.set_play_status(game_name, play_status)
             self.games.format_row(game_name)
             self.total_games_updated += 1
             # updated game logging
-            hours_played = current_hours_played - previous_hours_played
-            added_time_played = self.convert_time_passed(hours_played * 60)
             overall_time_played = self.convert_time_passed(minutes_played)
             update_info = [
                 f"\n > {game_name} updated.",
@@ -1098,6 +1110,7 @@ class Tracker(Helper):
             minutes_played=minutes_played,
             play_status=play_status,
             platform=platform,
+            time_played=time_played,
             save=True,
         )
         return game_name, minutes_played, play_status
@@ -1107,6 +1120,7 @@ class Tracker(Helper):
         game_name=None,
         minutes_played="",
         linux_minutes_played="",
+        time_played=None,
         appid="",
         play_status="",
         platform="Steam",
@@ -1123,10 +1137,6 @@ class Tracker(Helper):
             hours_played = self.hours_played(minutes_played)
             # sets play status
             play_status = self.play_status(play_status, hours_played)
-            # logging
-            time_played = self.convert_time_passed(minutes_played)
-            info = f"Added {game_name} with {time_played} played."
-            self.update_log.info(info)
         linux_hours_played = ""
         if linux_minutes_played:
             linux_hours_played = self.hours_played(linux_minutes_played)
@@ -1186,6 +1196,12 @@ class Tracker(Helper):
                 if column.lower() in steam_info.keys():
                     column_info[column] = steam_info[column.lower()]
         self.games.add_new_line(column_info, game_name)
+        # logging
+        if platform == "Steam":
+            info = f"Added {game_name} with {time_played} played"
+        else:
+            info = f"Added {game_name} on {platform}"
+        self.update_log.info(info)
         # TODO change to dict with name and appid
         self.added_games.append(game_name)
         self.total_games_added += 1
@@ -1321,11 +1337,11 @@ class Tracker(Helper):
             return
         arg = sys.argv[1].lower()
         if arg == "help":
-            print("Help:\nrefresh- refreshes steam games")
-            print("random- allows getting random picks from games based on play status")
+            print("Help:\nSync-Syncs steam games")
+            print("random-allows getting random picks from games based on play status")
         elif arg == "refresh":
-            print("Running refresh")
-            self.refresh_steam_games(self.steam_id)
+            print("Running Sync")
+            self.sync_steam_games(self.steam_id)
         elif arg == "random":
             self.pick_random_game()
         else:
@@ -1429,7 +1445,7 @@ class Tracker(Helper):
         self.arg_func()
         print("Starting Game Tracker")
         # runs script with CTRL + C clean program end
-        self.refresh_steam_games(self.steam_id)
+        self.sync_steam_games(self.steam_id)
         if self.should_run_steam_deck_update():
             self.steam_deck_check()
         self.check_playstation_json()
