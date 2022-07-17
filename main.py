@@ -1061,7 +1061,7 @@ class Tracker(Helper):
             self.set_date_updated(game_name)
             self.set_play_status(game_name, play_status)
             self.games.format_row(game_name)
-            self.total_games_updated += 1
+            self.num_games_updated += 1
             # updated game logging
             overall_time_played = self.convert_time_passed(minutes_played)
             update_info = [
@@ -1204,7 +1204,7 @@ class Tracker(Helper):
         self.update_log.info(info)
         # TODO change to dict with name and appid
         self.added_games.append(game_name)
-        self.total_games_added += 1
+        self.num_games_added += 1
         self.games.format_row(game_name)
         if save:
             print("saved")
