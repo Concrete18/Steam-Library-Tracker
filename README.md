@@ -79,10 +79,23 @@ It is faster than adding the games manually but I am unable to automate it yet.
     Note:
     Hours are not tracked like Steam due to a lack of an API.
 
-### WIP Steam Deck Game Status Checker
+### Steam Deck Game Status Checker
 
-### WIP Favorite Game Sale Checker
+Checks for Steam Deck Status updates. If any are found it will update the column.
 
-### WIP Random game picker
+### Favorite Game Sale Checker
 
-### WIP Library Statistics
+Allows choosing your own rating threshold so that a CSV can be made containing
+all the games that are currently on sale with the selected rating or higher.
+
+### Random game picker
+
+Picks a random game based on the Play Status you select.
+
+### Library Statistics
+
+Shows many statistics and graphs for your library.
+
+#### Examples:
+
+- Total Hours Played
