@@ -132,21 +132,52 @@ class Helper:
         return string
 
     @staticmethod
-    def convert_time_passed(minutes_played):
+    def convert_time_passed(min=0, hr=0, wk=0, day=0, mnth=0, yr=0, round_min=30):
         """
-        Using `minutes_played`, outputs a nicely formatted time played and an int for hours played.
+        Outputs a string for when the time passed.
+        Takes minutes:`min`, hours:`hr`, days:`day`, weeks:`wk`
+        months:`mnth` and years:`yr`.
 
-        Returns time_played and hours_played
+        Return format examples:
+
+        1.2 Minute(s)
+
+        3.4 Hour(s)
+
+        5.6 Day(s)
+
+        7.8 Week(s)
+
+        9.1 Month(s)
+
+        2.3 Years(s)
         """
-        time_played = f"{round(minutes_played, 1)} Minute(s)"
-        hours_played = minutes_played / 60
-        if round(hours_played) >= 24:
-            days = round(hours_played / 24, 1)
-            time_played = f"{days} Day(s)"
-        elif minutes_played >= 60:
-            hours = round(hours_played, 1)
-            time_played = f"{hours} Hour(s)"
-        return time_played
+        # converts all into minutes
+        hours_in_day = 24
+        hours_in_week = 168
+        hours_in_month = 730.001
+        hours_in_year = 8760
+        hours = (
+            hr
+            + (min / 60)
+            + (day * hours_in_day)
+            + (wk * hours_in_week)
+            + (mnth * hours_in_month)
+            + (yr * hours_in_year)
+        )
+        rounded_hours = round(hours)
+        time_passed = f"{min} Minute(s)"
+        if rounded_hours >= hours_in_year:
+            time_passed = f"{round(hours/hours_in_year, 1)} Year(s)"
+        elif rounded_hours >= hours_in_month:
+            time_passed = f"{round(hours/hours_in_month, 1)} Month(s)"
+        elif rounded_hours >= hours_in_week:
+            time_passed = f"{round(hours/hours_in_week, 1)} Week(s)"
+        elif rounded_hours >= hours_in_day:
+            time_passed = f"{round(hours/hours_in_day, 1)} Day(s)"
+        elif hours >= 1:
+            time_passed = f"{round(hours, 1)} Hour(s)"
+        return time_passed
 
     @staticmethod
     def unicode_remover(string) -> str:
