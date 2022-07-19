@@ -115,6 +115,7 @@ class Tracker(Helper):
         release_col := "Release Year",
         ea_col := "Early Access",
     ]
+    # TODO determine width for tqdm here
 
     def __init__(self) -> None:
         """
@@ -451,6 +452,13 @@ class Tracker(Helper):
         column = "Last Play Time"
         return self.games.update_cell(game_name, column, set_last_playtime)
 
+    def set_time_played(self, game_name, time_played):
+        """
+        Sets `game`'s time played to `time_played`.
+        """
+        column = "Time Played"
+        return self.games.update_cell(game_name, column, time_played)
+
     def set_play_status(self, game_name, play_status):
         """
         Sets `game`'s Play Status cell to `play_status`.
@@ -674,7 +682,7 @@ class Tracker(Helper):
             ]
             self.num_games_updated = 0
             self.num_games_added = 0
-            self.added_games = []
+            added_games = []
             updated_games = []
             owned_games = response.json()["response"]["games"]
             # save interval setup
@@ -714,6 +722,7 @@ class Tracker(Helper):
                         minutes_played=minutes_played,
                         linux_minutes_played=linux_minutes_played,
                         play_status=play_status,
+                        time_played=time_played,
                     )
                     if update_info:
                         updated_games.append(update_info)
@@ -726,6 +735,7 @@ class Tracker(Helper):
                         appid=appid,
                         play_status=play_status,
                     )
+                    added_games.append(game_name)
                 # saves each time the checks count is divisible by 20 and
                 # total changes count is greater then a specific number
                 if self.num_games_added > save_interval:
@@ -742,9 +752,9 @@ class Tracker(Helper):
                         print(line)
             if 0 < self.num_games_added < 50:
                 print(f"\nGames Added: {self.num_games_added}")
-                if self.added_games:
+                if added_games:
                     # prints each game that was added
-                    output = self.word_and_list(self.added_games)
+                    output = self.word_and_list(added_games)
                     print(output)
             if self.excel.changes_made:
                 self.excel.save()
@@ -1034,6 +1044,7 @@ class Tracker(Helper):
         minutes_played,
         linux_minutes_played,
         play_status,
+        time_played=None,
     ):
         """
         Updates the games playtime and play status if they changed.
@@ -1058,6 +1069,7 @@ class Tracker(Helper):
             self.set_hours_played(game_name, current_hours_played)
             self.set_linux_hours_played(game_name, current_linux_hours_played)
             self.set_last_playtime(game_name, added_time_played)
+            self.set_time_played(game_name, time_played)
             self.set_date_updated(game_name)
             self.set_play_status(game_name, play_status)
             self.games.format_row(game_name)
@@ -1175,6 +1187,7 @@ class Tracker(Helper):
             "Probable Completion": f'=IFERROR({hours}/{ttb},"Missing Data")',
             "Hours Played": hours_played,
             "Linux Hours": linux_hours_played,
+            "Time Played": time_played,
             "App ID": appid,
             "Store Link": store_link_hyperlink,
             "Date Updated": dt.datetime.now(),
@@ -1196,13 +1209,13 @@ class Tracker(Helper):
         self.games.add_new_line(column_info, game_name)
         # logging
         if platform == "Steam":
-            # TODO format of time_played is just numbers instead of str
+            if not hours_played:
+                time_played = "no time"
             info = f"Added {game_name} with {time_played} played"
         else:
             info = f"Added {game_name} on {platform}"
         self.update_log.info(info)
         # TODO change to dict with name and appid
-        self.added_games.append(game_name)
         self.num_games_added += 1
         self.games.format_row(game_name)
         if save:
