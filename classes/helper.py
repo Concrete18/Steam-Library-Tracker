@@ -2,7 +2,8 @@ from difflib import SequenceMatcher
 import time, json, requests, re
 import datetime as dt
 
-from classes.logger import Logger
+if __name__ != "__main__":
+    from classes.logger import Logger
 
 
 def keyboard_interrupt(func):
@@ -25,8 +26,9 @@ def keyboard_interrupt(func):
 
 class Helper:
 
-    Log = Logger()
-    error_log = Log.create_log("logs/Error.log")
+    if __name__ != "__main__":
+        Log = Logger()
+        error_log = Log.create_log("logs/Error.log")
 
     @staticmethod
     def benchmark(func):
@@ -64,7 +66,7 @@ class Helper:
             msg = "Server Error: make sure your api key and steam id is valid."
             self.error_log.warning(msg)
         elif response.status_code == 404:
-            msg = f"Server Error: 404 Content moved or was. URL: {url}"
+            msg = f"Server Error: 404 Content moved or deleted. URL: {url}"
             self.error_log.warning(msg)
         elif response.status_code == 429:
             msg = "Server Error: Too Many reqeuests made. Waiting to try again."
@@ -166,7 +168,6 @@ class Helper:
             + (yr * hours_in_year)
         )
         rounded_hours = round(hours)
-        time_passed = f"{min} Minute(s)"
         if rounded_hours >= hours_in_year:
             time_passed = f"{round(hours/hours_in_year, 1)} Year(s)"
         elif rounded_hours >= hours_in_month:
@@ -177,6 +178,8 @@ class Helper:
             time_passed = f"{round(hours/hours_in_day, 1)} Day(s)"
         elif hours >= 1:
             time_passed = f"{round(hours, 1)} Hour(s)"
+        else:
+            time_passed = f"{round(hours * 60, 1)} Minute(s)"
         return time_passed
 
     @staticmethod
@@ -347,4 +350,6 @@ if __name__ == "__main__":
     # response = App.request_url("https://store.steampowered.com/app/752564654590/")
     # print(response.url)
     # print(App.unicode_remover("Half-Life 2: Lost Coast"))
-    print(App.word_and_list(["Test1", "test2", "test3"]))
+    # print(App.word_and_list(["Test1", "test2", "test3"]))
+    val = App.convert_time_passed(min=0, hr=0.2, wk=0, day=0, mnth=0, yr=0)
+    print(val)
