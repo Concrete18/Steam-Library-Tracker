@@ -132,7 +132,7 @@ class Helper:
         return string
 
     @staticmethod
-    def convert_time_passed(min=0, hr=0, wk=0, day=0, mnth=0, yr=0, round_min=30):
+    def convert_time_passed(min=0, hr=0, wk=0, day=0, mnth=0, yr=0):
         """
         Outputs a string for when the time passed.
         Takes minutes:`min`, hours:`hr`, days:`day`, weeks:`wk`
@@ -140,17 +140,17 @@ class Helper:
 
         Return format examples:
 
-        1.2 Minute(s)
+        1.0 Minute(s)
 
-        3.4 Hour(s)
+        2.3 Hour(s)
 
-        5.6 Day(s)
+        4.5 Day(s)
 
-        7.8 Week(s)
+        6.7 Week(s)
 
-        9.1 Month(s)
+        8.9 Month(s)
 
-        2.3 Years(s)
+        2.1 Years(s)
         """
         # converts all into minutes
         hours_in_day = 24

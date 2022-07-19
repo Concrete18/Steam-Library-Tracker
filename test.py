@@ -7,7 +7,6 @@ from main import Tracker
 
 class TestStringMethods(unittest.TestCase):
     def test_get_year(self):
-        print("\n", "get_year")
         tester = Tracker()
         date_tests = {
             "this is not a date": "Invalid Date",
@@ -21,7 +20,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.get_year(date), bool)
 
     def test_get_appid(self):
-        print("\n", "get_appid")
         tester = Tracker()
         appid_tests = {
             "Inscryption": 1092790,
@@ -32,7 +30,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.get_appid(name), answer)
 
     def test_get_game_info(self):
-        print("\n", "get_game_info")
         tester = Tracker()
         # checks using the app id for Deep Rock Galactic
         dict = tester.get_game_info(1145360)
@@ -41,7 +38,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertIn(key, dict.keys())
 
     def test_get_metacritic(self):
-        print("\n", "get_metacritic")
         tester = Tracker()
         metacritic_tests = {
             "Dishonored 2": 86,
@@ -53,7 +49,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.get_metacritic(name, "pc"), answer)
 
     def test_get_time_to_beat(self):
-        print("\n", "get_time_to_beat")
         tester = Tracker()
         time_to_beat_tests = {
             "Dishonored 2": 12.5,
@@ -65,7 +60,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.get_time_to_beat(name), answer)
 
     def test_steam_deck_compat(self):
-        print("\n", "steam_deck_compat")
         tester = Tracker()
         passes = ["VERIFIED", "PLAYABLE", "UNSUPPORTED", "UNKNOWN"]
         appids = [1145360, 1167630, 667970, 1579380]
@@ -75,7 +69,6 @@ class TestStringMethods(unittest.TestCase):
         self.assertFalse(tester.steam_deck_compat(invalid_appid))
 
     def test_hours_played(self):
-        print("\n", "hours_played")
         tester = Tracker()
         time_hours_played = {
             800: 13.3,
@@ -87,9 +80,9 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.hours_played(minutes_played), answer)
 
     def test_time_passed(self):
-        print("\n", "convert_time_passed")
         tester = Tracker()
-        time_passed_tests = {
+        # tests function when given minutes
+        minutes_tests = {
             59: "59 Minute(s)",
             60: "1.0 Hour(s)",
             800: "13.3 Hour(s)",
@@ -97,12 +90,69 @@ class TestStringMethods(unittest.TestCase):
             1440: "1.0 Day(s)",
             1441: "1.0 Day(s)",
             2940: "2.0 Day(s)",
+            1440 * 7: "1.0 Week(s)",
+            525600: "1.0 Year(s)",
         }
-        for minutes_played, answer in time_passed_tests.items():
-            self.assertEqual(tester.convert_time_passed(minutes_played), answer)
+        for minutes, answer in minutes_tests.items():
+            output = tester.convert_time_passed(min=minutes)
+            self.assertEqual(output, answer)
+        # tests function when given hours
+        hours_tests = {
+            1: "1.0 Hour(s)",
+            13.3: "13.3 Hour(s)",
+            24: "1.0 Day(s)",
+            48: "2.0 Day(s)",
+        }
+        for hours, answer in hours_tests.items():
+            output = tester.convert_time_passed(hr=hours)
+            self.assertEqual(output, answer)
+        # tests function when given days
+        days_tests = {
+            1: "1.0 Day(s)",
+            5.8: "5.8 Day(s)",
+            21: "3.0 Week(s)",
+            365: "1.0 Year(s)",
+        }
+        for days, answer in days_tests.items():
+            output = tester.convert_time_passed(day=days)
+            self.assertEqual(output, answer)
+
+        # # tests function when given weeks TODO
+        # days_tests = {
+        #     1: "1.0 Day(s)",
+        #     5.8: "5.8 Day(s)",
+        #     21: "3.0 Week(s)",
+        #     365: "1.0 Year(s)",
+        # }
+        # for days, answer in days_tests.items():
+        #     output = tester.convert_time_passed(day=days)
+        #     self.assertEqual(output, answer)
+        # # tests function when given months TODO
+        # days_tests = {
+        #     1: "1.0 Month(s)",
+        #     18: "1.5 Year(s)",
+        #     21: "3.0 Week(s)",
+        #     365: "1.0 Year(s)",
+        # }
+        # for days, answer in days_tests.items():
+        #     output = tester.convert_time_passed(day=days)
+        #     self.assertEqual(output, answer)
+        # # tests function when given years TODO
+        # days_tests = {
+        #     1: "1.0 Day(s)",
+        #     5.8: "5.8 Day(s)",
+        #     21: "3.0 Week(s)",
+        #     365: "1.0 Year(s)",
+        # }
+
+        for days, answer in days_tests.items():
+            output = tester.convert_time_passed(day=days)
+            self.assertEqual(output, answer)
+        # tests all args at once
+        output = tester.convert_time_passed(min=60, hr=23, day=30, mnth=11, yr=1)
+        self.assertEqual(output, "2.0 Year(s)")
 
     def test_days_since(self):
-        print("\n", "days_since")
         tester = Tracker()
         date_tests = {
             2: dt.datetime(2022, 4, 22),
@@ -114,7 +164,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.days_since(current_date, past_date), answer)
 
     def test_get_store_link(self):
-        print("\n", "get_store_link")
         tester = Tracker()
         store_link_tests = {
             "752590": "https://store.steampowered.com/app/752590/",
@@ -132,7 +181,6 @@ class TestStringMethods(unittest.TestCase):
         self.assertNotIn("6546546545465484213211545730", response.url)
 
     def test_get_steam_review(self):
-        print("\n", "get_steam_review")
         tester = Tracker()
         steam_review_tests = [
             752590,
@@ -149,7 +197,6 @@ class TestStringMethods(unittest.TestCase):
         self.assertIsInstance(total, int)
 
     def test_get_game_info(self):
-        print("\n", "get_game_info")
         tester = Tracker()
         default_dict = {
             "developers": "No Data",
@@ -190,7 +237,6 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(tester.get_game_info(None, None), default_dict)
 
     def test_url_sanitize(self):
-        print("\n", "url_sanitize")
         tester = Tracker()
         url_tests = {
             "Hood: Outlaws & Legends": "hood-outlaws-legends",
@@ -201,7 +247,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.url_sanitize(string), result)
 
     def test_word_and_list(self):
-        print("\n", "word_and_list")
         tester = Tracker()
         list_tests = [
             (["Test1"], "Test1"),
@@ -212,7 +257,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.word_and_list(list), result)
 
     def test_should_ignore(self):
-        print("\n", "should_ignore")
         tester = Tracker()
         ignore_names = ["Half-Life 2: Lost Coast"]
         tester.name_ignore_list = [string.lower() for string in ignore_names]
@@ -232,7 +276,6 @@ class TestStringMethods(unittest.TestCase):
         self.assertFalse(tester.should_ignore(name="This is a great game"))
 
     def test_play_status(self):
-        print("\n", "play_status")
         tester = Tracker()
         tests = [
             {"play_status": "Unplayed", "hours": 0.1, "ans": "Unplayed"},
@@ -261,7 +304,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.play_status(a["play_status"], a["hours"]), a["ans"])
 
     def test_lev_distance(self):
-        print("\n", "lev_distance")
         tester = Tracker()
         string_tests = [
             # insert
@@ -277,7 +319,6 @@ class TestStringMethods(unittest.TestCase):
             self.assertEqual(tester.lev_distance(a["word1"], a["word2"]), a["ans"])
 
     def test_sim_matcher(self):
-        print("\n", "sim_matcher")
         tester = Tracker()
         test_list = [
             "This is a test, yay",

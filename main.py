@@ -87,8 +87,8 @@ class Tracker(Helper):
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
     # logging setup
     Log = Logger()
-    update_log = Log.create_log("logs/Tracker.log")
-    error_log = Log.create_log("logs/Error.log")
+    update_log = Log.create_log("logs/tracker.log")
+    error_log = Log.create_log("logs/error.log")
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
@@ -694,6 +694,7 @@ class Tracker(Helper):
                     continue
                 # sets play time eariler so it only needs to be set up once
                 minutes_played = game["playtime_forever"]
+                time_played = self.convert_time_passed(min=minutes_played)
                 hours_played = self.hours_played(minutes_played)
                 # linux time
                 linux_minutes_played = ""
@@ -709,25 +710,25 @@ class Tracker(Helper):
                     if game_name in removed_games:
                         removed_games.remove(game_name)
                     update_info = self.update_game(
-                        game_name,
-                        minutes_played,
-                        linux_minutes_played,
-                        play_status,
+                        game_name=game_name,
+                        minutes_played=minutes_played,
+                        linux_minutes_played=linux_minutes_played,
+                        play_status=play_status,
                     )
                     if update_info:
                         updated_games.append(update_info)
                 else:
                     self.add_game(
-                        game_name,
-                        minutes_played,
-                        linux_minutes_played,
-                        appid,
-                        play_status,
+                        game_name=game_name,
+                        hours_played=hours_played,
+                        linux_minutes_played=linux_minutes_played,
+                        time_played=time_played,
+                        appid=appid,
+                        play_status=play_status,
                     )
                 # saves each time the checks count is divisible by 20 and
                 # total changes count is greater then a specific number
-                total_change = self.num_games_updated + self.num_games_added
-                if total_change > save_interval:
+                if self.num_games_added > save_interval:
                     if checks % save_interval == 0:
                         checks = save_interval
                         self.excel.save(use_print=False)
@@ -1053,7 +1054,7 @@ class Tracker(Helper):
             return
         if current_hours_played > previous_hours_played:
             hours_played = current_hours_played - previous_hours_played
-            added_time_played = self.convert_time_passed(hours_played * 60)
+            added_time_played = self.convert_time_passed(hr=hours_played)
             self.set_hours_played(game_name, current_hours_played)
             self.set_linux_hours_played(game_name, current_linux_hours_played)
             self.set_last_playtime(game_name, added_time_played)
@@ -1062,7 +1063,7 @@ class Tracker(Helper):
             self.games.format_row(game_name)
             self.num_games_updated += 1
             # updated game logging
-            overall_time_played = self.convert_time_passed(minutes_played)
+            overall_time_played = self.convert_time_passed(min=minutes_played)
             update_info = [
                 f"\n > {game_name} updated.",
                 f"   Added {added_time_played}",
@@ -1099,7 +1100,7 @@ class Tracker(Helper):
         print("\nWhat Play Status should it have?")
         play_status = self.play_status_picker() or "Unset"
         minutes_played = hours_played * 60
-        time_played = self.convert_time_passed(minutes_played)
+        time_played = self.convert_time_passed(min=minutes_played)
         print(f"\nAdded Game:\n{game_name}")
         print(f"Platform: {platform}")
         print(f"Time Played: {time_played}")
@@ -1117,8 +1118,8 @@ class Tracker(Helper):
     def add_game(
         self,
         game_name=None,
-        minutes_played="",
-        linux_minutes_played="",
+        linux_minutes_played=None,
+        hours_played=None,
         time_played=None,
         appid="",
         play_status="",
@@ -1131,9 +1132,7 @@ class Tracker(Helper):
         If save is True, it will save after adding the game.
         """
         play_status = "Unplayed"
-        hours_played = ""
-        if minutes_played:
-            hours_played = self.hours_played(minutes_played)
+        if hours_played:
             # sets play status
             play_status = self.play_status(play_status, hours_played)
         linux_hours_played = ""
@@ -1197,6 +1196,7 @@ class Tracker(Helper):
         self.games.add_new_line(column_info, game_name)
         # logging
         if platform == "Steam":
+            # TODO format of time_played is just numbers instead of str
             info = f"Added {game_name} with {time_played} played"
         else:
             info = f"Added {game_name} on {platform}"
@@ -1206,7 +1206,6 @@ class Tracker(Helper):
         self.num_games_added += 1
         self.games.format_row(game_name)
         if save:
-            print("saved")
             self.excel.save()
 
     def play_status_picker(self):
