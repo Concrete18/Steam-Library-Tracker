@@ -1,6 +1,6 @@
 # Game Library Tracker
 
-Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc.. Many different types of information are auto retrieved using API's and Scraping.
+Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc.. Many different types of information is auto retrieved using API's and Scraping.
 
 Adding PlayStation games is a side feature and is not as feature rich as
 Steam games due to lack of an API compared to Steam.
