@@ -83,12 +83,13 @@ class Tracker(Helper):
             "Genre",
         ],
     }
-    excel = Excel(excel_filename, log_file="logs/excel.log")
+    excel = Excel(excel_filename)
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
     # logging setup
     Log = Logger()
-    update_log = Log.create_log("logs/tracker.log")
-    error_log = Log.create_log("logs/error.log")
+    tracker_log_path = "logs/tracker.log"
+    update_log = Log.create_log(name="tracker", log_path=tracker_log_path)
+    error_log = Log.create_log(name="base_error", log_path="logs/error.log")
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
@@ -119,7 +120,7 @@ class Tracker(Helper):
 
     def __init__(self) -> None:
         """
-        ph
+        Game Library Tracking Class.
         """
         if not self.steam_id:
             self.update_steam_id()
@@ -1422,9 +1423,8 @@ class Tracker(Helper):
         input("\nPress Enter when done.")
         self.check_playstation_json()
 
-    @staticmethod
-    def open_log():
-        osCommandString = "notepad.exe logs/Tracker.log"
+    def open_log(self):
+        osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
     def pick_task(self, choices):
