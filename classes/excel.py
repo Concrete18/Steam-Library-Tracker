@@ -22,6 +22,36 @@ def benchmark(func):
     return wrapped
 
 
+class Excel_Logger:
+    def __init__(self) -> None:
+        """
+        Logger init.
+        """
+        pass
+
+    format = "%(asctime)s %(levelname)s %(message)s"
+    date_format = "%m-%d-%Y %I:%M:%S %p"
+    log_formatter = lg.Formatter(format, datefmt=date_format)
+
+    def create_log(self, log_path="logs/excel.log", log_level=lg.DEBUG):
+        """
+        Creates a logging instance that allows you to log in a file
+        named after `log_name`.
+        """
+        logger = lg.getLogger("excel")
+        # Log Level
+        logger.setLevel(log_level)
+
+        my_handler = RotatingFileHandler(
+            log_path,
+            maxBytes=5 * 1024 * 1024,
+            backupCount=2,
+        )
+        my_handler.setFormatter(self.log_formatter)
+        logger.addHandler(my_handler)
+        return logger
+
+
 class Excel:
 
     changes_made = False
@@ -32,8 +62,6 @@ class Excel:
         self,
         filename: str,
         use_logging: bool = True,
-        log_file: str = "excel.log",
-        log_level=lg.DEBUG,
     ):
         """
         Allows retreiving, adding, updating, deleting and
@@ -62,21 +90,9 @@ class Excel:
                 # renames backup to remove .bak
                 os.rename(f"{self.file_path}.bak", self.file_path)
         # logger setup
+        Log = Excel_Logger()
+        self.logger = Log.create_log()
         self.use_logging = use_logging
-        datefmt = "%m-%d-%Y %I:%M:%S %p"
-        log_formatter = lg.Formatter(
-            "%(asctime)s %(levelname)s %(message)s", datefmt=datefmt
-        )
-        self.logger = lg.getLogger(__name__)
-        self.logger.setLevel(log_level)  # Log Level
-        max_gigs = 2
-        my_handler = RotatingFileHandler(
-            log_file,
-            maxBytes=max_gigs * 1024 * 1024,
-            backupCount=2,
-        )
-        my_handler.setFormatter(log_formatter)
-        self.logger.addHandler(my_handler)
 
     def log(self, msg: str, type: str = "info"):
         """
