@@ -9,24 +9,23 @@ class Logger:
         """
         pass
 
-    format = "%(asctime)s %(levelname)s %(message)s"
+    base_format = "%(asctime)s %(levelname)s %(message)s"
     date_format = "%m-%d-%Y %I:%M:%S %p"
-    log_formatter = lg.Formatter(format, datefmt=date_format)
 
-    def create_log(self, log_path, log_level=lg.DEBUG):
+    def create_log(self, name, log_path="logfile.log", log_level=lg.DEBUG):
         """
         Creates a logging instance that allows you to log in a file
         named after `log_name`.
         """
-        logger = lg.getLogger(__name__)
+        log_formatter = lg.Formatter(self.base_format, datefmt=self.date_format)
+        logger = lg.getLogger(name)
         # Log Level
         logger.setLevel(log_level)
-
         my_handler = RotatingFileHandler(
             log_path,
             maxBytes=5 * 1024 * 1024,
             backupCount=2,
         )
-        my_handler.setFormatter(self.log_formatter)
+        my_handler.setFormatter(log_formatter)
         logger.addHandler(my_handler)
         return logger
