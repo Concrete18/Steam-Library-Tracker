@@ -2,8 +2,11 @@ from difflib import SequenceMatcher
 import time, json, requests, re
 import datetime as dt
 
+# logging import in case helper.py as main
 if __name__ != "__main__":
     from classes.logger import Logger
+else:
+    from logger import Logger
 
 
 def keyboard_interrupt(func):
@@ -26,9 +29,8 @@ def keyboard_interrupt(func):
 
 class Helper:
 
-    if __name__ != "__main__":
-        Log = Logger()
-        error_log = Log.create_log("logs/Error.log")
+    Log = Logger()
+    error_log = Log.create_log(name="helper", log_path="logs/error.log")
 
     @staticmethod
     def benchmark(func):
@@ -66,7 +68,7 @@ class Helper:
             msg = "Server Error: make sure your api key and steam id is valid."
             self.error_log.warning(msg)
         elif response.status_code == 404:
-            msg = f"Server Error: 404 Content moved or deleted. URL: {url}"
+            msg = f"Server Error: 404 Content does not exist. URL: {url}"
             self.error_log.warning(msg)
         elif response.status_code == 429:
             msg = "Server Error: Too Many reqeuests made. Waiting to try again."
@@ -347,9 +349,7 @@ class Helper:
 
 if __name__ == "__main__":
     App = Helper()
-    # response = App.request_url("https://store.steampowered.com/app/752564654590/")
-    # print(response.url)
     # print(App.unicode_remover("Half-Life 2: Lost Coast"))
     # print(App.word_and_list(["Test1", "test2", "test3"]))
-    val = App.convert_time_passed(min=0, hr=0.2, wk=0, day=0, mnth=0, yr=0)
-    print(val)
+    # val = App.convert_time_passed(min=0, hr=0.2, wk=0, day=0, mnth=0, yr=0)
+    # print(val)
