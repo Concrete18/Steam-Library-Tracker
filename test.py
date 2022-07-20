@@ -81,9 +81,11 @@ class TestStringMethods(unittest.TestCase):
 
     def test_time_passed(self):
         tester = Tracker()
+
         # tests function when given minutes
         minutes_tests = {
-            59: "59 Minute(s)",
+            12: "12.0 Minute(s)",
+            59: "59.0 Minute(s)",
             60: "1.0 Hour(s)",
             800: "13.3 Hour(s)",
             1439: "1.0 Day(s)",
@@ -96,8 +98,10 @@ class TestStringMethods(unittest.TestCase):
         for minutes, answer in minutes_tests.items():
             output = tester.convert_time_passed(min=minutes)
             self.assertEqual(output, answer)
+
         # tests function when given hours
         hours_tests = {
+            0.2: "12.0 Minute(s)",
             1: "1.0 Hour(s)",
             13.3: "13.3 Hour(s)",
             24: "1.0 Day(s)",
@@ -106,6 +110,7 @@ class TestStringMethods(unittest.TestCase):
         for hours, answer in hours_tests.items():
             output = tester.convert_time_passed(hr=hours)
             self.assertEqual(output, answer)
+
         # tests function when given days
         days_tests = {
             1: "1.0 Day(s)",
@@ -117,16 +122,16 @@ class TestStringMethods(unittest.TestCase):
             output = tester.convert_time_passed(day=days)
             self.assertEqual(output, answer)
 
-        # # tests function when given weeks TODO
-        # days_tests = {
-        #     1: "1.0 Day(s)",
-        #     5.8: "5.8 Day(s)",
-        #     21: "3.0 Week(s)",
-        #     365: "1.0 Year(s)",
-        # }
-        # for days, answer in days_tests.items():
-        #     output = tester.convert_time_passed(day=days)
-        #     self.assertEqual(output, answer)
+        # tests function when given weeks
+        weeks_tests = {
+            4.4: "1.0 Month(s)",
+            # 3.5: "24.5 Day(s)",
+            # 52.971: "1.0 Year(s)",
+        }
+        for weeks, answer in weeks_tests.items():
+            output = tester.convert_time_passed(wk=weeks)
+            self.assertEqual(output, answer)
+
         # # tests function when given months TODO
         # days_tests = {
         #     1: "1.0 Month(s)",
@@ -137,6 +142,7 @@ class TestStringMethods(unittest.TestCase):
         # for days, answer in days_tests.items():
         #     output = tester.convert_time_passed(day=days)
         #     self.assertEqual(output, answer)
+
         # # tests function when given years TODO
         # days_tests = {
         #     1: "1.0 Day(s)",
@@ -226,7 +232,7 @@ class TestStringMethods(unittest.TestCase):
             self.assertIsInstance(game_info["steam_review_percent"], float)
             self.assertIsInstance(game_info["steam_review_total"], int)
             self.assertIsInstance(game_info["release_date"], str)
-            self.assertIsInstance(game_info["price"], int)
+            self.assertIsInstance(game_info["price"], str)
             self.assertIsInstance(game_info["discount"], float)
             self.assertIn(game_info["on_sale"], ["Yes", "No"])
             self.assertIsInstance(game_info["linux_compat"], str)
@@ -234,7 +240,7 @@ class TestStringMethods(unittest.TestCase):
             self.assertIsInstance(game_info["categories"], str)
             self.assertIsInstance(game_info["ext_user_account_notice"], str)
         # TODO ph comment
-        self.assertEqual(tester.get_game_info(None, None), default_dict)
+        # self.assertEqual(tester.get_game_info(None, None), default_dict)
 
     def test_url_sanitize(self):
         tester = Tracker()
