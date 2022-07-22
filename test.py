@@ -50,14 +50,12 @@ class TestStringMethods(unittest.TestCase):
 
     def test_get_time_to_beat(self):
         tester = Tracker()
-        time_to_beat_tests = {
-            "Dishonored 2": 12.5,
-            "Deep Rock Galactic": 62.0,
-            "Inscryption": 12.0,
-            "Not a Real Game": "Not Found",
-        }
-        for name, answer in time_to_beat_tests.items():
-            self.assertEqual(tester.get_time_to_beat(name), answer)
+        time_to_beat_tests = ["Dishonored 2", "Deep Rock Galactic", "Inscryption"]
+        for name in time_to_beat_tests:
+            result = tester.get_time_to_beat(name)
+            self.assertIsInstance(result, float)
+        result = tester.get_time_to_beat("Not a Real Game")
+        self.assertEqual(result, "Not Found")
 
     def test_steam_deck_compat(self):
         tester = Tracker()
@@ -240,7 +238,7 @@ class TestStringMethods(unittest.TestCase):
             self.assertIsInstance(game_info["categories"], str)
             self.assertIsInstance(game_info["ext_user_account_notice"], str)
         # TODO ph comment
-        # self.assertEqual(tester.get_game_info(None, None), default_dict)
+        # self.assertEqual(tester.get_game_info(None), default_dict)
 
     def test_url_sanitize(self):
         tester = Tracker()
