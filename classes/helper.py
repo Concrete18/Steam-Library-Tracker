@@ -19,7 +19,7 @@ def keyboard_interrupt(func):
         try:
             func(*args, **kwargs)
         except KeyboardInterrupt:
-            delay = 1
+            delay = 0.5
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
             exit()
@@ -126,11 +126,11 @@ class Helper:
         """
         Removes all illegal URL characters from the given `string`.
 
-        Turns spaces into dashes if `space_to_dash` is true.
+        Replaces all spaces with the `space_replace`.
         """
         string = string.replace(" ", space_replace)
         # Allowed characters (0-9, A-Z, a-z, "-", ".", "_", "~")
-        string = re.sub(r"[^a-z0-9-._~]+", "", string.lower()).strip()
+        string = re.sub(r"[^a-zA-Z0-9-._~]+", "", string).strip()
         while "--" in string:
             string = string.replace("--", "-")
         return string
@@ -233,6 +233,16 @@ class Helper:
             # middle entries
             else:
                 final_string += f", {entry}"
+
+    @staticmethod
+    def check_for_shared_games(lists_to_check):
+        """
+        Finds the entries in lists that are within all lists given in `lists_to_check`.
+        """
+        common_entries = set(lists_to_check[0])
+        for entry in lists_to_check:
+            common_entries &= set(entry)
+        return common_entries
 
     def ask_for_integer(
         self, msg=None, num_range=False, allow_blank=False
