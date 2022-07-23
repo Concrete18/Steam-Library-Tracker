@@ -367,7 +367,7 @@ class Tracker(Helper):
                 genres = get_json_desc(game_info["genres"])
                 info_dict[self.genre_col] = ", ".join(genres)
                 # early access
-                # TODO does not update when changed
+                # TODO early access does not update when changed
                 if self.ea_col in info_dict[self.genre_col]:
                     info_dict[self.ea_col] = "Yes"
             # get metacritic
@@ -538,7 +538,6 @@ class Tracker(Helper):
                 for column in column_list:
                     cell = self.games.get_cell(game_name, column)
                     if cell == None and game_name not in check_list:
-                        print(game_name, column)
                         check_list.append(game_name)
                         continue
             else:
@@ -573,14 +572,14 @@ class Tracker(Helper):
                 cur_valid = self.games.get_cell(game_name, self.time_to_beat_col)
                 if not cur_valid:
                     time_to_beat = self.get_time_to_beat(game_name)
-                    if time_to_beat != None:
+                    if time_to_beat:
                         self.set_time_to_beat(game_name, time_to_beat)
                 # metacritic score check
                 cur_valid = self.games.get_cell(game_name, self.metacritic_col)
                 if not cur_valid:
                     platform = self.games.get_cell(game_name, self.platform_col)
                     metacritic_score = self.get_metacritic(game_name, platform)
-                    if metacritic_score != None:
+                    if metacritic_score:
                         self.set_metacritic(game_name, metacritic_score)
                 # gets steam info if an app id exists
                 appid = self.games.get_cell(game_name, self.appid_col)
@@ -632,8 +631,11 @@ class Tracker(Helper):
                     if not self.games.get_cell(game_name, col):
                         self.games.update_cell(game_name, col, "No Reviews")
                 # metacritic
+                # TODO make sure this does not overlap data
                 if steam_info[self.metacritic_col]:
-                    self.set_metacritic(game_name, steam_info[self.metacritic_col])
+                    if not self.games.get_cell(game_name, self.metacritic_col):
+                        score = steam_info[self.metacritic_col]
+                        self.set_metacritic(game_name, score)
                 else:
                     if not self.games.get_cell(game_name, self.metacritic_col):
                         self.set_metacritic(game_name, "No Score")
@@ -1367,6 +1369,59 @@ class Tracker(Helper):
             print("Invalid Resposne")
             return
 
+    def get_steamid(self, vanity_url):
+        """
+        Finds your Steam ID using your vanity url from your steam profile.
+        """
+        # checks if vanity_url is a full url or just the custom username
+        # https://steamcommunity.com/id/concretesurfer/
+        url = "https://steamcommunity.com/id/"
+        if url in vanity_url:
+            pattern = r"https://steamcommunity.com/id/(.*)/"
+            vanity_url = re.findall(pattern, vanity_url)[0]
+        return self.get_steam_id(vanity_url)
+
+    def get_games_owned(self, steam_id):
+        """
+        Gets names of games owned by the entered Steam ID.
+        """
+        if self.check_delay:
+            time.sleep(1)
+        base_url = "http://api.steampowered.com/"
+        api_action = f"{base_url}IPlayerService/GetOwnedGames/v0001/"
+        url_end = f"?key={self.steam_api_key}&steamid={steam_id}&include_played_free_games=0&format=json&include_appinfo=1?l=english"
+        url = base_url + api_action + url_end
+        response = self.request_url(url)
+        if response:
+            if "games" in response.json()["response"].keys():
+                game_list = []
+                for item in response.json()["response"]["games"]:
+                    game_name = item["name"]
+                    game_list.append(game_name)
+                return game_list
+        return False
+
+    def create_game_lists(self, steam_ids):
+        """
+        Creates a list containing a list each of the profiles games entered using the get_games_owned Function.
+        """
+        game_lists = []
+        valid_users = []
+        if len(steam_ids) > 4:
+            self.check_delay = 1
+        for id in steam_ids:
+            games = self.get_games_owned(id)
+            if games:
+                game_lists.append(games)
+                valid_users.append(id)
+        return game_lists, valid_users
+
+    def get_shared_games(self):
+        """
+        ph TODO Finish
+        """
+        pass
+
     def arg_func(self):
         """
         Checks if any arguments were given and runs commands.
@@ -1414,6 +1469,7 @@ class Tracker(Helper):
             return
         updated = False
         # sets new hours if a number is given
+        # TODO allow adding to or fully replacing total hours
         hours = input("\nHow many hours have you played?\n")
         if hours.isnumeric():
             self.set_hours_played(game_idx, float(hours))
@@ -1473,20 +1529,10 @@ class Tracker(Helper):
         choice_num = num - 1
         choices[choice_num][1]()
 
-    @keyboard_interrupt
-    def run(self):
+    def extra_actions(self):
         """
-        Main run function.
+        Gives a choice of less less used actions
         """
-        self.config_check()
-        self.arg_func()
-        print("Starting Game Tracker")
-        # runs script with CTRL + C clean program end
-        self.sync_steam_games(self.steam_id)
-        if self.should_run_steam_deck_update():
-            self.steam_deck_check()
-        self.check_playstation_json()
-        self.missing_info_check()
         # statistics setup
         na_values = [
             "No Data",
@@ -1501,23 +1547,52 @@ class Tracker(Helper):
         ]
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
-        # choice picker
         choices = [
-            ("Add Game", self.manually_add_game),
-            ("Update Game", self.custom_update_game),
             ("Get Statistics", stats.get_game_statistics),
             ("Check Steam Deck Game Status", self.steam_deck_check),
-            ("Pick Random Game", self.pick_random_game),
             ("Update the Playstation Data", self.update_playstation_data),
+            ("Get Games in Common", self.get_shared_games),
             ("Check Favorite Games Sales", self.get_favorite_games_sales),
             ("View Favorite Games Sales", self.view_favorite_games_sales),
             ("Update All Cell Formatting", self.games.format_all_cells),
             ("Open Log", self.open_log),
         ]
         self.pick_task(choices)
+
+    def game_library_actions(self):
+        """
+        Gives a choice of actions for the current game library.
+        """
+        # choice picker
+        choices = [
+            ("Update Game", self.custom_update_game),
+            ("Add Game", self.manually_add_game),
+            ("Pick Random Game", self.pick_random_game),
+            ("Open Log", self.open_log),
+            ("Extra Choices", self.extra_actions),
+        ]
+        self.pick_task(choices)
+
+    @keyboard_interrupt
+    def run(self):
+        """
+        Main run function.
+        """
+        self.config_check()
+        self.arg_func()
+        print("Starting Game Tracker")
+        # runs script with CTRL + C clean program end
+        self.sync_steam_games(self.steam_id)
+        if self.should_run_steam_deck_update():
+            self.steam_deck_check()
+        self.check_playstation_json()
+        self.missing_info_check()
+        self.game_library_actions()
         self.excel.open_file_input()
 
 
 if __name__ == "__main__":
     App = Tracker()
     App.run()
+    # val = App.get_metacritic(game_name='Stray', platform='PS5')
+    # print(val)
