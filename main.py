@@ -6,11 +6,18 @@ from tqdm import tqdm
 import datetime as dt
 import pandas as pd
 
+
 # classes
 from classes.helper import Helper, keyboard_interrupt
-from classes.excel import Excel, Sheet
+
 from classes.statisitics import Stat
 from classes.logger import Logger
+
+# my package
+# from easierexcel import Excel, Sheet
+
+# for local testing
+from classes.excel import Excel, Sheet
 
 
 def setup():
@@ -317,7 +324,7 @@ class Tracker(Helper):
             self.pub_col: "No Data",
             self.genre_col: "No Data",
             self.ea_col: "No",
-            self.metacritic_col: "No Data",
+            self.metacritic_col: "No Score",
             self.steam_rev_per_col: "No Reviews",
             self.steam_rev_total_col: "No Reviews",
             self.release_col: "No Year",
@@ -633,7 +640,8 @@ class Tracker(Helper):
                 # metacritic
                 # TODO make sure this does not overlap data
                 if steam_info[self.metacritic_col]:
-                    if not self.games.get_cell(game_name, self.metacritic_col):
+                    cur_val = self.games.get_cell(game_name, self.metacritic_col)
+                    if not cur_val.isnumeric():
                         score = steam_info[self.metacritic_col]
                         self.set_metacritic(game_name, score)
                 else:
@@ -1194,7 +1202,7 @@ class Tracker(Helper):
         # base defaults
         steam_deck_status = "UNKNOWN"
         early_access = "No"
-        vr_support = ""
+        vr_support = "Unset"
         # sets defaults for consoles
         if platform in ["PS5", "PS4", "Switch"]:
             vr_support = "No"
@@ -1235,7 +1243,7 @@ class Tracker(Helper):
             for column in self.excel_columns:
                 if column in steam_info.keys():
                     column_info[column] = steam_info[column]
-        self.games.add_new_line(column_info, game_name)
+        self.games.add_new_line(column_info)
         # logging
         if platform == "Steam":
             if not hours_played:
@@ -1509,25 +1517,31 @@ class Tracker(Helper):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices):
+    def pick_task(self, choices, repeat=True):
         """
         Allows picking a task to do next using a matching number.
         """
-        print("\nWhat do you want to do next?\n")
+        ext_terminal = sys.stdout.isatty()
+        if not ext_terminal:
+            print("\nSkipping Task Picker.\nInput can't be used.")
+            return False
+        print("\nWhat do you want to do?\n")
         for count, (choice, action) in enumerate(choices):
             print(f"{count+1}. {choice}")
-        msg = "\nPress Enter without a number to open the excel sheet.\n"
+        msg = "\nEnter the Number for the corresponding action.\n"
         num = self.ask_for_integer(
             msg,
             num_range=(1, len(choices)),
             allow_blank=True,
         )
         if num == "":
-            os.startfile(self.excel.file_path)
-            exit()
+            return False
         # runs chosen function
         choice_num = num - 1
         choices[choice_num][1]()
+        if repeat:
+            self.pick_task(choices)
+        return True
 
     def extra_actions(self):
         """
@@ -1594,5 +1608,3 @@ class Tracker(Helper):
 if __name__ == "__main__":
     App = Tracker()
     App.run()
-    # val = App.get_metacritic(game_name='Stray', platform='PS5')
-    # print(val)
