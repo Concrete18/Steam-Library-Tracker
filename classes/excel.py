@@ -22,36 +22,6 @@ def benchmark(func):
     return wrapped
 
 
-class Excel_Logger:
-    def __init__(self) -> None:
-        """
-        Logger init.
-        """
-        pass
-
-    format = "%(asctime)s %(levelname)s %(message)s"
-    date_format = "%m-%d-%Y %I:%M:%S %p"
-    log_formatter = lg.Formatter(format, datefmt=date_format)
-
-    def create_log(self, log_path="logs/excel.log", log_level=lg.DEBUG):
-        """
-        Creates a logging instance that allows you to log in a file
-        named after `log_name`.
-        """
-        logger = lg.getLogger("excel")
-        # Log Level
-        logger.setLevel(log_level)
-
-        my_handler = RotatingFileHandler(
-            log_path,
-            maxBytes=5 * 1024 * 1024,
-            backupCount=2,
-        )
-        my_handler.setFormatter(self.log_formatter)
-        logger.addHandler(my_handler)
-        return logger
-
-
 class Excel:
 
     changes_made = False
@@ -62,6 +32,8 @@ class Excel:
         self,
         filename: str,
         use_logging: bool = True,
+        log_file: str = "excel.log",
+        log_level=lg.DEBUG,
     ):
         """
         Allows retreiving, adding, updating, deleting and
@@ -90,9 +62,21 @@ class Excel:
                 # renames backup to remove .bak
                 os.rename(f"{self.file_path}.bak", self.file_path)
         # logger setup
-        Log = Excel_Logger()
-        self.logger = Log.create_log()
         self.use_logging = use_logging
+        datefmt = "%m-%d-%Y %I:%M:%S %p"
+        log_formatter = lg.Formatter(
+            "%(asctime)s %(levelname)s %(message)s", datefmt=datefmt
+        )
+        self.logger = lg.getLogger(__name__)
+        self.logger.setLevel(log_level)  # Log Level
+        max_gigs = 2
+        my_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=max_gigs * 1024 * 1024,
+            backupCount=2,
+        )
+        my_handler.setFormatter(log_formatter)
+        self.logger.addHandler(my_handler)
 
     def log(self, msg: str, type: str = "info"):
         """
@@ -364,10 +348,12 @@ class Sheet:
 
     def extract_hyperlink(self, cell_value):
         """
-        Extracts the hyperlink target from a cell with the hyperlink formula.
+        Extracts the hyperlink target from a `cell_value` with the hyperlink
+        formula.
 
         This is only needed if excel has not applied the hyperlink yet.
-        This often happens when you click on the cell with the hyperlink formula.
+        This often happens when you click on the cell with the hyperlink
+        formula.
         """
         if not cell_value:
             raise "Cell Value is None"
@@ -375,7 +361,7 @@ class Sheet:
             split = cell_value.split('"')
             return split[1]
         else:
-            return cell_value
+            return False
 
     def get_cell(self, row_value: str or int, column_value: str or int):
         """
@@ -390,6 +376,12 @@ class Sheet:
             cell = self.cur_sheet.cell(row=row_k, column=col_k)
             if cell.hyperlink:
                 return cell.hyperlink.target
+            if type(cell.value) is str:
+                # TODO add better regex test
+                if "=HYPERLINK" in cell.value:
+                    link = self.extract_hyperlink(cell.value)
+                    if link:
+                        return link
             return self.cur_sheet.cell(row=row_k, column=col_k).value
         else:
             return None
@@ -398,6 +390,7 @@ class Sheet:
         """
         Updates the current row with the `column_key` in the row_idx variable.
         """
+        # TODO add test for this
         self.row_idx[column_key] = self.cur_sheet._current_row
 
     def update_cell(
@@ -444,15 +437,11 @@ class Sheet:
     def add_new_line(
         self,
         cell_dict: dict,
-        column_key: str,
         save: bool = False,
     ):
         """
-        Adds the given dictionary, as `cell_dict`, onto a new line
-        within the excel sheet.
-
-        column_key is required to update the current index so the new line
-        can be modified without reloading the sheet.
+        Adds cell_dict onto a new line within the excel sheet.
+        The column_name must be given a value.
 
         If dictionary keys match existing columns within the set sheet,
         it will add the value to that column.
@@ -467,12 +456,20 @@ class Sheet:
                 self.missing_columns.append(col)
                 msg = f"add_new_line: Missing {col} in {self.sheet_name} sheet"
                 self.excel.log(msg, "warning")
+        column_key = None
         append_list = []
         for col in self.col_idx:
+            if col in cell_dict.keys():
+                cell_value = cell_dict[col]
+                # gets key for updating the index
+                if self.column_name == col:
+                    column_key = cell_value
             if col in cell_dict:
                 append_list.append(cell_dict[col])
             else:
                 append_list.append("")
+        if not column_key:
+            raise "column_name value was not given."
         self.cur_sheet.append(append_list)
         self.update_index(column_key)
         if save:
@@ -481,7 +478,7 @@ class Sheet:
             self.excel.changes_made = True
         return True
 
-    def delete_by_row(self, col_val: str, save: bool = False):
+    def delete_row(self, col_val: str, save: bool = False):
         """
         Deletes row by `column_value`.
 
@@ -491,19 +488,20 @@ class Sheet:
             return None
         row = self.row_idx[col_val]
         self.cur_sheet.delete_rows(row)
+        self.row_idx.pop(col_val)  # removes index of row from row_idx
         self.excel.changes_made = True
         if save:
             self.excel.save(use_print=False, backup=False)
         return True
 
-    def delete_by_column(self, column_name: str):
+    def delete_column(self, column_name: str):
         """
         Deletes column by `column_name`.
         """
         if column_name not in self.col_idx:
             return None
         column = self.col_idx[column_name]
-        self.cur_sheet.delete_column(column)
+        self.cur_sheet.delete_cols(column)
         self.excel.changes_made = True
         return True
 
@@ -642,6 +640,7 @@ class Sheet:
         """
         Formats a cell based on the `column` name using `row_i` and `col_i`.
         """
+        # TODO add test for this
         cell = self.cur_sheet.cell(row=row_i, column=col_i)
         # gets format_actions if it has not be set yet
         if not self.column_formats:
@@ -688,6 +687,7 @@ class Sheet:
         """
         Formats the entire row by `row_identifier`
         """
+        # TODO add test for this
         if not row_identifier:
             raise "Row identifier was not give."
         for column in self.col_idx.keys():
@@ -700,6 +700,7 @@ class Sheet:
         Auto formats all cells.
         TODO check for a way to make it use openpyxl more
         """
+        # TODO add test for this
         # return early if options is not valid
         if not self.options:
             return False
