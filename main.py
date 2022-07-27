@@ -178,11 +178,15 @@ class Tracker(Helper):
         """
         Gets a users Steam ID via their `vanity_url`.
         """
+        # TODO convert vanity url into just username
         main_url = "https://api.steampowered.com/"
         api_action = r"ISteamUser/ResolveVanityURL/v0001/"
-        url_var = f"?key={self.steam_key}&vanityurl={vanity_url}"
-        url = main_url + api_action + url_var
-        response = self.request_url(url)
+        url = main_url + api_action
+        query = {
+            "key": self.steam_key,
+            "vanityurl": vanity_url,
+        }
+        response = self.request_url(url, params=query)
         if response:
             data = response.json()
             steam_id = data["response"]["steamid"]
@@ -256,10 +260,11 @@ class Tracker(Helper):
         """
         # sets up app_list if it does not exist
         if app_list == {}:
-            main_url = "http://api.steampowered.com/"
-            api_action = "ISteamApps/GetAppList/v0002/?l=english"
+            main_url = "https://api.steampowered.com/"
+            api_action = "ISteamApps/GetAppList/v0002/"
             url = main_url + api_action
-            response = self.request_url(url)
+            query = {"l": "english"}
+            response = self.request_url(url, params=query)
             if not response:
                 return None
             app_list = response.json()["applist"]["apps"]
@@ -341,12 +346,10 @@ class Tracker(Helper):
         def get_json_desc(data):
             return [item["description"] for item in data]
 
-        main_url = "https://store.steampowered.com/"
-        api_action = "api/appdetails"
-        url_vars = f"?appids={appid}&l=english"
-        url = main_url + api_action + url_vars
+        url = "https://store.steampowered.com/api/appdetails"
         self.api_sleeper("steam_app_details")
-        response = self.request_url(url)
+        query = {"appids": appid, "l": "english"}
+        response = self.request_url(url, params=query)
         if not response:
             return info_dict
         dict = response.json()
@@ -681,17 +684,20 @@ class Tracker(Helper):
         """
         Gets the games owned by the given `steam_id`.
         """
-        # asks for a steam id if the given one is invalid
-        while len(steam_id) != 17:
-            msg = "\nInvalid Steam ID (It must be 17 numbers.)\nTry Again.\n:"
-            steam_id = input(msg)
-        main_url = "http://api.steampowered.com/"
+        base_url = "http://api.steampowered.com/"
         api_action = "IPlayerService/GetOwnedGames/v0001/"
-        url_var = f"?key={self.steam_key}&steamid={steam_id}?l=english"
-        options = "include_played_free_games=0&format=json&include_appinfo=1"
-        url = main_url + api_action + url_var + options
+        url = base_url + api_action
         self.api_sleeper("steam_owned_games")
-        return self.request_url(url)
+        query = {
+            "key": self.steam_key,
+            "steamid": steam_id,
+            "l": "english",
+            "include_played_free_games": 0,
+            "format": "json",
+            "include_appinfo": 1,
+        }
+        response = self.request_url(url, params=query)
+        return response.json()["response"]["games"]
 
     def update_removed_games(self, removed_games):
         """
@@ -715,8 +721,8 @@ class Tracker(Helper):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-        response = self.get_owned_steam_games(steam_id)
-        if response:
+        owned_games = self.get_owned_steam_games(steam_id)
+        if owned_games:
             # creates a list of all games so found games can be removed from
             # the list to detemine what was removed/renamed from steam
             removed_games = [
@@ -728,7 +734,6 @@ class Tracker(Helper):
             self.num_games_added = 0
             added_games = []
             updated_games = []
-            owned_games = response.json()["response"]["games"]
             # save interval setup
             save_interval = 20
             checks = save_interval
@@ -971,9 +976,9 @@ class Tracker(Helper):
         """
         main_url = "https://store.steampowered.com/"
         action_url = "saleaction/ajaxgetdeckappcompatibilityreport"
-        url_var = f"?nAppID={appid}"
-        url = main_url + action_url + url_var
-        data = self.request_url(url)
+        url = main_url + action_url
+        query = {"nAppID": appid, "l": "english"}
+        data = self.request_url(url, params=query)
         if not data:
             return False
         categories = {
@@ -1376,17 +1381,23 @@ class Tracker(Helper):
             print("Invalid Resposne")
             return
 
-    def get_games_owned(self, steam_id):
+    def get_games_list(self, steam_id):
         """
-        Gets names of games owned by the entered Steam ID.
+        Gets names of games owned by `steam_id`.
         """
-        if self.check_delay:
-            time.sleep(1)
+        self.api_sleeper("steam_api")
         base_url = "http://api.steampowered.com/"
-        api_action = f"{base_url}IPlayerService/GetOwnedGames/v0001/"
-        url_end = f"?key={self.steam_key}&steamid={steam_id}&include_played_free_games=0&format=json&include_appinfo=1?l=english"
-        url = base_url + api_action + url_end
-        response = self.request_url(url)
+        api_action = "IPlayerService/GetOwnedGames/v0001/"
+        url = base_url + api_action
+        query = {
+            "key": self.steam_key,
+            "steamid": steam_id,
+            "include_played_free_games": 0,
+            "include_appinfo": 1,
+            "format": "json",
+            "l": "english",
+        }
+        response = self.request_url(url, params=query)
         if response:
             if "games" in response.json()["response"].keys():
                 game_list = []
@@ -1402,20 +1413,46 @@ class Tracker(Helper):
         """
         game_lists = []
         valid_users = []
-        if len(steam_ids) > 4:
-            self.check_delay = 1
         for id in steam_ids:
-            games = self.get_games_owned(id)
+            games = self.get_games_list(id)
             if games:
                 game_lists.append(games)
                 valid_users.append(id)
         return game_lists, valid_users
 
-    def get_shared_games(self):
+    @staticmethod
+    def find_games_in_common(games_list):
         """
-        ph TODO Finish
+        Finds the games in common from each `games_list`.
         """
-        pass
+        base_list = set(games_list[0])
+        for game_list in games_list:
+            base_list &= set(game_list)
+        return base_list
+
+    def find_shared_games(self):
+        """
+        WIP ph
+        """
+        steam_ids = [self.steam_id]
+        steam_id = "Start"
+        # while steam_id:
+        #     if steam_id == "Start":
+        #         msg = "Enter "
+        #     else:
+        #         msg = ""
+        #     steam_id = input(msg)
+        #     if steam_id:
+        #         steam_ids.append(steam_id)
+
+        steam_ids.append(76561197969291006)
+        steam_ids.append(76561198088659293)
+
+        game_lists, valid_users = self.create_game_lists(steam_ids)
+        common_games = self.find_games_in_common(game_lists)
+        print(valid_users)
+        print()
+        print(common_games)
 
     def arg_func(self):
         """
@@ -1594,4 +1631,6 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    App.run()
+    # App.run()
+
+    App.find_shared_games()
