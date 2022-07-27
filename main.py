@@ -9,7 +9,6 @@ import pandas as pd
 
 # classes
 from classes.helper import Helper, keyboard_interrupt
-
 from classes.statisitics import Stat
 from classes.logger import Logger
 
@@ -59,13 +58,20 @@ class Tracker(Helper):
     config = Path("configs\config.json")
     with open(config) as file:
         data = json.load(file)
-    steam_api_key = data["settings"]["steam_api_key"]
+    steam_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
     vanity_url = data["settings"]["vanity_url"]
     excel_filename = data["settings"]["excel_filename"]
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     appid_ignore_list = data["appid_ignore_list"]
+
+    # logging setup
+    Log = Logger()
+    tracker_log_path = "logs/tracker.log"
+    tracker = Log.create_log(name="tracker", log_path=tracker_log_path)
+    error_log = Log.create_log(name="base_error", log_path="logs/error.log")
+
     # class init
     options = {
         "shrink_to_fit_cell": True,
@@ -93,11 +99,6 @@ class Tracker(Helper):
     }
     excel = Excel(excel_filename)
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
-    # logging setup
-    Log = Logger()
-    tracker_log_path = "logs/tracker.log"
-    update_log = Log.create_log(name="tracker", log_path=tracker_log_path)
-    error_log = Log.create_log(name="base_error", log_path="logs/error.log")
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
@@ -112,6 +113,7 @@ class Tracker(Helper):
     }
     # misc
     ps_data = Path("configs\playstation_games.json")
+
     # columns
     excel_columns = [
         date_added_col := "Date Added",
@@ -179,7 +181,7 @@ class Tracker(Helper):
         """
         main_url = "https://api.steampowered.com/"
         api_action = r"ISteamUser/ResolveVanityURL/v0001/"
-        url_var = f"?key={self.steam_api_key}&vanityurl={vanity_url}"
+        url_var = f"?key={self.steam_key}&vanityurl={vanity_url}"
         url = main_url + api_action + url_var
         response = self.request_url(url)
         if response:
@@ -687,7 +689,7 @@ class Tracker(Helper):
             steam_id = input(msg)
         main_url = "http://api.steampowered.com/"
         api_action = "IPlayerService/GetOwnedGames/v0001/"
-        url_var = f"?key={self.steam_api_key}&steamid={steam_id}?l=english"
+        url_var = f"?key={self.steam_key}&steamid={steam_id}?l=english"
         options = "include_played_free_games=0&format=json&include_appinfo=1"
         url = main_url + api_action + url_var + options
         self.api_sleeper("steam_owned_games")
@@ -1030,7 +1032,7 @@ class Tracker(Helper):
                 continue
             if self.set_steam_deck(game_name, status):
                 info = f"{game_name} was updated to {status}"
-                self.update_log.info(info)
+                self.tracker.info(info)
                 updated_games.append(info)
         if updated_games:
             print("\nUpdated Games:")
@@ -1127,7 +1129,7 @@ class Tracker(Helper):
             ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
-            self.update_log.info(msg)
+            self.tracker.info(msg)
             return update_info
         return None
 
@@ -1251,8 +1253,7 @@ class Tracker(Helper):
             info = f"Added {game_name} with {time_played} played"
         else:
             info = f"Added {game_name} on {platform}"
-        self.update_log.info(info)
-        # TODO change to dict with name and appid
+        self.tracker.info(info)
         self.num_games_added += 1
         self.games.format_row(game_name)
         if save:
@@ -1377,18 +1378,6 @@ class Tracker(Helper):
             print("Invalid Resposne")
             return
 
-    def get_steamid(self, vanity_url):
-        """
-        Finds your Steam ID using your vanity url from your steam profile.
-        """
-        # checks if vanity_url is a full url or just the custom username
-        # https://steamcommunity.com/id/concretesurfer/
-        url = "https://steamcommunity.com/id/"
-        if url in vanity_url:
-            pattern = r"https://steamcommunity.com/id/(.*)/"
-            vanity_url = re.findall(pattern, vanity_url)[0]
-        return self.get_steam_id(vanity_url)
-
     def get_games_owned(self, steam_id):
         """
         Gets names of games owned by the entered Steam ID.
@@ -1397,7 +1386,7 @@ class Tracker(Helper):
             time.sleep(1)
         base_url = "http://api.steampowered.com/"
         api_action = f"{base_url}IPlayerService/GetOwnedGames/v0001/"
-        url_end = f"?key={self.steam_api_key}&steamid={steam_id}&include_played_free_games=0&format=json&include_appinfo=1?l=english"
+        url_end = f"?key={self.steam_key}&steamid={steam_id}&include_played_free_games=0&format=json&include_appinfo=1?l=english"
         url = base_url + api_action + url_end
         response = self.request_url(url)
         if response:
