@@ -6,7 +6,6 @@ from tqdm import tqdm
 import datetime as dt
 import pandas as pd
 
-
 # classes
 from classes.helper import Helper, keyboard_interrupt
 from classes.statisitics import Stat
@@ -51,7 +50,7 @@ class Tracker(Helper):
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-    ext_terminal = sys.stdout.isatty()
+    ext_terminal = sys.stdout.isatty()  # is True if terminal is external
 
     # config init
     setup()
@@ -156,6 +155,7 @@ class Tracker(Helper):
         Checks to see if the config data is usable.
         """
         errors = []
+        # TODO check steam id more and check steam api key
         if len(self.steam_id) != 17:
             errors.append("Steam ID is invalid.")
         if errors:
@@ -171,7 +171,6 @@ class Tracker(Helper):
             raise "Steam ID and Vanity URL is blank. Please enter at one of them."
         steam_id = self.get_steam_id(self.vanity_url)
         if steam_id:
-            pass
             self.data["settings"]["steam_id"] = steam_id
             self.save_json_output(self.data, self.config)
 
@@ -191,12 +190,10 @@ class Tracker(Helper):
         else:
             return False
 
-    def get_time_to_beat(self, game_name, delay=2):
+    def get_time_to_beat(self, game_name):
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
-        if delay > 0:
-            time.sleep(delay)
         self.api_sleeper("time_to_beat")
         results = HowLongToBeat().search(game_name)
         if results is not None and len(results) > 0:
@@ -640,12 +637,13 @@ class Tracker(Helper):
                     if not self.games.get_cell(game_name, col):
                         self.games.update_cell(game_name, col, "No Reviews")
                 # metacritic
-                # TODO make sure this does not overlap data
                 if steam_info[self.metacritic_col]:
                     cur_val = self.games.get_cell(game_name, self.metacritic_col)
-                    if not cur_val.isnumeric():
-                        score = steam_info[self.metacritic_col]
-                        self.set_metacritic(game_name, score)
+                    score = steam_info[self.metacritic_col]
+                    # only updates metacritic score if it is not numeric
+                    if type(cur_val) is not int:
+                        if not cur_val.isnumeric():
+                            self.set_metacritic(game_name, score)
                 else:
                     if not self.games.get_cell(game_name, self.metacritic_col):
                         self.set_metacritic(game_name, "No Score")
