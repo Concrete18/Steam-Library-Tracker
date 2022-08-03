@@ -48,12 +48,12 @@ class Helper:
 
         return wrapped
 
-    def request_url(self, url, headers=None, second_try=False):
+    def request_url(self, url, params=None, headers=None, second_try=False):
         """
         Quick data request with check for success.
         """
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, params, headers=headers)
         except requests.exceptions.ConnectionError:
             if second_try:
                 return False
@@ -126,11 +126,11 @@ class Helper:
         """
         Removes all illegal URL characters from the given `string`.
 
-        Replaces all spaces with the `space_replace`.
+        Turns spaces into dashes if `space_to_dash` is true.
         """
         string = string.replace(" ", space_replace)
-        # Allowed characters (0-9, A-Z, a-z, "-", ".", "_", "~")
-        string = re.sub(r"[^a-zA-Z0-9-._~]+", "", string).strip()
+        # Allowed characters (0-9, A-Z, a-z, "-", "_", "~")
+        string = re.sub(r"[^a-z0-9-_~]+", "", string.lower()).strip()
         while "--" in string:
             string = string.replace("--", "-")
         return string
