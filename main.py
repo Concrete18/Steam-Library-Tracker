@@ -1,4 +1,4 @@
-import random, time, json, os, re, sys, hashlib, webbrowser, subprocess, shutil
+import random, json, os, re, sys, hashlib, webbrowser, subprocess, shutil
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -44,6 +44,9 @@ def setup():
     print("\nOnce updated run again.")
     input("Press Enter to Close.")
     exit()
+
+
+# TODO decide on title case and/or periods
 
 
 class Tracker(Helper):
@@ -150,14 +153,35 @@ class Tracker(Helper):
         if not self.steam_id:
             self.update_steam_id()
 
+    def validate_steam_id(self, steam_id):
+        """
+        Validates a `steam_id`.
+        """
+        steam_id_tests = [
+            len(steam_id) != 17,
+            not steam_id.isnumeric(),
+        ]
+        return any(steam_id_tests)
+
+    def validate_steam_key(self, steam_key):
+        """
+        Validates a `steam_key`.
+        """
+        steam_key_tests = [
+            len(steam_key) != 32,
+            not steam_key.isalnum(),
+        ]
+        return any(steam_key_tests)
+
     def config_check(self):
         """
         Checks to see if the config data is usable.
         """
         errors = []
-        # TODO check steam id more and check steam api key
-        if len(self.steam_id) != 17:
-            errors.append("Steam ID is invalid.")
+        if self.validate_steam_id(self.steam_id):
+            errors.append("Steam ID is Invalid.")
+        if self.validate_steam_key(self.steam_key):
+            errors.append("Steam API Key is Invalid.")
         if errors:
             return False, errors
         else:
@@ -174,13 +198,21 @@ class Tracker(Helper):
             self.data["settings"]["steam_id"] = steam_id
             self.save_json_output(self.data, self.config)
 
+    @staticmethod
+    def get_vanity_url(vanity_url):
+        if "steamcommunity.com/id" in vanity_url:
+            if vanity_url[-1] == "/":
+                vanity_url = vanity_url[:-1]
+            vanity_url = vanity_url.split("/")[-1]
+        return vanity_url
+
     def get_steam_id(self, vanity_url):
         """
-        Gets a users Steam ID via their `vanity_url`.
+        Gets a users Steam ID via their `vanity_url` or `vanity_username`.
         """
-        # TODO convert vanity url into just username
+
         main_url = "https://api.steampowered.com/"
-        api_action = r"ISteamUser/ResolveVanityURL/v0001/"
+        api_action = "ISteamUser/ResolveVanityURL/v0001/"
         url = main_url + api_action
         query = {
             "key": self.steam_key,
@@ -190,7 +222,7 @@ class Tracker(Helper):
         if response:
             data = response.json()
             steam_id = data["response"]["steamid"]
-            return steam_id
+            return int(steam_id)
         else:
             return False
 
@@ -333,8 +365,8 @@ class Tracker(Helper):
             self.steam_rev_total_col: "No Reviews",
             self.release_col: "No Year",
             "price": "No Data",
-            "discount": "No Data",
-            "on_sale": "No Data",
+            "discount": 0.0,
+            "on_sale": "No",
             "linux_compat": "Unsupported",
             "drm_notice": "No Data",
             "categories": "No Data",
@@ -393,9 +425,12 @@ class Tracker(Helper):
                 price = price_data["final_formatted"]
                 discount = price_data["discount_percent"]
                 on_sale = price_data["discount_percent"] > 0
-                info_dict["price"] = price
-                info_dict["discount"] = discount
-                info_dict["on_sale"] = on_sale
+                if price:
+                    info_dict["price"] = price
+                if discount:
+                    info_dict["discount"] = discount
+                if on_sale:
+                    info_dict["on_sale"] = on_sale
             # get linux compat
             if "linux_compat" in keys:
                 info_dict["linux_compat"] = game_info["platforms"]["linux"]
@@ -1430,29 +1465,42 @@ class Tracker(Helper):
             base_list &= set(game_list)
         return base_list
 
-    def find_shared_games(self):
+    def find_shared_games(self, steam_ids=[]):
         """
-        WIP ph
+        Finds all of the Steam games in common via Steam ID's given.
+
+        If `steam_ids` is unused, it will ask for Steam ID's for the
+        shared games check.
         """
-        steam_ids = [self.steam_id]
-        steam_id = "Start"
-        # while steam_id:
-        #     if steam_id == "Start":
-        #         msg = "Enter "
-        #     else:
-        #         msg = ""
-        #     steam_id = input(msg)
-        #     if steam_id:
-        #         steam_ids.append(steam_id)
-
-        steam_ids.append(76561197969291006)
-        steam_ids.append(76561198088659293)
-
+        get_input = True
+        if steam_ids:
+            get_input = False
+        # adds current user's steam id
+        steam_ids.append(self.steam_id)
+        if get_input:
+            steam_id = "init"
+            num = 1
+            while steam_id:
+                msg = f"\nEnter Steam ID {num}:\n"
+                steam_id = input(msg)
+                if steam_id:
+                    if self.validate_steam_id(steam_id):
+                        print("\nInvalid Steam ID\nTry Again")
+                    else:
+                        steam_ids.append(steam_id)
+                        num += 1
+        # steam_ids.append(76561197969291006)
+        # steam_ids.append(76561198088659293)
+        if len(steam_ids) < 2:
+            print("Not enough Steam ID's were given.")
+        print("Finding Games in Common.")
         game_lists, valid_users = self.create_game_lists(steam_ids)
+        tot_users = len(valid_users)
         common_games = self.find_games_in_common(game_lists)
-        print(valid_users)
-        print()
-        print(common_games)
+        tot_com = len(common_games)
+        print(f"Found {tot_com} Games in common from {tot_users} users.")
+        common_games_str = self.word_and_list(common_games)
+        print(f"\nGames in Common:\n{common_games_str}")
 
     def arg_func(self):
         """
@@ -1502,10 +1550,23 @@ class Tracker(Helper):
         updated = False
         # sets new hours if a number is given
         # TODO allow adding to or fully replacing total hours
-        hours = input("\nHow many hours have you played?\n")
+        msg = (
+            "\nHow many hours have you played?\n",
+            "Add a + before the numer to add that to the current total.\n",
+        )
+        hours = input(msg)
         if hours.isnumeric():
+            # replaces current hours with new hours
             self.set_hours_played(game_idx, float(hours))
             print(f"Updated to {hours} Hours")
+            updated = True
+        if added_hours := re.search(r"\+\d+", hours):
+            # adds hours to current hours
+            added_hours = float(added_hours.replace("+", ""))
+            cur_hours = self.games.get_cell(game_name, self.hours_played_col)
+            new_hours = cur_hours + added_hours
+            self.set_hours_played(game_idx, float(new_hours))
+            print(f"Updated to {new_hours} Hours")
             updated = True
         else:
             print("Left Hours Played the same.")
@@ -1586,14 +1647,13 @@ class Tracker(Helper):
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
         choices = [
-            ("Get Statistics", stats.get_game_statistics),
-            ("Check Steam Deck Game Status", self.steam_deck_check),
-            ("Update the Playstation Data", self.update_playstation_data),
-            ("Get Games in Common", self.get_shared_games),
-            ("Check Favorite Games Sales", self.get_favorite_games_sales),
+            ("Get Games in Common", self.find_shared_games),
+            ("Sync Steam Deck Game Status", self.steam_deck_check),
+            ("Get Favorite Games Sales", self.get_favorite_games_sales),
             ("View Favorite Games Sales", self.view_favorite_games_sales),
+            ("Calculate Statistics", stats.get_game_statistics),
             ("Update All Cell Formatting", self.games.format_all_cells),
-            ("Open Log", self.open_log),
+            ("Exit", self.excel.open_file_input),
         ]
         self.pick_task(choices)
 
@@ -1605,9 +1665,11 @@ class Tracker(Helper):
         choices = [
             ("Update Game", self.custom_update_game),
             ("Add Game", self.manually_add_game),
+            ("Sync Playstation Games", self.update_playstation_data),
             ("Pick Random Game", self.pick_random_game),
             ("Open Log", self.open_log),
             ("Extra Choices", self.extra_actions),
+            ("Exit", exit),
         ]
         self.pick_task(choices)
 
@@ -1631,6 +1693,4 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.run()
-
-    App.find_shared_games()
+    App.run()
