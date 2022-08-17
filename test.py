@@ -174,9 +174,9 @@ class TimePassed(unittest.TestCase):
             365: "1.0 Year(s)",
         }
         for days, answer in days_tests.items():
-            # TODO add subtests
-            output = self.t.convert_time_passed(day=days)
-            self.assertEqual(output, answer)
+            with self.subTest(days=days, answer=answer):
+                output = self.t.convert_time_passed(day=days)
+                self.assertEqual(output, answer)
 
     def test_weeks(self):
         """
@@ -188,8 +188,9 @@ class TimePassed(unittest.TestCase):
             # 52.971: "1.0 Year(s)",
         }
         for weeks, answer in weeks_tests.items():
-            output = self.t.convert_time_passed(wk=weeks)
-            self.assertEqual(output, answer)
+            with self.subTest(weeks=weeks, answer=answer):
+                output = self.t.convert_time_passed(wk=weeks)
+                self.assertEqual(output, answer)
 
         # def test_months(self):
         #     """
@@ -202,6 +203,7 @@ class TimePassed(unittest.TestCase):
         #     21: "3.0 Week(s)",
         #     365: "1.0 Year(s)",
         # }
+        # TODO add subtests
         # for days, answer in days_tests.items():
         #     output = self.t.convert_time_passed(day=days)
         #     self.assertEqual(output, answer)
