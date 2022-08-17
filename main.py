@@ -12,10 +12,10 @@ from classes.statisitics import Stat
 from classes.logger import Logger
 
 # my package
-# from easierexcel import Excel, Sheet
+from easierexcel import Excel, Sheet
 
 # for local testing
-from classes.excel import Excel, Sheet
+# from classes.excel import Excel, Sheet
 
 
 def setup():
@@ -38,15 +38,17 @@ def setup():
     # exits out of function early if all clear
     if all_clear:
         return
-    # instructions.
-    print("Open the config and update the following info:")
-    print("steam_id\nsteam_api_key")
-    print("\nOnce updated run again.")
+    # instructions
+    instructsions = [
+        "Open the config and update the following entries:",
+        "steam_id",
+        "steam_api_key",
+        "\nOnce updated run again.",
+    ]
+    for line in instructsions:
+        print(line)
     input("Press Enter to Close.")
     exit()
-
-
-# TODO decide on title case and/or periods
 
 
 class Tracker(Helper):
@@ -131,7 +133,6 @@ class Tracker(Helper):
         dev_col := "Developers",
         pub_col := "Publishers",
         genre_col := "Genre",
-        vr_support_col := "VR Support",
         ea_col := "Early Access",
         steam_deck_col := "Steam Deck Status",
         time_played_col := "Time Played",
@@ -157,30 +158,31 @@ class Tracker(Helper):
         """
         Validates a `steam_id`.
         """
-        steam_id_tests = [
-            len(steam_id) != 17,
-            not steam_id.isnumeric(),
-        ]
-        return any(steam_id_tests)
+        steam_id = str(steam_id)
+        pattern = r"^\d{17}$"
+        if re.match(pattern, steam_id):
+            return True
+        else:
+            return False
 
-    def validate_steam_key(self, steam_key):
+    def validate_steam_key(self, steam_key: str):
         """
         Validates a `steam_key`.
         """
-        steam_key_tests = [
-            len(steam_key) != 32,
-            not steam_key.isalnum(),
-        ]
-        return any(steam_key_tests)
+        pattern = r"^\w{32}$"
+        if re.match(pattern, steam_key):
+            return True
+        else:
+            return False
 
     def config_check(self):
         """
         Checks to see if the config data is usable.
         """
         errors = []
-        if self.validate_steam_id(self.steam_id):
+        if not self.validate_steam_id(self.steam_id):
             errors.append("Steam ID is Invalid.")
-        if self.validate_steam_key(self.steam_key):
+        if not self.validate_steam_key(self.steam_key):
             errors.append("Steam API Key is Invalid.")
         if errors:
             return False, errors
@@ -199,18 +201,18 @@ class Tracker(Helper):
             self.save_json_output(self.data, self.config)
 
     @staticmethod
-    def get_vanity_url(vanity_url):
+    def get_profile_username(vanity_url):
+        result = False
         if "steamcommunity.com/id" in vanity_url:
             if vanity_url[-1] == "/":
                 vanity_url = vanity_url[:-1]
-            vanity_url = vanity_url.split("/")[-1]
-        return vanity_url
+            result = vanity_url.split("/")[-1]
+        return result
 
     def get_steam_id(self, vanity_url):
         """
         Gets a users Steam ID via their `vanity_url` or `vanity_username`.
         """
-
         main_url = "https://api.steampowered.com/"
         api_action = "ISteamUser/ResolveVanityURL/v0001/"
         url = main_url + api_action
@@ -220,11 +222,11 @@ class Tracker(Helper):
         }
         response = self.request_url(url, params=query)
         if response:
-            data = response.json()
-            steam_id = data["response"]["steamid"]
-            return int(steam_id)
-        else:
-            return False
+            data = response.json()["response"]
+            if "steamid" in data.keys():
+                steam_id = data["steamid"]
+                return int(steam_id)
+        return False
 
     def get_time_to_beat(self, game_name):
         """
@@ -263,13 +265,13 @@ class Tracker(Helper):
             platform = "pc"
         game_name = self.url_sanitize(game_name)
         user_agent = {"User-agent": "Mozilla/5.0"}
-        self.api_sleeper("metacritic")
         review_score = ""
         main_url = "https://www.metacritic.com/"
         url_vars = f"/game/{platform.lower()}/{game_name.lower()}"
         url = main_url + url_vars
         if debug:
             print(url)
+        self.api_sleeper("metacritic")
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
@@ -408,7 +410,6 @@ class Tracker(Helper):
                 genres = get_json_desc(game_info["genres"])
                 info_dict[self.genre_col] = ", ".join(genres)
                 # early access
-                # TODO early access does not update when changed
                 if self.ea_col in info_dict[self.genre_col]:
                     info_dict[self.ea_col] = "Yes"
             # get metacritic
@@ -773,7 +774,7 @@ class Tracker(Helper):
             save_interval = 20
             checks = save_interval
             # game checking
-            print(f"Found {len(owned_games)} Steam Games\n")
+            print(f"Found {len(owned_games)} Steam Games.\n")
             for game in tqdm(
                 iterable=owned_games,
                 ascii=True,
@@ -1040,7 +1041,7 @@ class Tracker(Helper):
         check_freq = self.data["settings"]["steam_deck_check_freq"]
         if days_since < check_freq:
             days_till_check = check_freq - days_since
-            print(f"\nNext Steam Deck Check in {days_till_check} days")
+            print(f"\nNext Steam Deck Check in {days_till_check} days.")
             return False
         return True
 
@@ -1082,7 +1083,7 @@ class Tracker(Helper):
                 print(output)
             self.excel.save()
         else:
-            print("No Steam Deck Status Changes")
+            print("No Steam Deck Status Changes.")
         self.update_last_run("steam_deck_check")
 
     def check_steam_deck_data_file(self):
@@ -1242,14 +1243,9 @@ class Tracker(Helper):
         # base defaults
         steam_deck_status = "UNKNOWN"
         early_access = "No"
-        vr_support = "Unset"
         # sets defaults for consoles
         if platform in ["PS5", "PS4", "Switch"]:
-            vr_support = "No"
             steam_deck_status = "UNSUPPORTED"
-        # sets games with VR in the name to Yes for VR support
-        if re.search(r"\bVR\b", game_name):
-            vr_support = "Yes"
         # easy_indirect_cell setup
         rating_com = self.rating_comp_col
         my_rating = self.games.easy_indirect_cell(rating_com, self.my_rating_col)
@@ -1263,7 +1259,6 @@ class Tracker(Helper):
             self.name_col: game_name,
             self.play_status_col: play_status,
             self.platform_col: platform,
-            self.vr_support_col: vr_support,
             self.ea_col: early_access,
             self.steam_deck_col: steam_deck_status,
             self.time_to_beat_col: self.get_time_to_beat(game_name),
@@ -1319,9 +1314,8 @@ class Tracker(Helper):
         """
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         """
-        print(
-            "\nWhat play status do you want a random game picked from?\nPress Enter to skip."
-        )
+        print("\nWhat play status do you want a random game picked from?")
+        print("Press Enter to skip")
         play_status = self.play_status_picker()
         if play_status == None:
             return
@@ -1382,9 +1376,8 @@ class Tracker(Helper):
                     if game_dict["on_sale"]:
                         fav_games.append(game_dict)
         fav_games = sorted(fav_games, key=lambda i: i["discount"], reverse=True)
-        print(
-            f"\n{len(fav_games)} Favorite Games with Current Deals in Descending Order:\n"
-        )
+        fav_total = len(fav_games)
+        print(f"\n{fav_total} Favorite Game Deals in Descending Order:\n")
         for game in fav_games:
             print(f'{game["name"]} - {game["price"]}')
         # save into file
@@ -1392,7 +1385,8 @@ class Tracker(Helper):
 
     def view_favorite_games_sales(self):
         """
-        Allows viewing different formatted info on the games created during the last run of `get_favorite_games_sales`.
+        Allows viewing different formatted info on the games created during
+        the last run of `get_favorite_games_sales`.
         """
         df = pd.read_json("configs/favorite_games.json")
         print("Do you want to output as excel(1) or csv(2)?")
@@ -1485,7 +1479,7 @@ class Tracker(Helper):
                 steam_id = input(msg)
                 if steam_id:
                     if self.validate_steam_id(steam_id):
-                        print("\nInvalid Steam ID\nTry Again")
+                        print("\nInvalid Steam ID.\nTry Again.")
                     else:
                         steam_ids.append(steam_id)
                         num += 1
@@ -1529,44 +1523,39 @@ class Tracker(Helper):
         game_name = input("\nWhat game do you want to update?\n")
         game_idx = None
         matched_games = self.lev_dist_matcher(game_name, self.games.row_idx.keys())
-        if not matched_games:
+        total_matches = len(matched_games)
+        if total_matches == 1:
             match = matched_games[0]
             if match in self.games.row_idx:
-                print(f"Found {match}")
+                print(f"Found {match}.")
                 game_idx = self.games.row_idx[match]
-        elif len(matched_games) >= 1:
+        elif total_matches >= 1:
             games_string = "\n"
             for i, game in enumerate(matched_games):
                 games_string += f"{i+1}. {game} | "
             print(games_string[0:-3])
-            num = self.ask_for_integer("Type number for game you are looking for.")
+            num = self.ask_for_integer("Type number for game you are looking for.\n")
             game_idx = self.games.row_idx[matched_games[num - 1]]
         else:
-            print("No Match")
-            return
-        if not game_idx:
             print(f"No Game found matching {game_name}.")
             return
         updated = False
         # sets new hours if a number is given
-        # TODO allow adding to or fully replacing total hours
-        msg = (
-            "\nHow many hours have you played?\n",
-            "Add a + before the numer to add that to the current total.\n",
-        )
+        print("\nHow many hours have you played?")
+        msg = "Add a + before the number to add that to the current total.\n"
         hours = input(msg)
         if hours.isnumeric():
             # replaces current hours with new hours
             self.set_hours_played(game_idx, float(hours))
-            print(f"Updated to {hours} Hours")
+            print(f"\nUpdated to {hours} Hours.")
             updated = True
-        if added_hours := re.search(r"\+\d+", hours):
+        if added_hours := re.search(r"\+\d+", hours).group(0):
             # adds hours to current hours
             added_hours = float(added_hours.replace("+", ""))
             cur_hours = self.games.get_cell(game_name, self.hours_played_col)
             new_hours = cur_hours + added_hours
             self.set_hours_played(game_idx, float(new_hours))
-            print(f"Updated to {new_hours} Hours")
+            print(f"Updated to {new_hours} Hours.")
             updated = True
         else:
             print("Left Hours Played the same.")
@@ -1574,7 +1563,7 @@ class Tracker(Helper):
         status = input("\nWhat is the new Status?\n").title()
         if status in self.play_status_choices.values():
             self.set_play_status(game_idx, status)
-            print(f"Updated Play Status to {status}")
+            print(f"Updated Play Status to {status}.")
             updated = True
         else:
             print("Left Play Status the same.")
@@ -1583,7 +1572,7 @@ class Tracker(Helper):
             self.excel.save(backup=False)
         else:
             print("No changes made.")
-        response = input("Do you want to update another game? Type yes.\n")
+        response = input("Do you want to update another game?\n")
         if response.lower() in ["yes", "yeah", "y"]:
             self.custom_update_game()
 
@@ -1602,7 +1591,7 @@ class Tracker(Helper):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices, repeat=True):
+    def pick_task(self, choices, msg=None, repeat=True):
         """
         Allows picking a task to do next using a matching number.
         """
@@ -1610,9 +1599,12 @@ class Tracker(Helper):
         if not ext_terminal:
             print("\nSkipping Task Picker.\nInput can't be used.")
             return False
-        print("\nWhat do you want to do?\n")
+        if not msg:
+            msg = "\nWhat do you want to do?\n"
+        print(msg)
         for count, (choice, action) in enumerate(choices):
             print(f"{count+1}. {choice}")
+        print("Enter only to Open Excel")
         msg = "\nEnter the Number for the corresponding action.\n"
         num = self.ask_for_integer(
             msg,
@@ -1625,7 +1617,7 @@ class Tracker(Helper):
         choice_num = num - 1
         choices[choice_num][1]()
         if repeat:
-            self.pick_task(choices)
+            self.pick_task(choices, msg, repeat)
         return True
 
     def extra_actions(self):
@@ -1655,7 +1647,11 @@ class Tracker(Helper):
             ("Update All Cell Formatting", self.games.format_all_cells),
             ("Exit", self.excel.open_file_input),
         ]
-        self.pick_task(choices)
+        if not self.pick_task(choices):
+            close_in_seconds = 5
+            print(f"Opening Excel File then closing in {close_in_seconds}.")
+            self.excel.open_excel()
+            time.sleep(close_in_seconds)
 
     def game_library_actions(self):
         """
@@ -1671,7 +1667,9 @@ class Tracker(Helper):
             ("Extra Choices", self.extra_actions),
             ("Exit", exit),
         ]
-        self.pick_task(choices)
+        msg = "\nEnter the Number for the action you or nothing to open in Excel.\n"
+        if not self.pick_task(choices, msg):
+            self.excel.open_excel()
 
     @keyboard_interrupt
     def run(self):
@@ -1688,7 +1686,6 @@ class Tracker(Helper):
         self.check_playstation_json()
         self.missing_info_check()
         self.game_library_actions()
-        self.excel.open_file_input()
 
 
 if __name__ == "__main__":
