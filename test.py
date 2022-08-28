@@ -131,16 +131,16 @@ class TimePassed(unittest.TestCase):
         tests function when given minutes
         """
         minutes_tests = {
-            12: "12.0 Minute(s)",
-            59: "59.0 Minute(s)",
-            60: "1.0 Hour(s)",
-            800: "13.3 Hour(s)",
-            1439: "1.0 Day(s)",
-            1440: "1.0 Day(s)",
-            1441: "1.0 Day(s)",
-            2940: "2.0 Day(s)",
-            1440 * 7: "1.0 Week(s)",
-            525600: "1.0 Year(s)",
+            12: "12.0 Minutes",
+            59: "59.0 Minutes",
+            60: "1.0 Hour",
+            800: "13.3 Hours",
+            1439: "1.0 Day",
+            1440: "1.0 Day",
+            1441: "1.0 Day",
+            2940: "2.0 Days",
+            1440 * 7: "1.0 Week",
+            525600: "1.0 Year",
         }
         for minutes, answer in minutes_tests.items():
             with self.subTest(minutes=minutes, answer=answer):
@@ -152,11 +152,11 @@ class TimePassed(unittest.TestCase):
         tests function when given hours
         """
         hours_tests = {
-            0.2: "12.0 Minute(s)",
-            1: "1.0 Hour(s)",
-            13.3: "13.3 Hour(s)",
-            24: "1.0 Day(s)",
-            48: "2.0 Day(s)",
+            0.2: "12.0 Minutes",
+            1: "1.0 Hour",
+            13.3: "13.3 Hours",
+            24: "1.0 Day",
+            48: "2.0 Days",
         }
         for hours, answer in hours_tests.items():
             with self.subTest(hours=hours, answer=answer):
@@ -168,10 +168,10 @@ class TimePassed(unittest.TestCase):
         tests function when given days
         """
         days_tests = {
-            1: "1.0 Day(s)",
-            5.8: "5.8 Day(s)",
-            21: "3.0 Week(s)",
-            365: "1.0 Year(s)",
+            1: "1.0 Day",
+            5.8: "5.8 Days",
+            21: "3.0 Weeks",
+            365: "1.0 Year",
         }
         for days, answer in days_tests.items():
             with self.subTest(days=days, answer=answer):
@@ -182,8 +182,9 @@ class TimePassed(unittest.TestCase):
         """
         tests function when given weeks
         """
+        # TODO tests function when given weeks
         weeks_tests = {
-            4.4: "1.0 Month(s)",
+            4.4: "1.0 Month",
             # 3.5: "24.5 Day(s)",
             # 52.971: "1.0 Year(s)",
         }
@@ -192,38 +193,33 @@ class TimePassed(unittest.TestCase):
                 output = self.t.convert_time_passed(wk=weeks)
                 self.assertEqual(output, answer)
 
-        # def test_months(self):
-        #     """
-        #     tests function when given months
-        #     """
-        # # tests function when given months TODO
-        # days_tests = {
-        #     1: "1.0 Month(s)",
-        #     18: "1.5 Year(s)",
-        #     21: "3.0 Week(s)",
-        #     365: "1.0 Year(s)",
-        # }
-        # TODO add subtests
-        # for days, answer in days_tests.items():
-        #     output = self.t.convert_time_passed(day=days)
-        #     self.assertEqual(output, answer)
+    def test_months(self):
+        """
+        tests function when given months
+        """
+        # TODO tests function when given months
+        months_tests = {
+            1: "1.0 Month",
+            # 1.5: "1.5 Month(s)",
+            # 18: "1.5 Year(s)",
+        }
+        for months, answer in months_tests.items():
+            with self.subTest(months=months, answer=answer):
+                output = self.t.convert_time_passed(mnth=months)
+                self.assertEqual(output, answer)
 
-        # def test_years(self):
-        #     """
-        #     tests function when given years
-        #     """
-
-        # # tests function when given years TODO
-        # days_tests = {
-        #     1: "1.0 Day(s)",
-        #     5.8: "5.8 Day(s)",
-        #     21: "3.0 Week(s)",
-        #     365: "1.0 Year(s)",
-        # }
-
-        # for days, answer in days_tests.items():
-        #     output = self.t.convert_time_passed(day=days)
-        #     self.assertEqual(output, answer)
+    def test_years(self):
+        """
+        tests function when given years
+        """
+        days_tests = {
+            1: "1.0 Year",
+            5: "5.0 Years",
+        }
+        for years, answer in days_tests.items():
+            with self.subTest(years=years, answer=answer):
+                output = self.t.convert_time_passed(yr=years)
+                self.assertEqual(output, answer)
 
     def test_all_at_once(self):
         """
@@ -232,7 +228,7 @@ class TimePassed(unittest.TestCase):
         """
         # tests all args at once
         output = self.t.convert_time_passed(min=60, hr=23, day=30, mnth=11, yr=1)
-        self.assertEqual(output, "2.0 Year(s)")
+        self.assertEqual(output, "2.0 Years")
 
 
 class DaysSince(unittest.TestCase):
