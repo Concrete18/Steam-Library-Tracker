@@ -159,7 +159,7 @@ class Helper:
         # converts all into minutes
         hours_in_day = 24
         hours_in_week = 168
-        hours_in_month = 730.001
+        hours_in_month = 730
         hours_in_year = 8760
         hours = (
             hr
@@ -171,17 +171,25 @@ class Helper:
         )
         rounded_hours = round(hours)
         if rounded_hours >= hours_in_year:
-            time_passed = f"{round(hours/hours_in_year, 1)} Year(s)"
+            total = round(hours / hours_in_year, 1)
+            time_passed = f"{total} Year"
         elif rounded_hours >= hours_in_month:
-            time_passed = f"{round(hours/hours_in_month, 1)} Month(s)"
+            total = round(hours / hours_in_month, 1)
+            time_passed = f"{total} Month"
         elif rounded_hours >= hours_in_week:
-            time_passed = f"{round(hours/hours_in_week, 1)} Week(s)"
+            total = round(hours / hours_in_week, 1)
+            time_passed = f"{total} Week"
         elif rounded_hours >= hours_in_day:
-            time_passed = f"{round(hours/hours_in_day, 1)} Day(s)"
+            total = round(hours / hours_in_day, 1)
+            time_passed = f"{total} Day"
         elif hours >= 1:
-            time_passed = f"{round(hours, 1)} Hour(s)"
+            total = round(hours, 1)
+            time_passed = f"{total} Hour"
         else:
-            time_passed = f"{round(hours * 60, 1)} Minute(s)"
+            total = round(hours * 60, 1)
+            time_passed = f"{total} Minute"
+        if total > 1:
+            time_passed += "s"
         return time_passed
 
     @staticmethod
