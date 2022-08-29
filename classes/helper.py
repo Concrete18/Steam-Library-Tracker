@@ -136,7 +136,7 @@ class Helper:
         return string
 
     @staticmethod
-    def convert_time_passed(min=0, hr=0, wk=0, day=0, mnth=0, yr=0):
+    def convert_time_passed(min=0, hr=0, day=0, wk=0, mnth=0, yr=0):
         """
         Outputs a string for when the time passed.
         Takes minutes:`min`, hours:`hr`, days:`day`, weeks:`wk`
@@ -156,20 +156,21 @@ class Helper:
 
         2.1 Years(s)
         """
-        # converts all into minutes
+        # converts all into hours
         hours_in_day = 24
         hours_in_week = 168
         hours_in_month = 730
         hours_in_year = 8760
         hours = (
-            hr
-            + (min / 60)
+            (min / 60)
+            + hr
             + (day * hours_in_day)
             + (wk * hours_in_week)
             + (mnth * hours_in_month)
             + (yr * hours_in_year)
         )
         rounded_hours = round(hours)
+        # gets format
         if rounded_hours >= hours_in_year:
             total = round(hours / hours_in_year, 1)
             time_passed = f"{total} Year"
@@ -188,8 +189,15 @@ class Helper:
         else:
             total = round(hours * 60, 1)
             time_passed = f"{total} Minute"
+        # makes string plural if needed
         if total > 1:
             time_passed += "s"
+        # fixs values that end up slightly off
+        fix_dict = {
+            "12.0 Months": "1.0 Year",
+        }
+        if time_passed in fix_dict.keys():
+            time_passed = fix_dict[time_passed]
         return time_passed
 
     @staticmethod
