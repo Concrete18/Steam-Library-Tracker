@@ -164,16 +164,17 @@ if __name__ == "__main__":
 
     # stat setup
     na_values = [
-        "No Data",
+        "NaN",
         "Page Error",
+        "Invalid Date",
+        "No Data",
+        "No Tags",
+        "No Year",
         "No Score",
         "Not Found",
         "No Reviews",
         "No Publisher",
         "No Developer",
-        "Invalid Date",
-        "No Year",
-        "NaN",
     ]
     games = Sheet(excel, "Name", sheet_name="Games")
     df = games.create_dataframe(na_vals=na_values)
