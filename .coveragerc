@@ -4,4 +4,5 @@ exclude_lines =
 
 omit =
     testing/*
-    classes\__init__.py
+    classes/__init__.py
+    classes/logger.py
