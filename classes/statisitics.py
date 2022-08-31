@@ -173,6 +173,7 @@ if __name__ == "__main__":
         "No Score",
         "Not Found",
         "No Reviews",
+        "Not Enough Reviews",
         "No Publisher",
         "No Developer",
     ]
@@ -183,5 +184,5 @@ if __name__ == "__main__":
     stats = Stat(df)
     stats.get_game_statistics()
     # stats.steam_rating_comparison()
-    # stats.my_rating_comparison()
+    stats.my_rating_comparison()
     # stats.avg_rating_by_year()

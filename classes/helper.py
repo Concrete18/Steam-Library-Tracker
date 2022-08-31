@@ -370,7 +370,7 @@ class Helper:
         with open(filename) as file:
             last_check_data = json.load(file)
             if new_data != last_check_data:
-                raise "Data did not save error"
+                raise PermissionError("Data did not save error.")
 
 
 if __name__ == "__main__":
