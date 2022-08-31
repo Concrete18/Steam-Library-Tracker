@@ -56,7 +56,7 @@ class Tracker(Helper):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
-
+    title = "Game Library Tracker"
     # config init
     setup()
     config = Path("configs\config.json")
@@ -85,6 +85,7 @@ class Tracker(Helper):
             "Name",
             "Developers",
             "Publishers",
+            "User Tags",
             "Genre",
         ],
         "light_grey_fill": ["Rating Comparison", "Probable Completion"],
@@ -228,6 +229,16 @@ class Tracker(Helper):
                 steam_id = data["steamid"]
                 return int(steam_id)
         return False
+
+    def set_title(self, title=None):
+        """
+        Sets the CLI windows title.
+        """
+        if title:
+            set_title = title
+        else:
+            set_title = self.title
+        os.system("title " + set_title)
 
     def get_time_to_beat(self, game_name):
         """
@@ -412,9 +423,9 @@ class Tracker(Helper):
         # gets games store data
         self.api_sleeper("get_store_link")
         store_link = self.get_store_link(appid)
+        self.api_sleeper("store_data")
         response = self.request_url(store_link)
         # steam review data
-        self.api_sleeper("get_steam_review")
         percent, total = self.get_steam_review(appid=appid, response=response)
         info_dict[self.steam_rev_per_col] = percent
         info_dict[self.steam_rev_total_col] = total
@@ -425,8 +436,6 @@ class Tracker(Helper):
         if "data" in dict[str(appid)].keys():
             game_info = dict[str(appid)]["data"]
             keys = game_info.keys()
-            # below removed due to bugs
-            # info_dict[self.name_col] = game_info["name"]
             # get developer
             if "developers" in keys:
                 output = self.word_and_list(game_info["developers"])
@@ -478,8 +487,7 @@ class Tracker(Helper):
                     "ext_user_account_notice"
                 ]
             # runs unicode remover on all values
-            info_dict = {k: self.unicode_remover(v) for k, v in info_dict.items()}
-            return info_dict
+            return {k: self.unicode_remover(v) for k, v in info_dict.items()}
         return info_dict
 
     def set_release_year(self, game, release_year):
@@ -515,8 +523,13 @@ class Tracker(Helper):
     def set_metacritic(self, game, score):
         """
         Sets `game`'s metacritic score to `score`.
+        TODO finish doc string
         """
-        return self.games.update_cell(game, self.metacritic_col, score)
+        cur_val = self.games.get_cell(game, self.metacritic_col)
+        if type(cur_val) is not int:
+            if not cur_val.isnumeric():
+                return self.games.update_cell(game, self.metacritic_col, score)
+        return None
 
     def set_time_to_beat(self, game, time_to_beat):
         """
@@ -637,6 +650,7 @@ class Tracker(Helper):
             print("\nTime To Beat, Metacritic and other steam data check.")
             save_interval = 15
             running_interval = save_interval
+            cur_itr = 0
             for game_name in tqdm(
                 iterable=check_list,
                 ascii=True,
@@ -644,15 +658,15 @@ class Tracker(Helper):
                 ncols=40,
                 dynamic_ncols=True,
             ):
-                # How long to beat check
-                cur_valid = self.games.get_cell(game_name, self.time_to_beat_col)
-                if not cur_valid:
+                # How long to beat check with scraping
+                cur_val = self.games.get_cell(game_name, self.time_to_beat_col)
+                if not cur_val:
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat:
                         self.set_time_to_beat(game_name, time_to_beat)
-                # metacritic score check
-                cur_valid = self.games.get_cell(game_name, self.metacritic_col)
-                if not cur_valid:
+                # metacritic score check with scraping
+                cur_val = self.games.get_cell(game_name, self.metacritic_col)
+                if not cur_val:
                     platform = self.games.get_cell(game_name, self.platform_col)
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score:
@@ -664,49 +678,28 @@ class Tracker(Helper):
                     if appid:
                         self.games.update_cell(game_name, self.appid_col, appid)
                 steam_info = self.get_game_info(appid)
-                # TODO turn into for loop if possible.
-                # genre
-                if steam_info[self.genre_col]:
-                    self.set_genre(game_name, steam_info[self.genre_col])
-                    # early access
-                    if self.ea_col in steam_info[self.genre_col]:
-                        self.set_early_access(game_name, "Yes")
-                # release year
-                if steam_info[self.release_col]:
-                    self.set_release_year(game_name, steam_info[self.release_col])
-                # developer
-                if steam_info[self.dev_col]:
-                    self.set_developer(game_name, steam_info[self.dev_col])
-                # publishers
-                if steam_info[self.pub_col]:
-                    self.set_publisher(game_name, steam_info[self.pub_col])
-                # steam review percent
-                col = self.steam_rev_per_col
-                if col in steam_info.keys():
-                    percent = steam_info[col]
-                    self.games.update_cell(game_name, col, percent)
-                # steam review total
-                col = self.steam_rev_total_col
-                if col in steam_info.keys():
-                    total = steam_info[col]
-                    self.games.update_cell(game_name, col, total)
-                # steam user tags
-                col = self.user_tags_col
-                if col in steam_info.keys():
-                    tags = steam_info[col]
-                    self.games.update_cell(game_name, col, tags)
-                # metacritic
+
+                # TODO test to be sure this works
+                special_case_col = [self.metacritic_col]
+                for key, val in steam_info.items():
+                    if key in self.excel_columns and steam_info[key]:
+                        if key not in special_case_col:
+                            self.games.update_cell(game_name, key, val)
+
+                # metacritic check from get_game_info func
                 if steam_info[self.metacritic_col]:
                     cur_val = self.games.get_cell(game_name, self.metacritic_col)
                     score = steam_info[self.metacritic_col]
-                    # only updates metacritic score if it is not numeric
-                    if type(cur_val) is not int:
-                        if not cur_val.isnumeric():
-                            self.set_metacritic(game_name, score)
+                    self.set_metacritic(game_name, score)
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
                     self.excel.save(use_print=False, backup=False)
+                # title progress percentage
+                cur_itr += 1
+                progress = round(cur_itr / missing_data * 100, 2)
+                self.set_title(f"%{progress} - {self.title}")
+            self.set_title()
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
@@ -1070,6 +1063,8 @@ class Tracker(Helper):
         steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
         updated_games = []
         empty_results = []
+        total_games = len(self.games.row_idx)
+        cur_itr = 0
         for game_name in tqdm(
             iterable=self.games.row_idx,
             ascii=True,
@@ -1090,6 +1085,14 @@ class Tracker(Helper):
                 info = f"{game_name} was updated to {status}"
                 self.tracker.info(info)
                 updated_games.append(info)
+
+            # title progress percentage
+            cur_itr += 1
+            progress = round(cur_itr / total_games * 100, 2)
+            self.set_title(f"%{progress} - {self.title}")
+
+        self.set_title()
+        input()
         if updated_games:
             print("\nUpdated Games:")
             for game in updated_games:
@@ -1695,8 +1698,7 @@ class Tracker(Helper):
         """
         self.config_check()
         self.arg_func()
-        print("Starting Game Tracker")
-        # runs script with CTRL + C clean program end
+        print(f"Starting {self.title}")
         self.sync_steam_games(self.steam_id)
         if self.should_run_steam_deck_update():
             self.steam_deck_check()
@@ -1708,5 +1710,6 @@ class Tracker(Helper):
 if __name__ == "__main__":
     App = Tracker()
     App.run()
+    # App.steam_deck_check()
     # val = App.get_steam_user_tags(appid=1229490)
     # print(val)
