@@ -86,7 +86,6 @@ class TimePassed(unittest.TestCase):
         """
         tests function when given weeks
         """
-        # TODO tests function when given weeks
         weeks_tests = {
             4.4: "1.0 Month",
             8.5: "2.0 Months",
@@ -101,7 +100,6 @@ class TimePassed(unittest.TestCase):
         """
         tests function when given months
         """
-        # TODO tests function when given months
         months_tests = {
             1: "1.0 Month",
             0.5: "2.2 Weeks",
