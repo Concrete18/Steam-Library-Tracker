@@ -522,10 +522,12 @@ class Tracker(Helper):
 
     def set_metacritic(self, game, score):
         """
-        Sets `game`'s metacritic score to `score`.
-        TODO finish doc string
+        Sets `game`'s metacritic score to `score` if the current value is
+        not numeric.
         """
         cur_val = self.games.get_cell(game, self.metacritic_col)
+        if not cur_val:
+            return None
         if type(cur_val) is not int:
             if not cur_val.isnumeric():
                 return self.games.update_cell(game, self.metacritic_col, score)
@@ -698,7 +700,7 @@ class Tracker(Helper):
                 # title progress percentage
                 cur_itr += 1
                 progress = round(cur_itr / missing_data * 100, 2)
-                self.set_title(f"%{progress} - {self.title}")
+                self.set_title(f"{progress}% - {self.title}")
             self.set_title()
         except KeyboardInterrupt:
             print("\nCancelled")
@@ -984,8 +986,10 @@ class Tracker(Helper):
                 platform=game["platform"],
             )
         total_games_added = len(added_games)
-        print(f"Added {total_games_added} PS4/PS5 Games.")
-        if total_games_added > 0:
+        msg = f"Added {total_games_added} PS4/PS5 Games."
+        print(msg)
+        self.tracker.info(msg)
+        if total_games_added:
             self.excel.save()
 
     def create_dataframe(self, table):
@@ -1089,10 +1093,8 @@ class Tracker(Helper):
             # title progress percentage
             cur_itr += 1
             progress = round(cur_itr / total_games * 100, 2)
-            self.set_title(f"%{progress} - {self.title}")
-
+            self.set_title(f"{progress}% - {self.title}")
         self.set_title()
-        input()
         if updated_games:
             print("\nUpdated Games:")
             for game in updated_games:
@@ -1135,13 +1137,12 @@ class Tracker(Helper):
             webbrowser.open_new(self.playstation_data_link)
             webbrowser.open(r"https://store.playstation.com/")
             return
-        if not self.check_for_changes(self.ps_data):
-            return None
-        with open(self.ps_data) as file:
-            data = json.load(file)
-        print("\nChecking for new games for PS4 or PS5.")
-        games = data["data"]["purchasedTitlesRetrieve"]["games"]
-        self.add_playstation_games(games)
+        if self.check_for_changes(self.ps_data):
+            with open(self.ps_data) as file:
+                data = json.load(file)
+            print("\nChecking for new games for PS4 or PS5.")
+            games = data["data"]["purchasedTitlesRetrieve"]["games"]
+            self.add_playstation_games(games)
 
     def update_game(
         self,
@@ -1266,6 +1267,11 @@ class Tracker(Helper):
         # sets defaults for consoles
         if platform in ["PS5", "PS4", "Switch"]:
             steam_deck_status = "UNSUPPORTED"
+        # gets steam deck info
+        # TODO make sure this does not overwrite
+        status = self.steam_deck_compat(appid)
+        if status:
+            steam_deck_status = status
         # easy_indirect_cell setup
         rating_com = self.rating_comp_col
         my_rating = self.games.easy_indirect_cell(rating_com, self.my_rating_col)
@@ -1604,7 +1610,7 @@ class Tracker(Helper):
         subprocess.Popen(f'notepad "{self.ps_data}"')
         webbrowser.open(self.playstation_data_link)
         webbrowser.open(r"https://store.playstation.com/")
-        input("\nPress Enter when done.")
+        input("\nPress Enter when done.\n")
         self.check_playstation_json()
 
     def open_log(self):
