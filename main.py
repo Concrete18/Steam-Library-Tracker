@@ -1265,10 +1265,10 @@ class Tracker(Helper):
         steam_deck_status = "UNKNOWN"
         early_access = "No"
         # sets defaults for consoles
+        # TODO decide if this is needed
         if platform in ["PS5", "PS4", "Switch"]:
             steam_deck_status = "UNSUPPORTED"
         # gets steam deck info
-        # TODO make sure this does not overwrite
         status = self.steam_deck_compat(appid)
         if status:
             steam_deck_status = status
