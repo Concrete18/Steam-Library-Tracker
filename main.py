@@ -525,13 +525,16 @@ class Tracker(Helper):
         Sets `game`'s metacritic score to `score` if the current value is
         not numeric.
         """
+        # TODO unit test this
         cur_val = self.games.get_cell(game, self.metacritic_col)
-        if not cur_val:
-            return None
-        if type(cur_val) is not int:
-            if not cur_val.isnumeric():
-                return self.games.update_cell(game, self.metacritic_col, score)
-        return None
+        # if current value is not blank
+        if cur_val:
+            if type(cur_val) is str:
+                if cur_val.isnumeric():
+                    return None
+            else:
+                return None
+        return self.games.update_cell(game, self.metacritic_col, score)
 
     def set_time_to_beat(self, game, time_to_beat):
         """
@@ -690,7 +693,6 @@ class Tracker(Helper):
 
                 # metacritic check from get_game_info func
                 if steam_info[self.metacritic_col]:
-                    cur_val = self.games.get_cell(game_name, self.metacritic_col)
                     score = steam_info[self.metacritic_col]
                     self.set_metacritic(game_name, score)
                 running_interval -= 1
