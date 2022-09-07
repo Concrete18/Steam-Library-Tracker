@@ -77,6 +77,16 @@ class GetTimeToBeat(unittest.TestCase):
         self.assertEqual(result, "Not Found")
 
 
+class SetMetacritic(unittest.TestCase):
+    def setUp(self):
+        self.t = Tracker()
+
+    def test_set_metacritic(self):
+        # TODO finish
+        result = self.t.set_metacritic("Not a Real Game")
+        self.assertTrue(result)
+
+
 class SteamDeckCompatability(unittest.TestCase):
     def setUp(self):
         self.t = Tracker()
