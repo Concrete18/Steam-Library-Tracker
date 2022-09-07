@@ -69,7 +69,7 @@ class Stat:
         y_value = "Metacritic"
         x_value = "My Rating"
         df = self.df[[y_value, x_value]]
-        df.dropna(axis=0, inplace=True)
+        # df.dropna(axis=0, inplace=True)
         # sets up graph
         plt.title("Metacritic vs. My Rating")
         # x axis
@@ -119,7 +119,7 @@ class Stat:
         y_value = "Metacritic"
         x_value = "Release Year"
         df = self.df[[x_value, y_value]]
-        df.dropna(axis=0, inplace=True)
+        # df.dropna(axis=0, inplace=True)
         print(df)
         # sorts Release Year
         df = df.sort_values(by=x_value)
@@ -183,6 +183,6 @@ if __name__ == "__main__":
     # run
     stats = Stat(df)
     stats.get_game_statistics()
-    # stats.steam_rating_comparison()
+    stats.steam_rating_comparison()
     stats.my_rating_comparison()
-    # stats.avg_rating_by_year()
+    stats.avg_rating_by_year()
