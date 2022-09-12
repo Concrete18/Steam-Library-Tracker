@@ -360,6 +360,18 @@ class Helper:
             sorted_keys = sorted_keys[0:limit]
         return sorted_keys
 
+    def any_is_num(self, value):
+        """
+        Returns True if the `value` is an int, float or numeric string.
+        """
+        val_type = type(value)
+        if val_type is str:
+            if value.replace(".", "", 1).isdigit():
+                return True
+        elif val_type is int or val_type is float:
+            return True
+        return False
+
     def save_json_output(self, new_data, filename):
         """
         Saves data into json format with the given filename.
