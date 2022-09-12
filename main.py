@@ -390,6 +390,7 @@ class Tracker(Helper):
         Gets game info with steam api using a `appid`.
         """
         info_dict = {
+            "game_name": "Unset",
             self.dev_col: "No Data",
             self.pub_col: "No Data",
             self.genre_col: "No Data",
@@ -436,6 +437,9 @@ class Tracker(Helper):
         if "data" in dict[str(appid)].keys():
             game_info = dict[str(appid)]["data"]
             keys = game_info.keys()
+            # get game name
+            if "name" in keys:
+                info_dict["game_name"] = game_info["name"]
             # get developer
             if "developers" in keys:
                 output = self.word_and_list(game_info["developers"])
@@ -468,7 +472,7 @@ class Tracker(Helper):
                 if price:
                     info_dict["price"] = price
                 if discount:
-                    info_dict["discount"] = discount
+                    info_dict["discount"] = float(discount)
                 if on_sale:
                     info_dict["on_sale"] = on_sale
             # get linux compat
@@ -492,9 +496,12 @@ class Tracker(Helper):
 
     def set_release_year(self, game, release_year):
         """
-        Sets `game`'s release year cell to `release_year`.
+        Sets `game`'s release year cell to `release_year` if a year is not
+        already set.
         """
-        return self.games.update_cell(game, self.release_col, release_year)
+        cur_val = self.games.get_cell(game, self.release_col)
+        if not self.any_is_num(cur_val):
+            return self.games.update_cell(game, self.release_col, release_year)
 
     def set_genre(self, game, genre):
         """
@@ -525,22 +532,17 @@ class Tracker(Helper):
         Sets `game`'s metacritic score to `score` if the current value is
         not numeric.
         """
-        # TODO unit test this
         cur_val = self.games.get_cell(game, self.metacritic_col)
-        # if current value is not blank
-        if cur_val:
-            if type(cur_val) is str:
-                if cur_val.isnumeric():
-                    return None
-            else:
-                return None
-        return self.games.update_cell(game, self.metacritic_col, score)
+        if not self.any_is_num(cur_val):
+            return self.games.update_cell(game, self.metacritic_col, score)
 
-    def set_time_to_beat(self, game, time_to_beat):
+    def set_time_to_beat(self, game, time):
         """
         Sets `game`'s Time to beat cell to `time_to_beat`.
         """
-        return self.games.update_cell(game, self.time_to_beat_col, time_to_beat)
+        cur_val = self.games.get_cell(game, self.time_to_beat_col)
+        if not self.any_is_num(cur_val):
+            return self.games.update_cell(game, self.time_to_beat_col, time)
 
     def set_steam_deck(self, game, status):
         """
@@ -548,17 +550,17 @@ class Tracker(Helper):
         """
         return self.games.update_cell(game, self.steam_deck_col, status)
 
-    def set_hours_played(self, game_name, hours_played):
+    def set_hours_played(self, game_name, hours):
         """
-        Sets `game`'s Hours Played cell to `hours_played`.
+        Sets `game`'s Hours Played cell to `hours`.
         """
-        return self.games.update_cell(game_name, self.hours_played_col, hours_played)
+        return self.games.update_cell(game_name, self.hours_played_col, hours)
 
-    def set_linux_hours_played(self, game_name, hours_played):
+    def set_linux_hours_played(self, game_name, hours):
         """
-        Sets `game`'s Linux Hours cell to `hours_played`.
+        Sets `game`'s Linux Hours cell to `hours`.
         """
-        return self.games.update_cell(game_name, self.linux_hours_col, hours_played)
+        return self.games.update_cell(game_name, self.linux_hours_col, hours)
 
     def set_last_playtime(self, game_name, set_last_playtime):
         """
@@ -574,17 +576,18 @@ class Tracker(Helper):
         column = self.time_played_col
         return self.games.update_cell(game_name, column, time_played)
 
-    def set_play_status(self, game_name, play_status):
+    def set_play_status(self, game_name, status):
         """
-        Sets `game`'s Play Status cell to `play_status`.
+        Sets `game`'s Play Status cell to `status`.
         """
-        return self.games.update_cell(game_name, self.play_status_col, play_status)
+        return self.games.update_cell(game_name, self.play_status_col, status)
 
     def set_date_updated(self, game):
         """
         Sets `game`'s Date Updated cell to the current date.
         """
-        return self.games.update_cell(game, self.date_updated_col, dt.datetime.now())
+        cur_date = dt.datetime.now()
+        return self.games.update_cell(game, self.date_updated_col, cur_date)
 
     def get_store_link(self, appid):
         """
@@ -685,12 +688,15 @@ class Tracker(Helper):
                 steam_info = self.get_game_info(appid)
 
                 # TODO test to be sure this works
-                special_case_col = [self.metacritic_col]
+                special_case_col = [self.metacritic_col, self.release_col]
                 for key, val in steam_info.items():
                     if key in self.excel_columns and steam_info[key]:
                         if key not in special_case_col:
                             self.games.update_cell(game_name, key, val)
-
+                # release year
+                if steam_info[self.release_col]:
+                    year = steam_info[self.release_col]
+                    self.set_release_year(game_name, year)
                 # metacritic check from get_game_info func
                 if steam_info[self.metacritic_col]:
                     score = steam_info[self.metacritic_col]
@@ -1227,9 +1233,9 @@ class Tracker(Helper):
         print(f"Play Status: {play_status}")
         self.add_game(
             game_name=game_name,
-            minutes_played=minutes_played,
             play_status=play_status,
             platform=platform,
+            hours_played=hours_played,
             time_played=time_played,
             save=True,
         )
@@ -1407,7 +1413,7 @@ class Tracker(Helper):
         fav_total = len(fav_games)
         print(f"\n{fav_total} Favorite Game Deals in Descending Order:\n")
         for game in fav_games:
-            print(f'{game["name"]} - {game["price"]}')
+            print(f'{game["game_name"]} - {game["price"]}')
         # save into file
         self.save_json_output(fav_games, "configs/favorite_games.json")
 
@@ -1720,4 +1726,5 @@ if __name__ == "__main__":
     App.run()
     # App.steam_deck_check()
     # val = App.get_steam_user_tags(appid=1229490)
+    # val = App.get_game_info(632470)
     # print(val)
