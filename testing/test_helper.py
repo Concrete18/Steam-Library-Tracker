@@ -257,5 +257,25 @@ class SimilarityMatching(unittest.TestCase):
             self.assertEqual(result, answer)
 
 
+class AnyIsNum(unittest.TestCase):
+    """
+    Tests any_is_num function.
+    """
+
+    def setUp(self):
+        self.t = Helper()
+
+    def test_true_num(self):
+        self.assertTrue(self.t.any_is_num(155))
+        self.assertTrue(self.t.any_is_num(45.15))
+
+    def test_true_string(self):
+        self.assertTrue(self.t.any_is_num("1232"))
+        self.assertTrue(self.t.any_is_num("123.2"))
+
+    def test_false(self):
+        self.assertFalse(self.t.any_is_num("not a num"))
+
+
 if __name__ == "__main__":
     unittest.main()

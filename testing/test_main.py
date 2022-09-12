@@ -58,6 +58,10 @@ class GetMetacritic(unittest.TestCase):
                 result = self.t.get_metacritic(name, "pc")
                 self.assertEqual(result, answer)
 
+    def test_switch(self):
+        result = self.t.get_metacritic("Splatoon 3", "switch")
+        self.assertEqual(result, 84)
+
 
 class GetTimeToBeat(unittest.TestCase):
     def setUp(self):
@@ -204,7 +208,7 @@ class GetGameInfo(unittest.TestCase):
         self.assertIsInstance(game_info["Release Year"], str)
         self.assertIsInstance(game_info["price"], str)
         self.assertIsInstance(game_info["discount"], float)
-        self.assertIn(game_info["on_sale"], ["Yes", "No"])
+        self.assertIn(game_info["on_sale"], [True, False])
         self.assertIsInstance(game_info["linux_compat"], str)
         self.assertIsInstance(game_info["drm_notice"], str)
         self.assertIsInstance(game_info["categories"], str)
