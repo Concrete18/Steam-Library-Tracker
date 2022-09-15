@@ -1,4 +1,4 @@
-import random, json, os, re, sys, hashlib, webbrowser, subprocess, shutil
+import random, json, os, re, sys, hashlib, webbrowser, subprocess, shutil, time
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -1674,7 +1674,6 @@ class Tracker(Helper):
         stats = Stat(df)
         choices = [
             ("Get Games in Common", self.find_shared_games),
-            ("Sync Steam Deck Game Status", self.steam_deck_check),
             ("Get Favorite Games Sales", self.get_favorite_games_sales),
             ("View Favorite Games Sales", self.view_favorite_games_sales),
             ("Calculate Statistics", stats.get_game_statistics),
@@ -1695,6 +1694,7 @@ class Tracker(Helper):
         choices = [
             ("Update Game", self.custom_update_game),
             ("Add Game", self.manually_add_game),
+            ("Sync Steam Deck Game Status", self.steam_deck_check),
             ("Sync Playstation Games", self.update_playstation_data),
             ("Pick Random Game", self.pick_random_game),
             ("Open Log", self.open_log),
