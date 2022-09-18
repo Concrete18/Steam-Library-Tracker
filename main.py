@@ -1116,23 +1116,6 @@ class Tracker(Helper):
             print("No Steam Deck Status Changes.")
         self.update_last_run("steam_deck_check")
 
-    def check_steam_deck_data_file(self):
-        """
-        Checks steam deck data based on data copied into a text file.
-        """
-        with open("configs\steam_deck.txt") as f:
-            lines = f.read().splitlines()
-        for line in lines:
-            print(line.split("\t"))
-            values = line.split("\t")
-            if len(values) == 3:
-                appid, game_name, status = line.split("\t")
-            elif len(values) == 4:
-                appid, game_name, ignore, status = line.split("\t")
-            if self.set_steam_deck(game_name, status):
-                print("failed on", game_name, status)
-        self.excel.save()
-
     def check_playstation_json(self):
         """
         Checks `playstation_games.json` to find out if it is newly updated so
