@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
+import numpy as np
 import json
 
 if __name__ == "__main__":
@@ -29,8 +30,12 @@ class Stat:
         hours_played = self.df["Hours Played"]
         linux_hours = self.df["Linux Hours"]
         # totals
-        data["Playtime"]["Total Hours"] = round(hours_played.sum(), 1)
-        data["Playtime"]["Total Linux Hours"] = round(linux_hours.sum(), 1)
+        total_hours_sum = hours_played.sum()
+        linux_hours_sum = linux_hours.sum()
+        data["Playtime"]["Total Hours"] = round(total_hours_sum, 1)
+        data["Playtime"]["Total Linux Hours"] = round(linux_hours_sum, 1)
+        linux_percent = round((linux_hours_sum / total_hours_sum) * 100, 1)
+        data["Playtime"]["Percent Linux Hours"] = f"%{linux_percent}"
         # averages
         data["Playtime"]["Average Hours"] = round(hours_played.mean(), 1)
         data["Playtime"]["Median Hours"] = round(hours_played.median(), 1)
@@ -69,18 +74,21 @@ class Stat:
         y_value = "Metacritic"
         x_value = "My Rating"
         df = self.df[[y_value, x_value]]
-        # df.dropna(axis=0, inplace=True)
+
         # sets up graph
         plt.title("Metacritic vs. My Rating")
+
         # x axis
         x = df[x_value]
         plt.xlabel(x_value)
         plt.xlim([1, 10])
         plt.xticks(range(0, 11))
+
         # y axis
         y = df[y_value]
         plt.ylim([1, 100])
         plt.ylabel(y_value)
+
         # base settings
         plt.scatter(x, y, s=70, alpha=0.15)
         plt.plot([1, 10], [1, 100], "g")
@@ -91,65 +99,75 @@ class Stat:
     def steam_rating_comparison(self):
         y_value = "Metacritic"
         x_value = "Steam Review Percent"
-        df = self.df[[y_value, x_value]]
+        df = self.df[[y_value, x_value]].copy()
         df[x_value] = df[x_value] * 100
-        # df.dropna(axis=0, inplace=True)
+
         # sets up graph
         plt.title("Metacritic vs. Steam Review")
+
         # x axis
         x = df[x_value]
         plt.xlabel(x_value)
         plt.xlim([1, 100])
-        plt.xticks(range(0, 101, 10))
+        plt.xticks(range(0, 101, 10), rotation=90)
+
         # y axis
         y = df[y_value]
         plt.ylim([1, 100])
         plt.ylabel(y_value)
+
         # base settings
         plt.scatter(x, y, 50, "0.0", lw=2)  # optional
         plt.scatter(x, y, 50, "1.0", lw=0)  # optional
         plt.scatter(x, y, 40, "C0", lw=0, alpha=0.3)
-
         plt.plot([1, 100], [1, 100], "g")
-        plt.xticks(rotation=90)
         plt.tight_layout()
         plt.show()
 
-    def rating_release_comparison(self):
-        y_value = "Metacritic"
+    def rating_release_comparison(self, rating_column):
+        y_value = rating_column
         x_value = "Release Year"
         df = self.df[[x_value, y_value]]
         # df.dropna(axis=0, inplace=True)
-        print(df)
+
         # sorts Release Year
         df = df.sort_values(by=x_value)
 
-        # sets up graph
+        # x setup
         x = df[x_value]
         plt.xlabel(x_value)
+        plt.xticks(np.arange(min(x), max(x) + 1, 1.0), rotation=90)
 
+        # y setup
         y = df[y_value]
         plt.ylabel(y_value)
 
         plt.scatter(x, y, s=70, alpha=0.70)
-        # plt.xticks(rotation = 90)
         plt.tight_layout()
         plt.show()
 
     def avg_rating_by_year(self):
-        df["Steam Review Percent"] = df["Steam Review Percent"] * 100.0
-        df.groupby("Release Year")["Steam Review Percent"].mean()
-        df.dropna(axis=0, inplace=True)
+        new_df = self.df[["Steam Review Percent", "Release Year"]].copy()
+        new_df["Steam Review"] = new_df["Steam Review Percent"] * 100.0
+        new_df.groupby("Release Year")["Steam Review"].mean()
+        new_df.dropna(axis=0, inplace=True)
+
         # sets up graph
         plt.title("AVG Rating by Year")
+
         # x axis
+        x = new_df["Release Year"]
         plt.xlabel("Year")
+        plt.xticks(np.arange(min(x), max(x) + 1, 1.0), rotation=90)
+
         # y axis
+        y = new_df["Steam Review"]
         plt.ylim([1, 11])
         plt.ylabel("AVG Rating")
+
         # base settings
-        plt.scatter(df["Release Year"], df["My Rating"], s=70, alpha=0.70)
-        plt.xticks(rotation=90)
+        # BUG currently a blank plot
+        plt.plot(x, y)
         plt.tight_layout()
         plt.show()
 
@@ -183,6 +201,8 @@ if __name__ == "__main__":
     # run
     stats = Stat(df)
     stats.get_game_statistics()
-    stats.steam_rating_comparison()
-    stats.my_rating_comparison()
+    # stats.my_rating_comparison()
     stats.avg_rating_by_year()
+    # stats.steam_rating_comparison()
+    # stats.rating_release_comparison("Metacritic")
+    # stats.rating_release_comparison("Steam Review Percent")
