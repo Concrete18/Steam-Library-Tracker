@@ -1643,15 +1643,18 @@ class Tracker(Helper):
         """
         # statistics setup
         na_values = [
-            "No Data",
+            "NaN",
             "Page Error",
+            "Invalid Date",
+            "No Data",
+            "No Tags",
+            "No Year",
             "No Score",
             "Not Found",
             "No Reviews",
+            "Not Enough Reviews",
             "No Publisher",
             "No Developer",
-            "Invalid Date",
-            "No Year",
         ]
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
@@ -1661,7 +1664,6 @@ class Tracker(Helper):
             ("View Favorite Games Sales", self.view_favorite_games_sales),
             ("Calculate Statistics", stats.get_game_statistics),
             ("Update All Cell Formatting", self.games.format_all_cells),
-            ("Exit", self.excel.open_file_input),
         ]
         if not self.pick_task(choices):
             close_in_seconds = 5
@@ -1682,7 +1684,6 @@ class Tracker(Helper):
             ("Pick Random Game", self.pick_random_game),
             ("Open Log", self.open_log),
             ("Extra Choices", self.extra_actions),
-            ("Exit", exit),
         ]
         msg = "\nEnter the Number for the action you or nothing to open in Excel.\n"
         if not self.pick_task(choices, msg):
