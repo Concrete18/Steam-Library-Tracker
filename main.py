@@ -1364,9 +1364,8 @@ class Tracker(Helper):
         # gets favorite games from excel file as a list of dicts
         fav_games = []
         # sets minimum rating to and defaults to 8 if response is blank or invalid
-        rating_limit = (
-            input("What is the minimum rating for this search? (1-10)\n") or "8"
-        )
+        msg = "What is the minimum rating for this search? (1-10)\n"
+        rating_limit = input(msg) or "8"
         if rating_limit.isnumeric():
             rating_limit = int(rating_limit)
         else:
@@ -1380,6 +1379,7 @@ class Tracker(Helper):
             unit="games",
             ncols=100,
         ):
+            # TODO improve names
             my_rating = self.games.get_cell(game, self.my_rating_col)
             if my_rating == None:
                 continue
@@ -1388,7 +1388,7 @@ class Tracker(Helper):
                 game_dict = self.get_game_info(appid)
                 if not game_dict:
                     continue
-                game_dict["my_rating"] = my_rating
+                game_dict["My Rating"] = my_rating
                 if "on_sale" in game_dict.keys():
                     if game_dict["on_sale"]:
                         fav_games.append(game_dict)
@@ -1399,6 +1399,8 @@ class Tracker(Helper):
             print(f'{game["game_name"]} - {game["price"]}')
         # save into file
         self.save_json_output(fav_games, "configs/favorite_games.json")
+        # TODO ask about running the conversion to csv or excel
+        return fav_games
 
     def view_favorite_games_sales(self):
         """
@@ -1406,7 +1408,7 @@ class Tracker(Helper):
         the last run of `get_favorite_games_sales`.
         """
         df = pd.read_json("configs/favorite_games.json")
-        print("Do you want to output as excel(1) or csv(2)?")
+        print("\nDo you want to output as Excel (1) or CSV (2)?\n")
         output = input()
         if output == "1":
             output = "excel"
@@ -1416,9 +1418,45 @@ class Tracker(Helper):
             return
         Path("outputs").mkdir(exist_ok=True)
         if output == "excel":
+            column_order = [
+                "game_name",
+                "My Rating",
+                "Steam Review Percent",
+                "Steam Review Total",
+                "Metacritic",
+                "price",
+                "discount",
+                "Early Access",
+                "Release Year",
+                "Genre",
+                "User Tags",
+            ]
             file_path = "outputs/favorite_games_sales.xlsx"
-            df.to_excel(file_path)
-            os.startfile(file_path)
+            while True:
+                try:
+                    df.to_excel(
+                        file_path,
+                        sheet_name="Favorite Game Sales",
+                        columns=column_order,
+                    )
+                    break
+                except PermissionError:
+                    msg = "Make sure the excel sheet is closed."
+                    print(msg, end="\r")
+                    time.sleep(1)
+            # formats excel sheet
+            excel = Excel(file_path)
+            # TODO improve titles
+            favorites = Sheet(
+                excel,
+                "game_name",
+                options=self.options,
+            )
+            # fix column width
+            # BUG formatting does not work
+            favorites.format_all_cells()
+            # BUG does not find file to open
+            # os.startfile(file_path)
         elif output == "csv":
             df.to_csv("outputs/favorite_games_sales.csv")
             folder = os.path.join(self.script_dir, "outputs")
@@ -1707,6 +1745,7 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
+    # App.view_favorite_games_sales()
     App.run()
     # App.steam_deck_check()
     # val = App.get_steam_user_tags(appid=1229490)
