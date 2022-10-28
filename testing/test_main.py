@@ -60,7 +60,7 @@ class GetMetacritic(unittest.TestCase):
 
     def test_switch(self):
         result = self.t.get_metacritic("Splatoon 3", "switch")
-        self.assertEqual(result, 84)
+        self.assertEqual(result, 83)
 
 
 class GetTimeToBeat(unittest.TestCase):
@@ -79,16 +79,6 @@ class GetTimeToBeat(unittest.TestCase):
                 self.assertIsInstance(result, float)
         result = self.t.get_time_to_beat("Not a Real Game")
         self.assertEqual(result, "Not Found")
-
-
-class SetMetacritic(unittest.TestCase):
-    def setUp(self):
-        self.t = Tracker()
-
-    def test_set_metacritic(self):
-        # TODO finish
-        result = self.t.set_metacritic("Not a Real Game")
-        self.assertTrue(result)
 
 
 class SteamDeckCompatability(unittest.TestCase):
@@ -189,30 +179,47 @@ class GetGameInfo(unittest.TestCase):
         for key in keys:
             self.assertIn(key, dict.keys())
 
-    def test_valid_types(self):
+    def test_metacritic_types(self):
+        """
+        Tests get_game_info function for specific types of results.
+        """
+        game_info = self.t.get_game_info(appid=752590)
+        score = game_info["Metacritic"]
+        metacritic_tests = [score == "No Score", type(score) == float]
+        self.assertTrue(game_info["Metacritic"], any(metacritic_tests))
+        self.assertIsInstance(game_info["Steam Review Percent"], float)
+        self.assertIsInstance(game_info["discount"], float)
+
+    def test_int_types(self):
+        """
+        Tests get_game_info function for specific types of results.
+        """
+        game_info = self.t.get_game_info(appid=752590)
+        self.assertIsInstance(game_info["Steam Review Total"], int)
+
+    def test_str_types(self):
+        """
+        Tests get_game_info function for specific types of results.
+        """
+        game_info = self.t.get_game_info(appid=752590)
+        self.assertIsInstance(game_info["Developers"], str)
+        self.assertIsInstance(game_info["Publishers"], str)
+        self.assertIsInstance(game_info["Genre"], str)
+        self.assertIsInstance(game_info["linux_compat"], str)
+        self.assertIsInstance(game_info["drm_notice"], str)
+        self.assertIsInstance(game_info["categories"], str)
+        self.assertIsInstance(game_info["Release Year"], str)
+        self.assertIsInstance(game_info["price"], str)
+        self.assertIsInstance(game_info["ext_user_account_notice"], str)
+
+    def test_other_types(self):
         """
         Tests get_game_info function for specific types of results.
         """
         game_info = self.t.get_game_info(appid=752590)
         self.assertIsInstance(game_info, dict)
-        self.assertIsInstance(game_info["Developers"], str)
-        self.assertIsInstance(game_info["Publishers"], str)
-        self.assertIsInstance(game_info["Genre"], str)
         self.assertIn(game_info["Early Access"], ["Yes", "No"])
-        # metacritic
-        score = game_info["Metacritic"]
-        metacritic_tests = [score == "No Score", type(score) == float]
-        self.assertTrue(game_info["Metacritic"], any(metacritic_tests))
-        self.assertIsInstance(game_info["Steam Review Percent"], float)
-        self.assertIsInstance(game_info["Steam Review Total"], int)
-        self.assertIsInstance(game_info["Release Year"], str)
-        self.assertIsInstance(game_info["price"], str)
-        self.assertIsInstance(game_info["discount"], float)
         self.assertIn(game_info["on_sale"], [True, False])
-        self.assertIsInstance(game_info["linux_compat"], str)
-        self.assertIsInstance(game_info["drm_notice"], str)
-        self.assertIsInstance(game_info["categories"], str)
-        self.assertIsInstance(game_info["ext_user_account_notice"], str)
 
     def test_check_for_default(self):
         """
@@ -228,9 +235,10 @@ class GetGameInfo(unittest.TestCase):
             self.t.steam_rev_total_col: "No Reviews",
             self.t.user_tags_col: "No Tags",
             self.t.release_col: "No Year",
+            "game_name": "Unset",
             "price": "No Data",
             "discount": 0.0,
-            "on_sale": "No",
+            "on_sale": False,
             "linux_compat": "Unsupported",
             "drm_notice": "No Data",
             "categories": "No Data",
