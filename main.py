@@ -111,10 +111,11 @@ class Tracker(Helper):
         "3": "Waiting",
         "4": "Finished",
         "5": "Endless",
-        "6": "Must Play",
-        "7": "Quit",
-        "8": "Unplayed",
-        "9": "Ignore",
+        "6": "Replay",
+        "7": "Must Play",
+        "8": "Quit",
+        "9": "Unplayed",
+        "10": "Ignore",
     }
     # misc
     ps_data = Path("configs\playstation_games.json")
@@ -246,19 +247,21 @@ class Tracker(Helper):
         """
         self.api_sleeper("time_to_beat")
         results = HowLongToBeat().search(game_name)
+        if not results:
+            self.api_sleeper("time_to_beat")
+            if game_name.isupper():
+                results = HowLongToBeat().search(game_name.title())
+            else:
+                results = HowLongToBeat().search(game_name.upper())
+        time_to_beat = "Not Found"
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
-            string_time = str(best_element.gameplay_main).replace("½", ".5")
-            time_to_beat = float(string_time)
-            time_to_beat_unit = best_element.gameplay_main_unit
-            if time_to_beat_unit == None:
+            time_to_beat = best_element.main_extra
+            if time_to_beat == 0.0:
+                time_to_beat = best_element.main_story
+            if time_to_beat == 0.0:
                 return "No Data"
-            elif time_to_beat_unit != "Hours":
-                return round(time_to_beat / 60, 1)  # converts minutes to hours
-            else:
-                return time_to_beat
-        else:
-            return "Not Found"
+        return time_to_beat
 
     def get_metacritic(self, game_name, platform, debug=False):
         """
@@ -402,7 +405,7 @@ class Tracker(Helper):
             self.release_col: "No Year",
             "price": "No Data",
             "discount": 0.0,
-            "on_sale": "No",
+            "on_sale": False,
             "linux_compat": "Unsupported",
             "drm_notice": "No Data",
             "categories": "No Data",
@@ -604,7 +607,7 @@ class Tracker(Helper):
 
         Use `skip_filled` to skip non blank entries.
 
-        Use `check_status` to opnly check games with a with specific play status.
+        Use `check_status` to only check games with a with specific play status.
         """
         # creates checklist
         check_list = []
@@ -617,6 +620,8 @@ class Tracker(Helper):
                     "Played",
                     "Finished",
                     "Quit",
+                    "Replay",
+                    "Must Play",
                 ]:
                     continue
             if skip_filled:
