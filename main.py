@@ -961,6 +961,7 @@ class Tracker(Helper):
             "â„¢": "",
             "Â": "",
             "Ã›": "U",
+            "ö": "o",
         }
         for char, replace in inicode_dict.items():
             string = string.replace(char, replace)
