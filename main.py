@@ -962,6 +962,7 @@ class Tracker(Helper):
             "Â": "",
             "Ã›": "U",
             "ö": "o",
+            "Ã¶": "o",
         }
         for char, replace in inicode_dict.items():
             string = string.replace(char, replace)
@@ -1269,13 +1270,13 @@ class Tracker(Helper):
         status = self.steam_deck_compat(appid)
         if status:
             steam_deck_status = status
-        # easy_indirect_cell setup
+        # indirect_cell setup
         rating_com = self.rating_comp_col
-        my_rating = self.games.easy_indirect_cell(rating_com, self.my_rating_col)
-        metacritic = self.games.easy_indirect_cell(rating_com, self.metacritic_col)
+        my_rating = self.games.indirect_cell(rating_com, self.my_rating_col)
+        metacritic = self.games.indirect_cell(rating_com, self.metacritic_col)
         prob_compl = self.prob_comp_col
-        hours = self.games.easy_indirect_cell(prob_compl, self.hours_played_col)
-        ttb = self.games.easy_indirect_cell(prob_compl, self.time_to_beat_col)
+        hours = self.games.indirect_cell(prob_compl, self.hours_played_col)
+        ttb = self.games.indirect_cell(prob_compl, self.time_to_beat_col)
         # sets excel column values
         column_info = {
             self.my_rating_col: "",
@@ -1392,6 +1393,7 @@ class Tracker(Helper):
             appid = self.games.get_cell(game, "App ID")
             if my_rating >= rating_limit and appid:
                 game_dict = self.get_game_info(appid)
+                # TODO include store links
                 if not game_dict:
                     continue
                 game_dict["My Rating"] = my_rating
@@ -1637,6 +1639,12 @@ class Tracker(Helper):
         if response.lower() in ["yes", "yeah", "y"]:
             self.custom_update_game()
 
+    def update_console_play_session(self):
+        """
+        ph
+        """
+        # TODO finish update_console_play_session func
+
     def update_playstation_data(self):
         """
         Opens playstation data json file and web json with latest data
@@ -1724,6 +1732,7 @@ class Tracker(Helper):
             ("Update Game", self.custom_update_game),
             ("Add Game", self.manually_add_game),
             ("Sync Steam Deck Game Status", self.steam_deck_check),
+            ("Update Console Play Session", self.update_console_play_session()),
             ("Sync Playstation Games", self.update_playstation_data),
             ("Pick Random Game", self.pick_random_game),
             ("Open Log", self.open_log),
