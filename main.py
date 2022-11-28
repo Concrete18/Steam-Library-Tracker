@@ -1639,11 +1639,66 @@ class Tracker(Helper):
         if response.lower() in ["yes", "yeah", "y"]:
             self.custom_update_game()
 
+    def pick_game_to_update(self, games):
+        """
+        ph
+        TODO finish docstring
+        """
+        # allows picking game to update playtime and last_updated
+        print("What game did you play last?")
+        for count, game in enumerate(games):
+            print(f"{count+1}. {game}")
+        msg = "\nWhat game do you want to update the last session for?\n"
+        num = self.ask_for_integer(
+            msg,
+            num_range=(1, len(games)),
+            allow_blank=True,
+        )
+        if num == "":
+            return False
+        # runs chosen function
+        chosen_game = games[num - 1]
+        game_idx = self.games.row_idx[chosen_game]
+        new_hours = self.ask_for_integer(
+            "\nWhat are the new hours played?\n",
+            allow_blank=True,
+        )
+        if new_hours:
+            self.set_hours_played(game_idx, float(new_hours))
+            print(f"\nUpdated to {new_hours} Hours.")
+        self.set_date_updated(game_idx)
+
     def update_console_play_session(self):
         """
         ph
+        TODO finish docstring
         """
-        # TODO finish update_console_play_session func
+        console_games = []
+        # gets all console games with last update times
+        for game_name in self.games.row_idx:
+            platform = self.games.get_cell(game_name, self.platform_col)
+            last_updated = self.games.get_cell(game_name, self.date_updated_col)
+            if platform != "Steam":
+                console_games.append(
+                    {
+                        "name": game_name,
+                        "last_updated": last_updated,
+                    }
+                )
+        # sorts by last updated
+        sorted_console_games = sorted(
+            console_games,
+            key=lambda d: d["last_updated"],
+            reverse=True,
+        )
+        # creates list of games names only
+        last_played_console_games = [game["name"] for game in sorted_console_games][:10]
+        while True:
+            self.pick_game_to_update(last_played_console_games)
+            response = input("\nWant to update another game?\n")
+            if response.lower() not in ["y", "yes"]:
+                break
+        self.excel.save(backup=False)
 
     def update_playstation_data(self):
         """
@@ -1732,7 +1787,7 @@ class Tracker(Helper):
             ("Update Game", self.custom_update_game),
             ("Add Game", self.manually_add_game),
             ("Sync Steam Deck Game Status", self.steam_deck_check),
-            ("Update Console Play Session", self.update_console_play_session()),
+            ("Update Console Play Session", self.update_console_play_session),
             ("Sync Playstation Games", self.update_playstation_data),
             ("Pick Random Game", self.pick_random_game),
             ("Open Log", self.open_log),
