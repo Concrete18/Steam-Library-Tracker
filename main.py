@@ -63,15 +63,18 @@ class Tracker(Helper):
     steam_id = str(data["settings"]["steam_id"])
     vanity_url = data["settings"]["vanity_url"]
     excel_filename = data["settings"]["excel_filename"]
+    logging = data["settings"]["logging"]
+    update_ps_data = data["settings"]["update_ps_data"]
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     appid_ignore_list = data["appid_ignore_list"]
 
     # logging setup
-    Log = Logger()
-    tracker_log_path = "logs/tracker.log"
-    tracker = Log.create_log(name="tracker", log_path=tracker_log_path)
-    error_log = Log.create_log(name="base_error", log_path="logs/error.log")
+    if logging:
+        Log = Logger()
+        tracker_log_path = "logs/tracker.log"
+        tracker = Log.create_log(name="tracker", log_path=tracker_log_path)
+        error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
     # class init
     options = {
@@ -99,7 +102,7 @@ class Tracker(Helper):
         "date": ["Last Updated", "Date"],
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
     }
-    excel = Excel(excel_filename)
+    excel = Excel(excel_filename, use_logging=logging)
     games = Sheet(excel, "Name", sheet_name="Games", options=options)
     # sets play status choices for multiple functions
     play_status_choices = {
@@ -250,7 +253,7 @@ class Tracker(Helper):
                 results = HowLongToBeat().search(game_name.title())
             else:
                 results = HowLongToBeat().search(game_name.upper())
-        time_to_beat = "Not Found"
+        time_to_beat = "NF - Error"
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
             time_to_beat = best_element.main_extra
@@ -294,7 +297,8 @@ class Tracker(Helper):
             return review_score
         else:
             msg = f"Failed to check {url}"
-            self.error_log.warning(msg)
+            if self.logging:
+                self.error_log.warning(msg)
             review_score = "NF - Error"
         return review_score
 
@@ -998,7 +1002,8 @@ class Tracker(Helper):
         total_games_added = len(added_games)
         msg = f"Added {total_games_added} PS4/PS5 Games."
         print(msg)
-        self.tracker.info(msg)
+        if self.logging:
+            self.tracker.info(msg)
         if total_games_added:
             self.excel.save()
 
@@ -1063,6 +1068,9 @@ class Tracker(Helper):
         last_check = self.string_to_date(last_check_string)
         days_since = self.days_since(last_check)
         check_freq = self.data["settings"]["steam_deck_check_freq"]
+        # skip check if set to 0
+        if check_freq == 0:
+            return
         if days_since < check_freq:
             days_till_check = check_freq - days_since
             print(f"\nNext Steam Deck Check in {days_till_check} days.")
@@ -1097,7 +1105,8 @@ class Tracker(Helper):
                 continue
             if self.set_steam_deck(game_name, status):
                 info = f"{game_name} was updated to {status}"
-                self.tracker.info(info)
+                if self.logging:
+                    self.tracker.info(info)
                 updated_games.append(info)
 
             # title progress percentage
@@ -1124,7 +1133,7 @@ class Tracker(Helper):
         it can add the new games to the sheet.
         """
         # checks if json exists
-        if not self.ps_data.exists():
+        if not self.ps_data.exists() and self.update_ps_data:
             print("\nPlayStation JSON does not exist.")
             self.ps_data.touch()
             webbrowser.open_new(self.playstation_data_link)
@@ -1182,7 +1191,8 @@ class Tracker(Helper):
             ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
-            self.tracker.info(msg)
+            if self.logging:
+                self.tracker.info(msg)
             return update_info
         return None
 
@@ -1305,7 +1315,8 @@ class Tracker(Helper):
             info = f"Added {game_name} with {time_played} played"
         else:
             info = f"Added {game_name} on {platform}"
-        self.tracker.info(info)
+        if self.logging:
+            self.tracker.info(info)
         self.num_games_added += 1
         self.games.format_row(game_name)
         if save:

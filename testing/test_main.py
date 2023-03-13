@@ -86,7 +86,7 @@ class GetTimeToBeat(unittest.TestCase):
                 result = self.t.get_time_to_beat(name)
                 self.assertIsInstance(result, float)
         result = self.t.get_time_to_beat("Not a Real Game")
-        self.assertEqual(result, "Not Found")
+        self.assertEqual(result, "NF - Error")
 
 
 class SteamDeckCompatability(unittest.TestCase):
