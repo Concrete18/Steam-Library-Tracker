@@ -62,6 +62,16 @@ class Helper:
             time.sleep(5)
             self.request_url(url, headers, second_try=True)
             return False
+        except requests.exceptions.TooManyRedirects:
+            if second_try:
+                return False
+            msg = "Too Many Redirects: Exceeded 30 redirects"
+            self.error_log.warning(msg)
+            time.sleep(5)
+            self.request_url(url, headers, second_try=True)
+            return False
+        except requests.exceptions.ReadTimeout:
+            return False
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
@@ -70,7 +80,7 @@ class Helper:
         elif response.status_code == 404:
             msg = f"Server Error: 404 Content does not exist. URL: {url}"
             self.error_log.warning(msg)
-        elif response.status_code == 429:
+        elif response.status_code == 429 or response.status_code == 403:
             msg = "Server Error: Too Many reqeuests made. Waiting to try again."
             self.error_log.warning(msg)
             self.error_log.warning(response)

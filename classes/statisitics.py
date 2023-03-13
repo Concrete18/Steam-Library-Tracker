@@ -77,7 +77,6 @@ class Stat:
 
         # sets up graph
         plt.title("Metacritic vs. My Rating")
-
         # x axis
         x = df[x_value]
         plt.xlabel(x_value)
@@ -183,9 +182,9 @@ if __name__ == "__main__":
     # stat setup
     na_values = [
         "NaN",
-        "Page Error",
+        "NF - Error",
         "Invalid Date",
-        "No Data",
+        "ND - Error",
         "No Tags",
         "No Year",
         "No Score",

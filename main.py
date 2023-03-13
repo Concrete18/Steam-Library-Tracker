@@ -14,9 +14,6 @@ from classes.logger import Logger
 # my package
 from easierexcel import Excel, Sheet
 
-# for local testing
-# from classes.excel import Excel, Sheet
-
 
 def setup():
     """
@@ -260,33 +257,32 @@ class Tracker(Helper):
             if time_to_beat == 0.0:
                 time_to_beat = best_element.main_story
             if time_to_beat == 0.0:
-                return "No Data"
+                return "ND - Error"
         return time_to_beat
 
-    def get_metacritic(self, game_name, platform, debug=False):
+    def get_metacritic(self, game_name, platform):
         """
         Uses requests to get the metacritic review score for the entered game.
         """
         # TODO improve error checking
         if game_name is None or platform is None:
-            return "Page Error"
+            return "NF - Error"
         if " - Console" in game_name:
             game_name = game_name.replace(" - Console", "")
-        if platform == "PS4":
+        platform = platform.lower()
+        if platform == "ps4":
             platform = "playstation-4"
-        elif platform == "PS5":
+        elif platform == "ps5":
             platform = "playstation-5"
-        elif platform in ["Steam", "Uplay", "Origin", "MS Store", "GOG"]:
+        elif platform in ["steam", "uplay", "origin", "ms store", "gog"]:
             platform = "pc"
         game_name = self.url_sanitize(game_name)
         user_agent = {"User-agent": "Mozilla/5.0"}
         review_score = ""
-        main_url = "https://www.metacritic.com/"
-        url_vars = f"/game/{platform.lower()}/{game_name.lower()}"
+        main_url = "https://www.metacritic.com"
+        url_vars = f"/game/{platform}/{game_name.lower()}"
         url = main_url + url_vars
-        if debug:
-            print(url)
-        self.api_sleeper("metacritic")
+        self.api_sleeper("metacritic", 1)
         response = self.request_url(url, headers=user_agent)
         if response:
             soup = BeautifulSoup(response.text, "html.parser")
@@ -299,7 +295,7 @@ class Tracker(Helper):
         else:
             msg = f"Failed to check {url}"
             self.error_log.warning(msg)
-            review_score = "Page Error"
+            review_score = "NF - Error"
         return review_score
 
     def get_appid(self, game, app_list={}):
@@ -394,22 +390,22 @@ class Tracker(Helper):
         """
         info_dict = {
             "game_name": "Unset",
-            self.dev_col: "No Data",
-            self.pub_col: "No Data",
-            self.genre_col: "No Data",
+            self.dev_col: "ND - Error",
+            self.pub_col: "ND - Error",
+            self.genre_col: "ND - Error",
             self.ea_col: "No",
             self.metacritic_col: "No Score",
             self.steam_rev_per_col: "No Reviews",
             self.steam_rev_total_col: "No Reviews",
             self.user_tags_col: "No Tags",
             self.release_col: "No Year",
-            "price": "No Data",
+            "price": "ND - Error",
             "discount": 0.0,
             "on_sale": False,
             "linux_compat": "Unsupported",
-            "drm_notice": "No Data",
-            "categories": "No Data",
-            "ext_user_account_notice": "No Data",
+            "drm_notice": "ND - Error",
+            "categories": "ND - Error",
+            "ext_user_account_notice": "ND - Error",
         }
         if not appid:
             return info_dict
@@ -425,7 +421,6 @@ class Tracker(Helper):
             return info_dict
         dict = response.json()
         # gets games store data
-        self.api_sleeper("get_store_link")
         store_link = self.get_store_link(appid)
         self.api_sleeper("store_data")
         response = self.request_url(store_link)
@@ -667,7 +662,7 @@ class Tracker(Helper):
             for game_name in tqdm(
                 iterable=check_list,
                 ascii=True,
-                unit="games",
+                unit=" games",
                 ncols=40,
                 dynamic_ncols=True,
             ):
@@ -803,7 +798,7 @@ class Tracker(Helper):
             for game in tqdm(
                 iterable=owned_games,
                 ascii=True,
-                unit="games",
+                unit=" games",
                 ncols=100,
             ):
                 game_name = game["name"]
@@ -976,7 +971,7 @@ class Tracker(Helper):
         for game in tqdm(
             iterable=games,
             ascii=True,
-            unit="games",
+            unit=" games",
             ncols=100,
         ):
             game_name = self.unicode_fix(game["name"])
@@ -1087,7 +1082,7 @@ class Tracker(Helper):
         for game_name in tqdm(
             iterable=self.games.row_idx,
             ascii=True,
-            unit="games",
+            unit=" games",
             ncols=100,
         ):
             if game_name in steam_deck_ignore_list:
@@ -1383,7 +1378,7 @@ class Tracker(Helper):
         for game, index in tqdm(
             iterable=self.games.row_idx.items(),
             ascii=True,
-            unit="games",
+            unit=" games",
             ncols=100,
         ):
             # TODO improve names
@@ -1751,9 +1746,9 @@ class Tracker(Helper):
         # statistics setup
         na_values = [
             "NaN",
-            "Page Error",
+            "NF - Error",
             "Invalid Date",
-            "No Data",
+            "ND - Error",
             "No Tags",
             "No Year",
             "No Score",
@@ -1793,7 +1788,7 @@ class Tracker(Helper):
             ("Open Log", self.open_log),
             ("Extra Choices", self.extra_actions),
         ]
-        msg = "\nEnter the Number for the action you or nothing to open in Excel.\n"
+        msg = "\nEnter the Number for the action you want to do or just press enter to open in Excel.\n"
         if not self.pick_task(choices, msg):
             self.excel.open_excel()
 

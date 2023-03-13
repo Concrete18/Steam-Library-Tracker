@@ -46,21 +46,29 @@ class GetMetacritic(unittest.TestCase):
     def setUp(self):
         self.t = Tracker()
 
-    def test_get_metacritic(self):
-        metacritic_tests = {
-            "Dishonored 2": 86,
-            "Deep Rock Galactic": 85,
-            "Inscryption": 85,
-            "Not a Real Game": "Page Error",
-        }
-        for name, answer in metacritic_tests.items():
-            with self.subTest(name=name, answer=answer):
-                result = self.t.get_metacritic(name, "pc")
-                self.assertEqual(result, answer)
+    def test_inscryption(self):
+        result = self.t.get_metacritic("Inscryption", "PC")
+        self.assertEqual(result, 85)
+
+    def test_dishonored_2(self):
+        result = self.t.get_metacritic("Dishonored 2", "PC")
+        self.assertEqual(result, 86)
+
+    def test_drg(self):
+        result = self.t.get_metacritic("Deep Rock Galactic", "PC")
+        self.assertEqual(result, 85)
+
+    def test_jedi_fallen_order(self):
+        result = self.t.get_metacritic("STAR WARS Jedi: Fallen Order", "PS4")
+        self.assertEqual(result, 79)
 
     def test_switch(self):
         result = self.t.get_metacritic("Splatoon 3", "switch")
         self.assertEqual(result, 83)
+
+    def test_invalid_game(self):
+        result = self.t.get_metacritic("Not a Real Game", "PC")
+        self.assertEqual(result, "NF - Error")
 
 
 class GetTimeToBeat(unittest.TestCase):
@@ -226,9 +234,9 @@ class GetGameInfo(unittest.TestCase):
         Tests for default value when invalid game is given.
         """
         default_dict = {
-            self.t.dev_col: "No Data",
-            self.t.pub_col: "No Data",
-            self.t.genre_col: "No Data",
+            self.t.dev_col: "ND - Error",
+            self.t.pub_col: "ND - Error",
+            self.t.genre_col: "ND - Error",
             self.t.ea_col: "No",
             self.t.metacritic_col: "No Score",
             self.t.steam_rev_per_col: "No Reviews",
@@ -236,13 +244,13 @@ class GetGameInfo(unittest.TestCase):
             self.t.user_tags_col: "No Tags",
             self.t.release_col: "No Year",
             "game_name": "Unset",
-            "price": "No Data",
+            "price": "ND - Error",
             "discount": 0.0,
             "on_sale": False,
             "linux_compat": "Unsupported",
-            "drm_notice": "No Data",
-            "categories": "No Data",
-            "ext_user_account_notice": "No Data",
+            "drm_notice": "ND - Error",
+            "categories": "ND - Error",
+            "ext_user_account_notice": "ND - Error",
         }
         self.assertEqual(self.t.get_game_info(None), default_dict)
 
