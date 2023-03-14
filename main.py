@@ -246,7 +246,13 @@ class Tracker(Helper):
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
         self.api_sleeper("time_to_beat")
-        results = HowLongToBeat().search(game_name)
+        try:
+            results = HowLongToBeat().search(game_name)
+        except:
+            for _ in range(3):
+                time.sleep(10)
+                results = HowLongToBeat().search(game_name)
+            return ""
         if not results:
             self.api_sleeper("time_to_beat")
             if game_name.isupper():
@@ -711,8 +717,8 @@ class Tracker(Helper):
                     self.excel.save(use_print=False, backup=False)
                 # title progress percentage
                 cur_itr += 1
-                progress = round(cur_itr / missing_data * 100, 2)
-                self.set_title(f"{progress}% - {self.title}")
+                progress = cur_itr / missing_data * 100
+                self.set_title(f"{progress:.2f}% - {self.title}")
             self.set_title()
         except KeyboardInterrupt:
             print("\nCancelled")
@@ -1111,8 +1117,8 @@ class Tracker(Helper):
 
             # title progress percentage
             cur_itr += 1
-            progress = round(cur_itr / total_games * 100, 2)
-            self.set_title(f"{progress}% - {self.title}")
+            progress = cur_itr / total_games * 100
+            self.set_title(f"{progress:.2f}% - {self.title}")
         self.set_title()
         if updated_games:
             print("\nUpdated Games:")
@@ -1132,8 +1138,10 @@ class Tracker(Helper):
         Checks `playstation_games.json` to find out if it is newly updated so
         it can add the new games to the sheet.
         """
+        if not self.update_ps_data:
+            return
         # checks if json exists
-        if not self.ps_data.exists() and self.update_ps_data:
+        if not self.ps_data.exists():
             print("\nPlayStation JSON does not exist.")
             self.ps_data.touch()
             webbrowser.open_new(self.playstation_data_link)

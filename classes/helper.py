@@ -42,8 +42,8 @@ class Helper:
             start = time.perf_counter()
             value = func(*args, **kwargs)
             end = time.perf_counter()
-            elapsed = round(end - start, 2)
-            print(f"{func.__name__} Completion Time: {elapsed}")
+            elapsed = end - start
+            print(f"{func.__name__} Completion Time: {elapsed:.2f}")
             return value
 
         return wrapped
@@ -335,8 +335,9 @@ class Helper:
                 max_similarity = match_perc
                 match = string
         if debug:
-            match_perc = round(max_similarity, 2)
-            print(f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {match_perc}")
+            print(
+                f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {max_similarity:.2f}"
+            )
         return match
 
     def lev_dist_matcher(
