@@ -1,11 +1,12 @@
 from difflib import SequenceMatcher
-import time, json, requests, re, shutil
-from pathlib import Path
+import time, json, requests, re
 import datetime as dt
 
-# logging
-from logging.handlers import RotatingFileHandler
-import logging as lg
+# logging import in case helper.py as main
+if __name__ != "__main__":
+    from classes.logger import Logger
+else:
+    from logger import Logger
 
 
 def keyboard_interrupt(func):
@@ -18,7 +19,7 @@ def keyboard_interrupt(func):
         try:
             func(*args, **kwargs)
         except KeyboardInterrupt:
-            delay = 1
+            delay = 0.5
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
             exit()
@@ -26,58 +27,11 @@ def keyboard_interrupt(func):
     return wrapped
 
 
-def setup():
-    """
-    Sets up the config and excel file.
-    """
-    config_folder = Path("configs")
-    config_folder.mkdir(exist_ok=True)
-    config_template = Path("templates\config_template.json")
-    excel_template = Path("templates\Game_Library_Template.xlsx")
-    shutil.copyfile(config_template, Path("configs/config.json"))
-    shutil.copyfile(excel_template, "Game Library.xlsx")
-    print("Open the config and update the following info:")
-    print("steam_id\nsteam_api_key")
-    print("\nOnce updated run again.")
-    input("Press Enter to Close.")
-    exit()
+class Helper:
 
+    Log = Logger()
+    error_log = Log.create_log(name="helper", log_path="logs/error.log")
 
-class Logger:
-
-    # run setup if config does not exist
-    config_folder = Path("configs")
-    if not config_folder.exists():
-        setup()
-
-    # logger setup
-    log_formatter = lg.Formatter(
-        "%(asctime)s %(levelname)s %(message)s", datefmt="%m-%d-%Y %I:%M:%S %p"
-    )
-    logger = lg.getLogger(__name__)
-    logger.setLevel(lg.DEBUG)  # Log Level
-    my_handler = RotatingFileHandler(
-        "configs/tracker.log",
-        maxBytes=5 * 1024 * 1024,
-        backupCount=2,
-    )
-    my_handler.setFormatter(log_formatter)
-    logger.addHandler(my_handler)
-
-    def log_return(self, func):
-        """
-        Logs return of function when this decoratior is applied.
-        """
-
-        def wrapped(*args, **kwargs):
-            value = func(*args, **kwargs)
-            self.logger.info(value)
-            return value
-
-        return wrapped
-
-
-class Helper(Logger):
     @staticmethod
     def benchmark(func):
         """
@@ -88,43 +42,53 @@ class Helper(Logger):
             start = time.perf_counter()
             value = func(*args, **kwargs)
             end = time.perf_counter()
-            elapsed = round(end - start, 2)
-            print(f"{func.__name__} Completion Time: {elapsed}")
+            elapsed = end - start
+            print(f"{func.__name__} Completion Time: {elapsed:.2f}")
             return value
 
         return wrapped
 
-    def request_url(self, url, headers=None, second_try=False):
+    def request_url(self, url, params=None, headers=None, second_try=False):
         """
         Quick data request with check for success.
         """
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, params, headers=headers)
         except requests.exceptions.ConnectionError:
             if second_try:
                 return False
             msg = "Connection Error: Internet can't be accessed"
-            self.logger.warning(msg)
+            self.error_log.warning(msg)
             time.sleep(5)
             self.request_url(url, headers, second_try=True)
+            return False
+        except requests.exceptions.TooManyRedirects:
+            if second_try:
+                return False
+            msg = "Too Many Redirects: Exceeded 30 redirects"
+            self.error_log.warning(msg)
+            time.sleep(5)
+            self.request_url(url, headers, second_try=True)
+            return False
+        except requests.exceptions.ReadTimeout:
             return False
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
             msg = "Server Error: make sure your api key and steam id is valid."
-            self.logger.warning(msg)
+            self.error_log.warning(msg)
         elif response.status_code == 404:
-            msg = f"Server Error: 404 Content moved or was. URL: {url}"
-            self.logger.warning(msg)
-        elif response.status_code == 429:
+            msg = f"Server Error: 404 Content does not exist. URL: {url}"
+            self.error_log.warning(msg)
+        elif response.status_code == 429 or response.status_code == 403:
             msg = "Server Error: Too Many reqeuests made. Waiting to try again."
-            self.logger.warning(msg)
-            self.logger.warning(response)
+            self.error_log.warning(msg)
+            self.error_log.warning(response)
             time.sleep(5)
             self.request_url(url, headers)
         else:
             msg = f"Unknown Error: {response.status_code}"
-            self.logger.warning(msg)
+            self.error_log.warning(msg)
         return False
 
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
@@ -175,28 +139,76 @@ class Helper(Logger):
         Turns spaces into dashes if `space_to_dash` is true.
         """
         string = string.replace(" ", space_replace)
-        # Allowed characters (0-9, A-Z, a-z, "-", ".", "_", "~")
-        string = re.sub(r"[^a-z0-9-._~]+", "", string.lower()).strip()
+        # Allowed characters (0-9, A-Z, a-z, "-", "_", "~")
+        string = re.sub(r"[^a-z0-9-_~]+", "", string.lower()).strip()
         while "--" in string:
             string = string.replace("--", "-")
         return string
 
     @staticmethod
-    def convert_time_passed(minutes_played):
+    def convert_time_passed(min=0, hr=0, day=0, wk=0, mnth=0, yr=0):
         """
-        Using `minutes_played`, outputs a nicely formatted time played and an int for hours played.
+        Outputs a string for when the time passed.
+        Takes minutes:`min`, hours:`hr`, days:`day`, weeks:`wk`
+        months:`mnth` and years:`yr`.
 
-        Returns time_played and hours_played
+        Return format examples:
+
+        1.0 Minute(s)
+
+        2.3 Hour(s)
+
+        4.5 Day(s)
+
+        6.7 Week(s)
+
+        8.9 Month(s)
+
+        2.1 Years(s)
         """
-        time_played = f"{round(minutes_played, 1)} Minute(s)"
-        hours_played = minutes_played / 60
-        if round(hours_played) >= 24:
-            days = round(hours_played / 24, 1)
-            time_played = f"{days} Day(s)"
-        elif minutes_played >= 60:
-            hours = round(hours_played, 1)
-            time_played = f"{hours} Hour(s)"
-        return time_played
+        # converts all into hours
+        hours_in_day = 24
+        hours_in_week = 168
+        hours_in_month = 730
+        hours_in_year = 8760
+        hours = (
+            (min / 60)
+            + hr
+            + (day * hours_in_day)
+            + (wk * hours_in_week)
+            + (mnth * hours_in_month)
+            + (yr * hours_in_year)
+        )
+        rounded_hours = round(hours)
+        # gets format
+        if rounded_hours >= hours_in_year:
+            total = round(hours / hours_in_year, 1)
+            time_passed = f"{total} Year"
+        elif rounded_hours >= hours_in_month:
+            total = round(hours / hours_in_month, 1)
+            time_passed = f"{total} Month"
+        elif rounded_hours >= hours_in_week:
+            total = round(hours / hours_in_week, 1)
+            time_passed = f"{total} Week"
+        elif rounded_hours >= hours_in_day:
+            total = round(hours / hours_in_day, 1)
+            time_passed = f"{total} Day"
+        elif hours >= 1:
+            total = round(hours, 1)
+            time_passed = f"{total} Hour"
+        else:
+            total = round(hours * 60, 1)
+            time_passed = f"{total} Minute"
+        # makes string plural if needed
+        if total > 1:
+            time_passed += "s"
+        # fixs values that end up slightly off
+        fix_dict = {
+            "12.0 Months": "1.0 Year",
+        }
+        if time_passed in fix_dict.keys():
+            time_passed = fix_dict[time_passed]
+        return time_passed
 
     @staticmethod
     def unicode_remover(string) -> str:
@@ -247,6 +259,16 @@ class Helper(Logger):
             # middle entries
             else:
                 final_string += f", {entry}"
+
+    @staticmethod
+    def check_for_shared_games(lists_to_check):
+        """
+        Finds the entries in lists that are within all lists given in `lists_to_check`.
+        """
+        common_entries = set(lists_to_check[0])
+        for entry in lists_to_check:
+            common_entries &= set(entry)
+        return common_entries
 
     def ask_for_integer(
         self, msg=None, num_range=False, allow_blank=False
@@ -313,8 +335,9 @@ class Helper(Logger):
                 max_similarity = match_perc
                 match = string
         if debug:
-            match_perc = round(max_similarity, 2)
-            print(f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {match_perc}")
+            print(
+                f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {max_similarity:.2f}"
+            )
         return match
 
     def lev_dist_matcher(
@@ -348,6 +371,18 @@ class Helper(Logger):
             sorted_keys = sorted_keys[0:limit]
         return sorted_keys
 
+    def any_is_num(self, value):
+        """
+        Returns True if the `value` is an int, float or numeric string.
+        """
+        val_type = type(value)
+        if val_type is str:
+            if value.replace(".", "", 1).isdigit():
+                return True
+        elif val_type is int or val_type is float:
+            return True
+        return False
+
     def save_json_output(self, new_data, filename):
         """
         Saves data into json format with the given filename.
@@ -358,12 +393,12 @@ class Helper(Logger):
         with open(filename) as file:
             last_check_data = json.load(file)
             if new_data != last_check_data:
-                raise "Data did not save error"
+                raise PermissionError("Data did not save error.")
 
 
 if __name__ == "__main__":
     App = Helper()
-    # response = App.request_url("https://store.steampowered.com/app/752564654590/")
-    # print(response.url)
     # print(App.unicode_remover("Half-Life 2: Lost Coast"))
-    print(App.word_and_list(["Test1", "test2", "test3"]))
+    # print(App.word_and_list(["Test1", "test2", "test3"]))
+    # val = App.convert_time_passed(min=0, hr=0.2, wk=0, day=0, mnth=0, yr=0)
+    # print(val)

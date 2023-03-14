@@ -1,0 +1,8 @@
+[report]
+exclude_lines =
+    pragma: no cover
+
+omit =
+    testing/*
+    classes/__init__.py
+    classes/logger.py
