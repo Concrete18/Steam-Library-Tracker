@@ -31,20 +31,21 @@ Steam games due to lack of an API compared to Steam.
 
 ## Setup
 
-1. Install dependencies with the following command.
+1. Install Python (It is currently tested with Python 11.1 and Python 10)
+2. Install dependencies with the following command.
 
    ```bash
    pip install -r requirements.txt
    ```
 
-2. Run main.py so it can create your config file where you need to enter your steam ID and Steam API Key.
-3. (Optional) Set up any of the other optional settings within the config.
-4. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
-5. Enjoy!
+3. Run main.py so it can create your config file where you need to enter your steam ID and Steam API Key.
+4. (Optional) Set up any of the other optional settings within the config.
+5. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
+6. Enjoy!
 
 ## To Do
 
-- [] Allow Some Features to be toggled.
+None at the moment
 
 ## Documentation
 
@@ -76,8 +77,8 @@ Your PlayStation account must be logged in for this to get your data.
 This is the easiest method I have found so far.
 It is faster than adding the games manually but I am unable to automate it yet.
 
-    Note:
-    Hours are not tracked like Steam due to a lack of an API.
+Note:
+Hours are not tracked like Steam due to a lack of an API.
 
 ### Steam Deck Game Status Checker
 
