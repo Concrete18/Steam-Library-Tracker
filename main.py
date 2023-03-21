@@ -34,7 +34,7 @@ def setup():
         all_clear = False
     # exits out of function early if all clear
     if all_clear:
-        return
+        return config
     # instructions
     instructsions = [
         "Open the config and update the following entries:",
@@ -55,8 +55,7 @@ class Tracker(Helper):
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
     title = "Game Library Tracker"
     # config init
-    setup()
-    config = Path("configs\config.json")
+    config = setup()
     with open(config) as file:
         data = json.load(file)
     steam_key = data["settings"]["steam_api_key"]
@@ -64,7 +63,6 @@ class Tracker(Helper):
     vanity_url = data["settings"]["vanity_url"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
-    update_ps_data = data["settings"]["update_ps_data"]
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     appid_ignore_list = data["appid_ignore_list"]
@@ -404,7 +402,7 @@ class Tracker(Helper):
             self.pub_col: "ND - Error",
             self.genre_col: "ND - Error",
             self.ea_col: "No",
-            self.metacritic_col: "No Score",
+            self.metacritic_col: False,
             self.steam_rev_per_col: "No Reviews",
             self.steam_rev_total_col: "No Reviews",
             self.user_tags_col: "No Tags",
@@ -677,14 +675,14 @@ class Tracker(Helper):
                 dynamic_ncols=True,
             ):
                 # How long to beat check with scraping
-                cur_val = self.games.get_cell(game_name, self.time_to_beat_col)
-                if not cur_val:
+                filled_value = self.games.get_cell(game_name, self.time_to_beat_col)
+                if not filled_value:
                     time_to_beat = self.get_time_to_beat(game_name)
                     if time_to_beat:
                         self.set_time_to_beat(game_name, time_to_beat)
                 # metacritic score check with scraping
-                cur_val = self.games.get_cell(game_name, self.metacritic_col)
-                if not cur_val:
+                filled_value = self.games.get_cell(game_name, self.metacritic_col)
+                if not filled_value:
                     platform = self.games.get_cell(game_name, self.platform_col)
                     metacritic_score = self.get_metacritic(game_name, platform)
                     if metacritic_score:
@@ -710,6 +708,7 @@ class Tracker(Helper):
                 # metacritic check from get_game_info func
                 if steam_info[self.metacritic_col]:
                     score = steam_info[self.metacritic_col]
+                    # This fails
                     self.set_metacritic(game_name, score)
                 running_interval -= 1
                 if running_interval == 0:
@@ -878,38 +877,6 @@ class Tracker(Helper):
             if removed_games:
                 self.update_removed_games(removed_games)
 
-    @staticmethod
-    def hash_file(file_path, buf_size: int = 65536):
-        """
-        Creates a hash for the given `file_path`.
-        """
-        md5 = hashlib.md5()
-        with open(file_path, "rb") as f:
-            while True:
-                data = f.read(buf_size)
-                if not data:
-                    break
-                md5.update(data)
-        return md5.hexdigest()
-
-    def check_for_changes(self, ps_data):
-        """
-        Checks for changes to the json file.
-        """
-        with open(self.config) as file:
-            data = json.load(file)
-        previous_hash = data["settings"]["playstation_hash"]
-        new_hash = self.hash_file(ps_data)
-        if new_hash == previous_hash:
-            print("\nNo PlayStation games were added or updated.")
-            return False
-        else:
-            self.data["settings"]["playstation_hash"] = new_hash
-            self.save_json_output(self.data, self.config)
-            with open(self.config) as file:
-                data = json.load(file)
-        return True
-
     def should_ignore(self, name: str = None, appid: int = None) -> bool:
         """
         Checks if the item should be ignored based on name or appid.
@@ -1064,30 +1031,16 @@ class Tracker(Helper):
         category_id = results["resolved_category"]
         return categories[category_id]
 
-    def should_run_steam_deck_update(self):
-        """
-        Returns True if the steam_deck_check function should run.
-
-        Checks if enough time has passed since the last run.
-        """
-        last_check_string = self.data["last_runs"]["steam_deck_check"]
-        last_check = self.string_to_date(last_check_string)
-        days_since = self.days_since(last_check)
-        check_freq = self.data["settings"]["steam_deck_check_freq"]
-        # skip check if set to 0
-        if check_freq == 0:
-            return
-        if days_since < check_freq:
-            days_till_check = check_freq - days_since
-            print(f"\nNext Steam Deck Check in {days_till_check} days.")
-            return False
-        return True
-
     def steam_deck_check(self):
         """
         Checks steam_deck.txt and updates steam deck status with the new info.
         """
         print("\nSteam Deck Compatibility Check")
+        if self.steam_deck_col not in self.games.col_idx.keys():
+            print(
+                f"{self.steam_deck_col} column is missing.\n Add the column and try again."
+            )
+            return
         steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
         updated_games = []
         empty_results = []
@@ -1138,21 +1091,11 @@ class Tracker(Helper):
         Checks `playstation_games.json` to find out if it is newly updated so
         it can add the new games to the sheet.
         """
-        if not self.update_ps_data:
-            return
-        # checks if json exists
-        if not self.ps_data.exists():
-            print("\nPlayStation JSON does not exist.")
-            self.ps_data.touch()
-            webbrowser.open_new(self.playstation_data_link)
-            webbrowser.open(r"https://store.playstation.com/")
-            return
-        if self.check_for_changes(self.ps_data):
-            with open(self.ps_data) as file:
-                data = json.load(file)
-            print("\nChecking for new games for PS4 or PS5.")
-            games = data["data"]["purchasedTitlesRetrieve"]["games"]
-            self.add_playstation_games(games)
+        with open(self.ps_data) as file:
+            data = json.load(file)
+        print("\nChecking for new games for PS4 or PS5.")
+        games = data["data"]["purchasedTitlesRetrieve"]["games"]
+        self.add_playstation_games(games)
 
     def update_game(
         self,
@@ -1573,26 +1516,6 @@ class Tracker(Helper):
         common_games_str = self.word_and_list(common_games)
         print(f"\nGames in Common:\n{common_games_str}")
 
-    def arg_func(self):
-        """
-        Checks if any arguments were given and runs commands.
-        """
-        if len(sys.argv) == 1:
-            return
-        arg = sys.argv[1].lower()
-        if arg == "help":
-            print("Help:\nSync-Syncs steam games")
-            print("random-allows getting random picks from games based on play status")
-        elif arg == "refresh":
-            print("Running Sync")
-            self.sync_steam_games(self.steam_id)
-        elif arg == "random":
-            self.pick_random_game()
-        else:
-            print("Invalid Argument Given.")
-        input()
-        exit()
-
     def custom_update_game(self):
         """
         Allows updating a game by typing in an as close a possible version of the game name.
@@ -1719,6 +1642,10 @@ class Tracker(Helper):
         Opens playstation data json file and web json with latest data
         for manual updating.
         """
+        # checks if json exists
+        if not self.ps_data.exists():
+            print("\nPlayStation JSON does not exist.\nCreating file now.\n")
+            self.ps_data.touch()
         subprocess.Popen(f'notepad "{self.ps_data}"')
         webbrowser.open(self.playstation_data_link)
         webbrowser.open(r"https://store.playstation.com/")
@@ -1817,21 +1744,12 @@ class Tracker(Helper):
         Main run function.
         """
         self.config_check()
-        self.arg_func()
         print(f"Starting {self.title}")
         self.sync_steam_games(self.steam_id)
-        if self.should_run_steam_deck_update():
-            self.steam_deck_check()
-        self.check_playstation_json()
         self.missing_info_check()
         self.game_library_actions()
 
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.view_favorite_games_sales()
     App.run()
-    # App.steam_deck_check()
-    # val = App.get_steam_user_tags(appid=1229490)
-    # val = App.get_game_info(632470)
-    # print(val)

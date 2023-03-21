@@ -5,9 +5,6 @@
         "steam_api_key": "Insert API Key",
         "excel_filename": "Game Library.xlsx",
         "logging": false,
-        "steam_deck_check_freq": 0,
-        "update_ps_data": false,
-        "playstation_hash": "Has Not Run",
         "playstation_data_link": "https://web.np.playstation.com/api/graphql/v1/op?operationName=getPurchasedGameList&variables=%7B%22isActive%22:true,%22platform%22:%5B%22ps4%22,%22ps5%22%5D,%22size%22:300,%22start%22:0,%22sortBy%22:%22TITLE_NAME%22,%22sortDirection%22:%22desc%22,%22subscriptionService%22:%22NONE%22%7D&extensions=%7B%22persistedQuery%22:%7B%22version%22:1,%22sha256Hash%22:%222c045408b0a4d0264bb5a3edfed4efd49fb4749cf8d216be9043768adff905e2%22%7D%7D"
     },
     "last_runs": {

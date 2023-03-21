@@ -238,7 +238,7 @@ class GetGameInfo(unittest.TestCase):
             self.t.pub_col: "ND - Error",
             self.t.genre_col: "ND - Error",
             self.t.ea_col: "No",
-            self.t.metacritic_col: "No Score",
+            self.t.metacritic_col: False,
             self.t.steam_rev_per_col: "No Reviews",
             self.t.steam_rev_total_col: "No Reviews",
             self.t.user_tags_col: "No Tags",
