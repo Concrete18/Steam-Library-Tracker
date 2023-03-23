@@ -1,4 +1,4 @@
-import random, json, os, re, sys, hashlib, webbrowser, subprocess, shutil, time
+import random, json, os, re, sys, webbrowser, subprocess, shutil, time
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -101,7 +101,8 @@ class Tracker(Helper):
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
     }
     excel = Excel(excel_filename, use_logging=logging)
-    games = Sheet(excel, "Name", sheet_name="Games", options=options)
+    games = Sheet(excel, sheet_name="Games", column_name="Name", options=options)
+    sales = Sheet(excel, sheet_name="Sales", column_name="Name", options=options)
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
@@ -1242,7 +1243,6 @@ class Tracker(Helper):
             self.ea_col: early_access,
             self.steam_deck_col: steam_deck_status,
             self.time_to_beat_col: self.get_time_to_beat(game_name),
-            self.metacritic_col: self.get_metacritic(game_name, "Steam"),
             self.rating_comp_col: f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
             self.prob_comp_col: f'=IFERROR({hours}/{ttb},"Missing Data")',
             self.hours_played_col: hours_played,
@@ -1251,7 +1251,6 @@ class Tracker(Helper):
             self.appid_col: appid,
             self.store_link_col: store_link_hyperlink,
             self.date_updated_col: dt.datetime.now(),
-            self.date_added_col: dt.datetime.now(),
         }
         steam_info = self.get_game_info(appid)
         if steam_info:
@@ -1320,13 +1319,74 @@ class Tracker(Helper):
             choice_list.pop(choice_list.index(picked_game))
             print(f"\nPicked game with {play_status} status:\n{picked_game}")
 
-    def get_favorite_games_sales(self):
+    def get_favorite_games(self, rating_limit=8):
+        """
+        gets favorite games from excel file as a list of dicts
+        """
+        # starts check with progress bar
+        print("\nGame Sale Check\n")
+        games = []
+        for game, index in tqdm(
+            iterable=self.games.row_idx.items(),
+            ascii=True,
+            unit=" games",
+            ncols=100,
+        ):
+            my_rating = self.games.get_cell(game, self.my_rating_col)
+            if my_rating == None:
+                continue
+            appid = self.games.get_cell(game, "App ID")
+            if my_rating >= rating_limit and appid:
+                game_info = self.get_game_info(appid)
+                if not game_info or not "on_sale" in game_info.keys():
+                    continue
+                # create game_dict
+                game_dict = {}
+                game_dict["Date Updated"] = dt.datetime.now()
+                game_dict["Name"] = game_info["game_name"]
+                game_dict["Discount"] = game_info["discount"] * 0.01
+                game_dict["Price"] = game_info["price"]
+                game_dict["My Rating"] = my_rating
+                game_dict[self.steam_rev_per_col] = game_info[self.steam_rev_per_col]
+                game_dict[self.steam_rev_total_col] = game_info[
+                    self.steam_rev_total_col
+                ]
+                game_dict[
+                    self.store_link_col
+                ] = f'=HYPERLINK("{self.games.get_cell(game, "Store Link")}","Store")'
+                game_dict[self.time_to_beat_col] = self.games.get_cell(
+                    game, "Time To Beat in Hours"
+                )
+                game_dict[self.user_tags_col] = game_info[self.user_tags_col]
+                game_dict[self.release_col] = game_info[self.release_col]
+                game_dict[self.genre_col] = game_info[self.genre_col]
+                game_dict[self.ea_col] = game_info[self.ea_col]
+                game_dict[self.dev_col] = game_info[self.dev_col]
+                game_dict[self.pub_col] = game_info[self.pub_col]
+                game_dict[self.metacritic_col] = game_info[self.metacritic_col]
+                games.append(game_dict)
+        return games
+
+    def update_sales_sheet(self, games):
+        """
+        ph
+        """
+        for game in games:
+            name = game["Name"]
+            price = game["Price"]
+            if name in self.sales.row_idx.keys():
+                self.sales.delete_row(name)
+            if name == "Unset" or "$" not in price:
+                continue
+            self.sales.add_new_line(game)
+        self.sales.format_all_cells()
+        self.excel.save()
+
+    def update_favorite_games_sales(self):
         """
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an input after running.
         """
-        # gets favorite games from excel file as a list of dicts
-        fav_games = []
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         msg = "What is the minimum rating for this search? (1-10)\n"
         rating_limit = input(msg) or "8"
@@ -1335,100 +1395,18 @@ class Tracker(Helper):
         else:
             print("Invalid response - Using 8 instead.")
             rating_limit = 8
-        # starts check with progress bar
-        print("\nGame Sale Check\n")
-        for game, index in tqdm(
-            iterable=self.games.row_idx.items(),
-            ascii=True,
-            unit=" games",
-            ncols=100,
-        ):
-            # TODO improve names
-            my_rating = self.games.get_cell(game, self.my_rating_col)
-            if my_rating == None:
-                continue
-            appid = self.games.get_cell(game, "App ID")
-            if my_rating >= rating_limit and appid:
-                game_dict = self.get_game_info(appid)
-                # TODO include store links
-                if not game_dict:
-                    continue
-                game_dict["My Rating"] = my_rating
-                if "on_sale" in game_dict.keys():
-                    if game_dict["on_sale"]:
-                        fav_games.append(game_dict)
-        fav_games = sorted(fav_games, key=lambda i: i["discount"], reverse=True)
-        fav_total = len(fav_games)
-        print(f"\n{fav_total} Favorite Game Deals in Descending Order:\n")
-        for game in fav_games:
-            print(f'{game["game_name"]} - {game["price"]}')
-        # save into file
-        self.save_json_output(fav_games, "configs/favorite_games.json")
-        # TODO ask about running the conversion to csv or excel
-        return fav_games
-
-    def view_favorite_games_sales(self):
-        """
-        Allows viewing different formatted info on the games created during
-        the last run of `get_favorite_games_sales`.
-        """
-        df = pd.read_json("configs/favorite_games.json")
-        print("\nDo you want to output as Excel (1) or CSV (2)?\n")
-        output = input()
-        if output == "1":
-            output = "excel"
-        elif output == "2":
-            output = "csv"
-        else:
-            return
-        Path("outputs").mkdir(exist_ok=True)
-        if output == "excel":
-            column_order = [
-                "game_name",
-                "My Rating",
-                "Steam Review Percent",
-                "Steam Review Total",
-                "Metacritic",
-                "price",
-                "discount",
-                "Early Access",
-                "Release Year",
-                "Genre",
-                "User Tags",
-            ]
-            file_path = "outputs/favorite_games_sales.xlsx"
-            while True:
-                try:
-                    df.to_excel(
-                        file_path,
-                        sheet_name="Favorite Game Sales",
-                        columns=column_order,
-                    )
-                    break
-                except PermissionError:
-                    msg = "Make sure the excel sheet is closed."
-                    print(msg, end="\r")
-                    time.sleep(1)
-            # formats excel sheet
-            excel = Excel(file_path)
-            # TODO improve titles
-            favorites = Sheet(
-                excel,
-                "game_name",
-                options=self.options,
-            )
-            # fix column width
-            # BUG formatting does not work
-            favorites.format_all_cells()
-            # BUG does not find file to open
-            # os.startfile(file_path)
-        elif output == "csv":
-            df.to_csv("outputs/favorite_games_sales.csv")
-            folder = os.path.join(self.script_dir, "outputs")
-            subprocess.Popen(f'explorer "{folder}"')
-        else:
-            print("Invalid Resposne")
-            return
+        games = self.get_favorite_games(rating_limit)
+        # delete old game sales
+        cur_rows = [game for game in self.sales.row_idx.keys()].reverse()
+        if cur_rows:
+            for game in cur_rows:
+                self.sales.delete_row(game)
+        # get new game sales
+        games = self.get_favorite_games()
+        total = len(games)
+        # prints info
+        print(f"\nFound {total} Favorite Game Sales:\n")
+        self.update_sales_sheet(games=games)
 
     def get_games_list(self, steam_id):
         """
@@ -1503,8 +1481,6 @@ class Tracker(Helper):
                     else:
                         steam_ids.append(steam_id)
                         num += 1
-        # steam_ids.append(76561197969291006)
-        # steam_ids.append(76561198088659293)
         if len(steam_ids) < 2:
             print("Not enough Steam ID's were given.")
         print("Finding Games in Common.")
@@ -1708,8 +1684,7 @@ class Tracker(Helper):
         stats = Stat(df)
         choices = [
             ("Get Games in Common", self.find_shared_games),
-            ("Get Favorite Games Sales", self.get_favorite_games_sales),
-            ("View Favorite Games Sales", self.view_favorite_games_sales),
+            ("Update Favorite Games Sales", self.update_favorite_games_sales),
             ("Calculate Statistics", stats.get_game_statistics),
             ("Update All Cell Formatting", self.games.format_all_cells),
         ]
@@ -1752,4 +1727,6 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
+    App.update_favorite_games_sales()
+    exit()
     App.run()
