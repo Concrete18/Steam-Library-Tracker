@@ -398,7 +398,3 @@ class Helper:
 
 if __name__ == "__main__":
     App = Helper()
-    # print(App.unicode_remover("Half-Life 2: Lost Coast"))
-    # print(App.word_and_list(["Test1", "test2", "test3"]))
-    # val = App.convert_time_passed(min=0, hr=0.2, wk=0, day=0, mnth=0, yr=0)
-    # print(val)

@@ -376,7 +376,7 @@ class Tracker(Helper):
 
     def get_steam_user_tags(self, appid: int, response=None):
         """
-        ph
+        Gets a games user tags from Steam.
         """
         if not response:
             self.api_sleeper("steam_review_scrape")
@@ -403,7 +403,6 @@ class Tracker(Helper):
             self.pub_col: "ND - Error",
             self.genre_col: "ND - Error",
             self.ea_col: "No",
-            self.metacritic_col: False,
             self.steam_rev_per_col: "No Reviews",
             self.steam_rev_total_col: "No Reviews",
             self.user_tags_col: "No Tags",
@@ -462,9 +461,6 @@ class Tracker(Helper):
                 # early access
                 if self.ea_col in info_dict[self.genre_col]:
                     info_dict[self.ea_col] = "Yes"
-            # get metacritic
-            if self.metacritic_col in keys:
-                info_dict[self.metacritic_col] = game_info["metacritic"]["score"]
             # get release year
             if "release_date" in keys:
                 release_date = game_info["release_date"]["date"]
@@ -709,7 +705,6 @@ class Tracker(Helper):
                 # metacritic check from get_game_info func
                 if steam_info[self.metacritic_col]:
                     score = steam_info[self.metacritic_col]
-                    # This fails
                     self.set_metacritic(game_name, score)
                 running_interval -= 1
                 if running_interval == 0:
@@ -1243,6 +1238,7 @@ class Tracker(Helper):
             self.ea_col: early_access,
             self.steam_deck_col: steam_deck_status,
             self.time_to_beat_col: self.get_time_to_beat(game_name),
+            self.metacritic_col: self.get_metacritic(game_name, platform),
             self.rating_comp_col: f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
             self.prob_comp_col: f'=IFERROR({hours}/{ttb},"Missing Data")',
             self.hours_played_col: hours_played,
@@ -1300,18 +1296,19 @@ class Tracker(Helper):
         if play_status == None:
             return
         choice_list = []
-        for game, index in self.games.row_idx.items():
-            game_play_status = self.games.get_cell(index, self.play_status_col).lower()
-            if game_play_status == play_status.lower():
+        for game in self.games.row_idx.keys():
+            game_play_status = self.games.get_cell(game, self.play_status_col)
+            if not game_play_status:
+                continue
+            if game_play_status.lower() == play_status.lower():
                 choice_list.append(game)
         # picks random game then removes it from the choice list so it wont show up again during this session
         picked_game = random.choice(choice_list)
         choice_list.pop(choice_list.index(picked_game))
         print(f"\nPicked game with {play_status} status:\n{picked_game}")
         # allows getting another random pick
-        while not input(
-            "Press Enter to pick another and No for finish.\n:"
-        ).lower() in ["no", "n"]:
+        msg = "\nPress Enter to pick another and No for finish.\n:"
+        while not input(msg).lower() in ["no", "n"]:
             if not choice_list:
                 print(f"All games with {play_status} have already been picked.\n")
                 return
@@ -1326,13 +1323,15 @@ class Tracker(Helper):
         # starts check with progress bar
         print("\nGame Sale Check\n")
         games = []
-        for game, index in tqdm(
-            iterable=self.games.row_idx.items(),
+        for game in tqdm(
+            iterable=self.games.row_idx.keys(),
             ascii=True,
             unit=" games",
             ncols=100,
         ):
             my_rating = self.games.get_cell(game, self.my_rating_col)
+            store_link = self.games.get_cell(game, "Store Link")
+            ttb = self.games.get_cell(game, "Time To Beat in Hours")
             if my_rating == None:
                 continue
             appid = self.games.get_cell(game, "App ID")
@@ -1341,42 +1340,43 @@ class Tracker(Helper):
                 if not game_info or not "on_sale" in game_info.keys():
                     continue
                 # create game_dict
-                game_dict = {}
-                game_dict["Date Updated"] = dt.datetime.now()
-                game_dict["Name"] = game_info["game_name"]
-                game_dict["Discount"] = game_info["discount"] * 0.01
-                game_dict["Price"] = game_info["price"]
-                game_dict["My Rating"] = my_rating
-                game_dict[self.steam_rev_per_col] = game_info[self.steam_rev_per_col]
-                game_dict[self.steam_rev_total_col] = game_info[
-                    self.steam_rev_total_col
-                ]
-                game_dict[
-                    self.store_link_col
-                ] = f'=HYPERLINK("{self.games.get_cell(game, "Store Link")}","Store")'
-                game_dict[self.time_to_beat_col] = self.games.get_cell(
-                    game, "Time To Beat in Hours"
-                )
-                game_dict[self.user_tags_col] = game_info[self.user_tags_col]
-                game_dict[self.release_col] = game_info[self.release_col]
-                game_dict[self.genre_col] = game_info[self.genre_col]
-                game_dict[self.ea_col] = game_info[self.ea_col]
-                game_dict[self.dev_col] = game_info[self.dev_col]
-                game_dict[self.pub_col] = game_info[self.pub_col]
-                game_dict[self.metacritic_col] = game_info[self.metacritic_col]
+                game_dict = {
+                    "Date Updated": dt.datetime.now(),
+                    "Name": game_info["game_name"],
+                    "Discount": game_info["discount"] * 0.01,
+                    "Price": game_info["price"],
+                    "My Rating": my_rating,
+                    self.steam_rev_per_col: game_info[self.steam_rev_per_col],
+                    self.steam_rev_total_col: game_info[self.steam_rev_total_col],
+                    self.store_link_col: f'=HYPERLINK("{store_link}","Store")',
+                    self.time_to_beat_col: ttb,
+                    self.user_tags_col: game_info[self.user_tags_col],
+                    self.release_col: game_info[self.release_col],
+                    self.genre_col: game_info[self.genre_col],
+                    self.ea_col: game_info[self.ea_col],
+                    self.dev_col: game_info[self.dev_col],
+                    self.pub_col: game_info[self.pub_col],
+                }
                 games.append(game_dict)
         return games
 
     def update_sales_sheet(self, games):
         """
-        ph
+        Updates the sales sheet with each games info from `games`.
         """
         for game in games:
             name = game["Name"]
             price = game["Price"]
+            discount = game["Discount"]
             if name in self.sales.row_idx.keys():
                 self.sales.delete_row(name)
-            if name == "Unset" or "$" not in price:
+            # checks to see if it should skip the game
+            skip_checks = [
+                name == "Unset",
+                "$" not in price,
+                discount == 0,
+            ]
+            if any(skip_checks):
                 continue
             self.sales.add_new_line(game)
         self.sales.format_all_cells()
@@ -1388,7 +1388,7 @@ class Tracker(Helper):
         Rating is set up using an input after running.
         """
         # sets minimum rating to and defaults to 8 if response is blank or invalid
-        msg = "What is the minimum rating for this search? (1-10)\n"
+        msg = "\nWhat is the minimum rating for this search? (1-10)\n"
         rating_limit = input(msg) or "8"
         if rating_limit.isnumeric():
             rating_limit = int(rating_limit)
@@ -1407,90 +1407,6 @@ class Tracker(Helper):
         # prints info
         print(f"\nFound {total} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
-
-    def get_games_list(self, steam_id):
-        """
-        Gets names of games owned by `steam_id`.
-        """
-        self.api_sleeper("steam_api")
-        base_url = "http://api.steampowered.com/"
-        api_action = "IPlayerService/GetOwnedGames/v0001/"
-        url = base_url + api_action
-        query = {
-            "key": self.steam_key,
-            "steamid": steam_id,
-            "include_played_free_games": 0,
-            "include_appinfo": 1,
-            "format": "json",
-            "l": "english",
-        }
-        response = self.request_url(url, params=query)
-        if response:
-            if "games" in response.json()["response"].keys():
-                game_list = []
-                for item in response.json()["response"]["games"]:
-                    game_name = item["name"]
-                    game_list.append(game_name)
-                return game_list
-        return False
-
-    def create_game_lists(self, steam_ids):
-        """
-        Creates a list containing a list each of the profiles games entered using the get_games_owned Function.
-        """
-        game_lists = []
-        valid_users = []
-        for id in steam_ids:
-            games = self.get_games_list(id)
-            if games:
-                game_lists.append(games)
-                valid_users.append(id)
-        return game_lists, valid_users
-
-    @staticmethod
-    def find_games_in_common(games_list):
-        """
-        Finds the games in common from each `games_list`.
-        """
-        base_list = set(games_list[0])
-        for game_list in games_list:
-            base_list &= set(game_list)
-        return base_list
-
-    def find_shared_games(self, steam_ids=[]):
-        """
-        Finds all of the Steam games in common via Steam ID's given.
-
-        If `steam_ids` is unused, it will ask for Steam ID's for the
-        shared games check.
-        """
-        get_input = True
-        if steam_ids:
-            get_input = False
-        # adds current user's steam id
-        steam_ids.append(self.steam_id)
-        if get_input:
-            steam_id = "init"
-            num = 1
-            while steam_id:
-                msg = f"\nEnter Steam ID {num}:\n"
-                steam_id = input(msg)
-                if steam_id:
-                    if self.validate_steam_id(steam_id):
-                        print("\nInvalid Steam ID.\nTry Again.")
-                    else:
-                        steam_ids.append(steam_id)
-                        num += 1
-        if len(steam_ids) < 2:
-            print("Not enough Steam ID's were given.")
-        print("Finding Games in Common.")
-        game_lists, valid_users = self.create_game_lists(steam_ids)
-        tot_users = len(valid_users)
-        common_games = self.find_games_in_common(game_lists)
-        tot_com = len(common_games)
-        print(f"Found {tot_com} Games in common from {tot_users} users.")
-        common_games_str = self.word_and_list(common_games)
-        print(f"\nGames in Common:\n{common_games_str}")
 
     def custom_update_game(self):
         """
@@ -1554,10 +1470,9 @@ class Tracker(Helper):
 
     def pick_game_to_update(self, games):
         """
-        ph
-        TODO finish docstring
+        Allows picking game to update playtime and last_updated.
         """
-        # allows picking game to update playtime and last_updated
+        #
         print("What game did you play last?")
         for count, game in enumerate(games):
             print(f"{count+1}. {game}")
@@ -1583,8 +1498,7 @@ class Tracker(Helper):
 
     def update_console_play_session(self):
         """
-        ph
-        TODO finish docstring
+        Updates a console games playtime.
         """
         console_games = []
         # gets all console games with last update times
@@ -1645,7 +1559,6 @@ class Tracker(Helper):
         print(msg)
         for count, (choice, action) in enumerate(choices):
             print(f"{count+1}. {choice}")
-        print("Enter only to Open Excel")
         msg = "\nEnter the Number for the corresponding action.\n"
         num = self.ask_for_integer(
             msg,
@@ -1661,11 +1574,10 @@ class Tracker(Helper):
             self.pick_task(choices, msg, repeat)
         return True
 
-    def extra_actions(self):
+    def game_library_actions(self):
         """
-        Gives a choice of less less used actions
+        Gives a choice of actions for the current game library.
         """
-        # statistics setup
         na_values = [
             "NaN",
             "NF - Error",
@@ -1682,32 +1594,18 @@ class Tracker(Helper):
         ]
         df = self.games.create_dataframe(na_vals=na_values)
         stats = Stat(df)
-        choices = [
-            ("Get Games in Common", self.find_shared_games),
-            ("Update Favorite Games Sales", self.update_favorite_games_sales),
-            ("Calculate Statistics", stats.get_game_statistics),
-            ("Update All Cell Formatting", self.games.format_all_cells),
-        ]
-        if not self.pick_task(choices):
-            close_in_seconds = 5
-            print(f"Opening Excel File then closing in {close_in_seconds}.")
-            self.excel.open_excel()
-            time.sleep(close_in_seconds)
-
-    def game_library_actions(self):
-        """
-        Gives a choice of actions for the current game library.
-        """
         # choice picker
         choices = [
-            ("Update Game", self.custom_update_game),
-            ("Add Game", self.manually_add_game),
             ("Sync Steam Deck Game Status", self.steam_deck_check),
-            ("Update Console Play Session", self.update_console_play_session),
-            ("Sync Playstation Games", self.update_playstation_data),
             ("Pick Random Game", self.pick_random_game),
+            ("Update Favorite Games Sales", self.update_favorite_games_sales),
+            ("Sync Playstation Games", self.update_playstation_data),
+            ("Calculate Statistics", stats.get_game_statistics),
+            ("Update Game", self.custom_update_game),
+            ("Update Console Play Session", self.update_console_play_session),
+            ("Add Game", self.manually_add_game),
+            ("Update All Cell Formatting", self.games.format_all_cells),
             ("Open Log", self.open_log),
-            ("Extra Choices", self.extra_actions),
         ]
         msg = "\nEnter the Number for the action you want to do or just press enter to open in Excel.\n"
         if not self.pick_task(choices, msg):
@@ -1727,6 +1625,6 @@ class Tracker(Helper):
 
 if __name__ == "__main__":
     App = Tracker()
-    App.update_favorite_games_sales()
-    exit()
+    # App.update_favorite_games_sales()
+    # exit()
     App.run()
