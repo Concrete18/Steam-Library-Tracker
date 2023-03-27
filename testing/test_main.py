@@ -170,7 +170,6 @@ class GetGameInfo(unittest.TestCase):
             self.t.pub_col,
             self.t.genre_col,
             self.t.ea_col,
-            self.t.metacritic_col,
             self.t.steam_rev_per_col,
             self.t.steam_rev_total_col,
             self.t.user_tags_col,
@@ -187,25 +186,22 @@ class GetGameInfo(unittest.TestCase):
         for key in keys:
             self.assertIn(key, dict.keys())
 
-    def test_metacritic_types(self):
+    def test_percent(self):
         """
-        Tests get_game_info function for specific types of results.
+        Tests get_game_info function for percents.
         """
         game_info = self.t.get_game_info(appid=752590)
-        score = game_info["Metacritic"]
-        metacritic_tests = [score == "No Score", type(score) == float]
-        self.assertTrue(game_info["Metacritic"], any(metacritic_tests))
         self.assertIsInstance(game_info["Steam Review Percent"], float)
         self.assertIsInstance(game_info["discount"], float)
 
-    def test_int_types(self):
+    def test_int(self):
         """
         Tests get_game_info function for specific types of results.
         """
         game_info = self.t.get_game_info(appid=752590)
         self.assertIsInstance(game_info["Steam Review Total"], int)
 
-    def test_str_types(self):
+    def test_string(self):
         """
         Tests get_game_info function for specific types of results.
         """
@@ -238,7 +234,6 @@ class GetGameInfo(unittest.TestCase):
             self.t.pub_col: "ND - Error",
             self.t.genre_col: "ND - Error",
             self.t.ea_col: "No",
-            self.t.metacritic_col: False,
             self.t.steam_rev_per_col: "No Reviews",
             self.t.steam_rev_total_col: "No Reviews",
             self.t.user_tags_col: "No Tags",
