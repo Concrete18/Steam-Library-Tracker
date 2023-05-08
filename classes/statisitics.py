@@ -3,8 +3,7 @@ from pathlib import Path
 import numpy as np
 import json
 
-if __name__ == "__main__":
-    from excel import Excel, Sheet
+from easierexcel import Excel, Sheet
 
 
 class Stat:
@@ -81,7 +80,7 @@ class Stat:
         x = df[x_value]
         plt.xlabel(x_value)
         plt.xlim([1, 10])
-        plt.xticks(range(0, 11))
+        plt.xticks(range(1, 11))
 
         # y axis
         y = df[y_value]
@@ -129,6 +128,9 @@ class Stat:
         df = self.df[[x_value, y_value]]
         # df.dropna(axis=0, inplace=True)
 
+        # sets up graph
+        plt.title(f"{rating_column} by Year")
+
         # sorts Release Year
         df = df.sort_values(by=x_value)
 
@@ -146,6 +148,10 @@ class Stat:
         plt.show()
 
     def avg_rating_by_year(self):
+        """
+        ph
+        BUG currently a blank plot
+        """
         new_df = self.df[["Steam Review Percent", "Release Year"]].copy()
         new_df["Steam Review"] = new_df["Steam Review Percent"] * 100.0
         new_df.groupby("Release Year")["Steam Review"].mean()
@@ -165,7 +171,6 @@ class Stat:
         plt.ylabel("AVG Rating")
 
         # base settings
-        # BUG currently a blank plot
         plt.plot(x, y)
         plt.tight_layout()
         plt.show()
@@ -200,8 +205,8 @@ if __name__ == "__main__":
     # run
     stats = Stat(df)
     stats.get_game_statistics()
-    # stats.my_rating_comparison()
-    stats.avg_rating_by_year()
+    stats.my_rating_comparison()
+    # stats.avg_rating_by_year()
     # stats.steam_rating_comparison()
     # stats.rating_release_comparison("Metacritic")
     # stats.rating_release_comparison("Steam Review Percent")

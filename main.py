@@ -702,10 +702,6 @@ class Tracker(Helper):
                 if steam_info[self.release_col]:
                     year = steam_info[self.release_col]
                     self.set_release_year(game_name, year)
-                # metacritic check from get_game_info func
-                if steam_info[self.metacritic_col]:
-                    score = steam_info[self.metacritic_col]
-                    self.set_metacritic(game_name, score)
                 running_interval -= 1
                 if running_interval == 0:
                     running_interval = save_interval
@@ -793,6 +789,7 @@ class Tracker(Helper):
             ]
             self.num_games_updated = 0
             self.num_games_added = 0
+            self.totaled_playtime = 0
             added_games = []
             updated_games = []
             # save interval setup
@@ -856,6 +853,8 @@ class Tracker(Helper):
             # prints the total games updated and added
             if 0 < self.num_games_updated < 50:
                 print(f"\nGames Updated: {self.num_games_updated}")
+                if self.num_games_updated > 1:
+                    print(f"Session Playtime: {self.totaled_playtime}")
                 # prints each game that was updated with info
                 for game_info in updated_games:
                     for line in game_info:
@@ -1119,6 +1118,7 @@ class Tracker(Helper):
         if not current_hours_played:
             return
         if current_hours_played > previous_hours_played:
+            # TODO check if data can be made more accurate.
             hours_played = current_hours_played - previous_hours_played
             added_time_played = self.convert_time_passed(hr=hours_played)
             self.set_hours_played(game_name, current_hours_played)
@@ -1128,12 +1128,13 @@ class Tracker(Helper):
             self.set_date_updated(game_name)
             self.set_play_status(game_name, play_status)
             self.games.format_row(game_name)
+            self.totaled_playtime += hours_played
             self.num_games_updated += 1
             # updated game logging
             overall_time_played = self.convert_time_passed(min=minutes_played)
             update_info = [
                 f"\n > {game_name} updated.",
-                f"   Added {added_time_played}",
+                f"   Played {added_time_played}",
                 f"   Total Playtime: {overall_time_played}.",
             ]
             # logs play time
@@ -1246,6 +1247,7 @@ class Tracker(Helper):
             self.time_played_col: time_played,
             self.appid_col: appid,
             self.store_link_col: store_link_hyperlink,
+            self.date_added_col: dt.datetime.now(),
             self.date_updated_col: dt.datetime.now(),
         }
         steam_info = self.get_game_info(appid)
@@ -1599,12 +1601,12 @@ class Tracker(Helper):
             ("Sync Steam Deck Game Status", self.steam_deck_check),
             ("Pick Random Game", self.pick_random_game),
             ("Update Favorite Games Sales", self.update_favorite_games_sales),
+            ("Update Console Play Session", self.update_console_play_session),
             ("Sync Playstation Games", self.update_playstation_data),
             ("Calculate Statistics", stats.get_game_statistics),
-            ("Update Game", self.custom_update_game),
-            ("Update Console Play Session", self.update_console_play_session),
-            ("Add Game", self.manually_add_game),
-            ("Update All Cell Formatting", self.games.format_all_cells),
+            # ("Update Game", self.custom_update_game),
+            # ("Add Game", self.manually_add_game),
+            # ("Update All Cell Formatting", self.games.format_all_cells),
             ("Open Log", self.open_log),
         ]
         msg = "\nEnter the Number for the action you want to do or just press enter to open in Excel.\n"
