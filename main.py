@@ -854,7 +854,7 @@ class Tracker(Helper):
             if 0 < self.num_games_updated < 50:
                 print(f"\nGames Updated: {self.num_games_updated}")
                 if self.num_games_updated > 1:
-                    print(f"Session Playtime: {self.totaled_playtime}")
+                    print(f"Session Playtime: {round(self.totaled_playtime, 1)} Hours")
                 # prints each game that was updated with info
                 for game_info in updated_games:
                     for line in game_info:
@@ -1131,11 +1131,10 @@ class Tracker(Helper):
             self.totaled_playtime += hours_played
             self.num_games_updated += 1
             # updated game logging
-            overall_time_played = self.convert_time_passed(min=minutes_played)
             update_info = [
                 f"\n > {game_name} updated.",
                 f"   Played {added_time_played}",
-                f"   Total Playtime: {overall_time_played}.",
+                f"   Total Playtime: {round(minutes_played * 60, 1)} Hours.",
             ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
