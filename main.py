@@ -1134,7 +1134,7 @@ class Tracker(Helper):
             update_info = [
                 f"\n > {game_name} updated.",
                 f"   Played {added_time_played}",
-                f"   Total Playtime: {round(minutes_played * 60, 1)} Hours.",
+                f"   Total Playtime: {current_hours_played} Hours.",
             ]
             # logs play time
             msg = f"{game_name} played for {added_time_played}"
