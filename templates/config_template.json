@@ -13,7 +13,7 @@
     "steam_deck_ignore_list": [
         "Example"
     ],
-    "appid_ignore_list": [
+    "app_id_ignore_list": [
         9999999999999
     ],
     "name_ignore_list": [

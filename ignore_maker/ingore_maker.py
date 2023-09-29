@@ -10,7 +10,7 @@ class IgnoreMaker:
         ph
         """
         unicode_issues = []
-        for game in self.games:
+        for game in self.steam:
             if r"\u" in game:
                 unicode_issues.append(game)
             else:
@@ -25,7 +25,7 @@ class IgnoreMaker:
         ph
         """
         found = []
-        for game in self.games:
+        for game in self.steam:
             if game not in found:
                 found.append(game)
         found.sort()
@@ -36,7 +36,7 @@ class IgnoreMaker:
         """
         ph
         """
-        first_entry = self.games[0]
+        first_entry = self.steam[0]
         if first_entry.startswith('"') and first_entry.endswith('",'):
             self.order_and_dupe_remover()
         else:

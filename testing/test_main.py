@@ -4,6 +4,20 @@ import unittest, json
 from main import Tracker
 
 
+class GetOwnedGames(unittest.TestCase):
+    t = Tracker()
+    owned_games = t.get_owned_steam_games( t.steam_key,  t.steam_id)
+
+    def test_get_owned_steam_games(self):
+        found_game = next((game for game in self.owned_games if game['name'] == "Dishonored12"), None)
+        # specific test if dishohored is owned
+        if found_game:
+            self.assertEqual(found_game["appid"], 205100)
+        # test if dishonored is not owned
+        else:
+            assert isinstance(self.owned_games[0]["appid"], int)
+            assert isinstance(self.owned_games[0]["name"], str)
+
 class GetYear(unittest.TestCase):
     def setUp(self):
         self.t = Tracker()
@@ -24,22 +38,6 @@ class GetYear(unittest.TestCase):
     def test_invalid(self):
         result = self.t.get_year("this is not a date")
         self.assertEqual(result, "Invalid Date")
-
-
-class GetAppId(unittest.TestCase):
-    def setUp(self):
-        self.t = Tracker()
-
-    def test_get_appid(self):
-        appid_tests = {
-            "Inscryption": 1092790,
-            "Dishonored 2": 403640,
-            "Deep Rock Galactic": 548430,
-        }
-        for name, answer in appid_tests.items():
-            with self.subTest(name=name, answer=answer):
-                result = self.t.get_appid(name)
-                self.assertEqual(result, answer)
 
 
 class GetMetacritic(unittest.TestCase):
@@ -101,14 +99,14 @@ class SteamDeckCompatability(unittest.TestCase):
             "UNKNOWN",
         ]
         appids = [1145360, 1167630, 667970, 1579380]
-        for appid in appids:
-            with self.subTest(appid=appid):
-                result = self.t.steam_deck_compat(appid)
+        for app_id in appids:
+            with self.subTest(app_id=app_id):
+                result = self.t.steam_deck_compat(app_id)
                 self.assertIn(result, passes)
 
     def test_invalid(self):
-        invalid_appid = 9**30
-        self.assertFalse(self.t.steam_deck_compat(invalid_appid))
+        invalid_app_id = 9**30
+        self.assertFalse(self.t.steam_deck_compat(invalid_app_id))
 
 
 class GetStoreLink(unittest.TestCase):
@@ -120,11 +118,11 @@ class GetStoreLink(unittest.TestCase):
             "752590": "https://store.steampowered.com/app/752590/",
             "629730": "https://store.steampowered.com/app/629730/",
         }
-        for appid, answer in store_link_tests.items():
-            self.assertEqual(self.t.get_store_link(appid), answer)
+        for app_id, answer in store_link_tests.items():
+            self.assertEqual(self.t.get_store_link(app_id), answer)
             # tests that the url exists
             response = self.t.request_url(answer)
-            self.assertIn(appid, response.url)
+            self.assertIn(app_id, response.url)
             self.assertTrue(response)
         # test for broken link that redirects due to app id not being found
         invalid_url = "https://store.steampowered.com/app/6546546545465484213211545730/"
@@ -147,8 +145,8 @@ class SteamReview(unittest.TestCase):
             1161580,
             230410,
         ]
-        for appid in steam_review_tests:
-            percent, total = self.t.get_steam_review(appid=appid)
+        for app_id in steam_review_tests:
+            percent, total = self.t.get_steam_review(app_id=app_id)
             self.assertIsInstance(percent, float)
             self.assertIsInstance(total, int)
 
@@ -190,7 +188,7 @@ class GetGameInfo(unittest.TestCase):
         """
         Tests get_game_info function for percents.
         """
-        game_info = self.t.get_game_info(appid=752590)
+        game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Steam Review Percent"], float)
         self.assertIsInstance(game_info["discount"], float)
 
@@ -198,14 +196,14 @@ class GetGameInfo(unittest.TestCase):
         """
         Tests get_game_info function for specific types of results.
         """
-        game_info = self.t.get_game_info(appid=752590)
+        game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Steam Review Total"], int)
 
     def test_string(self):
         """
         Tests get_game_info function for specific types of results.
         """
-        game_info = self.t.get_game_info(appid=752590)
+        game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Developers"], str)
         self.assertIsInstance(game_info["Publishers"], str)
         self.assertIsInstance(game_info["Genre"], str)
@@ -220,7 +218,7 @@ class GetGameInfo(unittest.TestCase):
         """
         Tests get_game_info function for specific types of results.
         """
-        game_info = self.t.get_game_info(appid=752590)
+        game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info, dict)
         self.assertIn(game_info["Early Access"], ["Yes", "No"])
         self.assertIn(game_info["on_sale"], [True, False])
@@ -361,10 +359,10 @@ class IgnoreFunc(unittest.TestCase):
         """
         ignore_names = ["Half-Life 2: Lost Coast"]
         self.t.name_ignore_list = [string.lower() for string in ignore_names]
-        self.t.appid_ignore_list = [61600, 12345864489]
-        # appid return true
-        self.assertTrue(self.t.should_ignore(appid=61600))
-        self.assertTrue(self.t.should_ignore(appid=12345864489))
+        self.t.app_id_ignore_list = [61600, 12345864489]
+        # app_id return true
+        self.assertTrue(self.t.should_ignore(app_id=61600))
+        self.assertTrue(self.t.should_ignore(app_id=12345864489))
         # name return true
         self.assertTrue(self.t.should_ignore(name="Game Beta"))
         self.assertTrue(self.t.should_ignore(name="Squad - Public Testing"))
@@ -376,8 +374,8 @@ class IgnoreFunc(unittest.TestCase):
         """
         ignore_names = ["Half-Life 2: Lost Coast"]
         self.t.name_ignore_list = [string.lower() for string in ignore_names]
-        # appid return false
-        self.assertFalse(self.t.should_ignore(appid=345643))
+        # app_id return false
+        self.assertFalse(self.t.should_ignore(app_id=345643))
         # name return false
         self.assertFalse(self.t.should_ignore(name="This is a great game"))
 

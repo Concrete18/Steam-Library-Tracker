@@ -65,7 +65,7 @@ class Tracker(Helper):
     logging = data["settings"]["logging"]
     playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
-    appid_ignore_list = data["appid_ignore_list"]
+    app_id_ignore_list = data["app_id_ignore_list"]
 
     # logging setup
     if logging:
@@ -101,7 +101,8 @@ class Tracker(Helper):
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
     }
     excel = Excel(excel_filename, use_logging=logging)
-    games = Sheet(excel, sheet_name="Games", column_name="Name", options=options)
+    steam = Sheet(excel, sheet_name="Steam", column_name="App ID", options=options)
+    # playstation = Sheet(excel, sheet_name="Playstation", column_name="Name", options=options)
     sales = Sheet(excel, sheet_name="Sales", column_name="Name", options=options)
     # sets play status choices for multiple functions
     play_status_choices = {
@@ -145,7 +146,7 @@ class Tracker(Helper):
         prob_comp_col := "Probable Completion",
         store_link_col := "Store Link",
         release_col := "Release Year",
-        appid_col := "App ID",
+        app_id_col := "App ID",
     ]
     # TODO determine width for tqdm here
 
@@ -307,27 +308,6 @@ class Tracker(Helper):
             review_score = "NF - Error"
         return review_score
 
-    def get_appid(self, game, app_list={}):
-        """
-        Checks the Steam App list for a game
-        and returns its app id if it exists as entered.
-        """
-        # sets up app_list if it does not exist
-        if app_list == {}:
-            main_url = "https://api.steampowered.com/"
-            api_action = "ISteamApps/GetAppList/v0002/"
-            url = main_url + api_action
-            query = {"l": "english"}
-            response = self.request_url(url, params=query)
-            if not response:
-                return None
-            app_list = response.json()["applist"]["apps"]
-        # searches for game
-        for item in app_list:
-            if item["name"] == game:
-                return item["appid"]
-        return None
-
     def get_year(self, date_string):
         """
         Gets the year from `date_string`.
@@ -338,14 +318,14 @@ class Tracker(Helper):
         else:
             return "Invalid Date"
 
-    def get_steam_review(self, appid: int, response=None):
+    def get_steam_review(self, app_id: int, response=None):
         """
         Scrapes the games review percent and total reviews from
-        the steam store page using `appid` or `store_link`.
+        the steam store page using `app_id` or `store_link`.
         """
         if not response:
             self.api_sleeper("steam_review_scrape")
-            store_link = self.get_store_link(appid)
+            store_link = self.get_store_link(app_id)
             response = self.request_url(store_link)
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
@@ -374,13 +354,13 @@ class Tracker(Helper):
             total = "No Reviews"
         return percent, total
 
-    def get_steam_user_tags(self, appid: int, response=None):
+    def get_steam_user_tags(self, app_id: int, response=None):
         """
         Gets a games user tags from Steam.
         """
         if not response:
             self.api_sleeper("steam_review_scrape")
-            store_link = self.get_store_link(appid)
+            store_link = self.get_store_link(app_id)
             response = self.request_url(store_link)
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_review_class = "app_tag"
@@ -393,9 +373,9 @@ class Tracker(Helper):
                 tags.append(string)
         return tags
 
-    def get_game_info(self, appid):
+    def get_game_info(self, app_id):
         """
-        Gets game info with steam api using a `appid`.
+        Gets game info with steam api using a `app_id`.
         """
         info_dict = {
             "game_name": "Unset",
@@ -415,33 +395,31 @@ class Tracker(Helper):
             "categories": "ND - Error",
             "ext_user_account_notice": "ND - Error",
         }
-        if not appid:
-            return info_dict
 
         def get_json_desc(data):
             return [item["description"] for item in data]
 
         url = "https://store.steampowered.com/api/appdetails"
         self.api_sleeper("steam_app_details")
-        query = {"appids": appid, "l": "english"}
+        query = {"appids": app_id, "l": "english"}
         response = self.request_url(url, params=query)
         if not response:
             return info_dict
         dict = response.json()
         # gets games store data
-        store_link = self.get_store_link(appid)
+        store_link = self.get_store_link(app_id)
         self.api_sleeper("store_data")
         response = self.request_url(store_link)
         # steam review data
-        percent, total = self.get_steam_review(appid=appid, response=response)
+        percent, total = self.get_steam_review(app_id=app_id, response=response)
         info_dict[self.steam_rev_per_col] = percent
         info_dict[self.steam_rev_total_col] = total
         # get user tags
-        tags = self.get_steam_user_tags(appid=appid, response=response)
+        tags = self.get_steam_user_tags(app_id=app_id, response=response)
         info_dict[self.user_tags_col] = ", ".join(tags)
         # info_dict setup
-        if "data" in dict[str(appid)].keys():
-            game_info = dict[str(appid)]["data"]
+        if "data" in dict[str(app_id)].keys():
+            game_info = dict[str(app_id)]["data"]
             keys = game_info.keys()
             # get game name
             if "name" in keys:
@@ -497,108 +475,106 @@ class Tracker(Helper):
             return {k: self.unicode_remover(v) for k, v in info_dict.items()}
         return info_dict
 
-    def set_release_year(self, game, release_year):
+    def set_release_year(self, app_id, release_year):
         """
-        Sets `game`'s release year cell to `release_year` if a year is not
+        Sets `app_id`'s release year cell to `release_year` if a year is not
         already set.
         """
-        cur_val = self.games.get_cell(game, self.release_col)
+        cur_val = self.steam.get_cell(app_id, self.release_col)
         if not self.any_is_num(cur_val):
-            return self.games.update_cell(game, self.release_col, release_year)
+            return self.steam.update_cell(app_id, self.release_col, release_year)
 
-    def set_genre(self, game, genre):
+    def set_genre(self, app_id, genre):
         """
-        Sets `game`'s genre cell to `genre`.
+        Sets `app_id`'s genre cell to `genre`.
         """
-        return self.games.update_cell(game, self.genre_col, genre)
+        return self.steam.update_cell(app_id, self.genre_col, genre)
 
-    def set_early_access(self, game, value):
+    def set_early_access(self, app_id, value):
         """
-        Sets `game`'s early access cell to `value`.
+        Sets `app_id`'s early access cell to `value`.
         """
-        return self.games.update_cell(game, self.ea_col, value)
+        return self.steam.update_cell(app_id, self.ea_col, value)
 
-    def set_publisher(self, game, value):
+    def set_publisher(self, app_id, value):
         """
-        Sets `game`'s publisher cell to `value`.
+        Sets `app_id`'s publisher cell to `value`.
         """
-        return self.games.update_cell(game, self.pub_col, value)
+        return self.steam.update_cell(app_id, self.pub_col, value)
 
-    def set_developer(self, game, value):
+    def set_developer(self, app_id, value):
         """
-        Sets `game`'s developer cell to `value`.
+        Sets `app_id`'s developer cell to `value`.
         """
-        return self.games.update_cell(game, self.dev_col, value)
+        return self.steam.update_cell(app_id, self.dev_col, value)
 
-    def set_metacritic(self, game, score):
+    def set_metacritic(self, app_id, score):
         """
-        Sets `game`'s metacritic score to `score` if the current value is
+        Sets `app_id`'s metacritic score to `score` if the current value is
         not numeric.
         """
-        cur_val = self.games.get_cell(game, self.metacritic_col)
+        cur_val = self.steam.get_cell(app_id, self.metacritic_col)
         if not self.any_is_num(cur_val):
-            return self.games.update_cell(game, self.metacritic_col, score)
+            return self.steam.update_cell(app_id, self.metacritic_col, score)
 
-    def set_time_to_beat(self, game, time):
+    def set_time_to_beat(self, app_id, time):
         """
-        Sets `game`'s Time to beat cell to `time_to_beat`.
+        Sets `app_id`'s Time to beat cell to `time_to_beat`.
         """
-        cur_val = self.games.get_cell(game, self.time_to_beat_col)
+        cur_val = self.steam.get_cell(app_id, self.time_to_beat_col)
         if not self.any_is_num(cur_val):
-            return self.games.update_cell(game, self.time_to_beat_col, time)
+            return self.steam.update_cell(app_id, self.time_to_beat_col, time)
 
-    def set_steam_deck(self, game, status):
+    def set_steam_deck(self, app_id, status):
         """
-        Sets `game`'s Steam Deck Status to `status`.
+        Sets `app_id`'s Steam Deck Status to `status`.
         """
-        return self.games.update_cell(game, self.steam_deck_col, status)
+        return self.steam.update_cell(app_id, self.steam_deck_col, status)
 
-    def set_hours_played(self, game_name, hours):
+    def set_hours_played(self, app_id, hours):
         """
-        Sets `game`'s Hours Played cell to `hours`.
+        Sets `app_id`'s Hours Played cell to `hours`.
         """
-        return self.games.update_cell(game_name, self.hours_played_col, hours)
+        return self.steam.update_cell(app_id, self.hours_played_col, hours)
 
-    def set_linux_hours_played(self, game_name, hours):
+    def set_linux_hours_played(self, app_id, hours):
         """
-        Sets `game`'s Linux Hours cell to `hours`.
+        Sets `app_id`'s Linux Hours cell to `hours`.
         """
-        return self.games.update_cell(game_name, self.linux_hours_col, hours)
+        return self.steam.update_cell(app_id, self.linux_hours_col, hours)
 
-    def set_last_playtime(self, game_name, set_last_playtime):
+    def set_last_playtime(self, app_id, set_last_playtime):
         """
-        Sets `game`'s last play time to `set_last_playtime`.
+        Sets `app_id`'s last play time to `set_last_playtime`.
         """
         column = self.last_play_time_col
-        return self.games.update_cell(game_name, column, set_last_playtime)
+        return self.steam.update_cell(app_id, column, set_last_playtime)
 
-    def set_time_played(self, game_name, time_played):
+    def set_time_played(self, app_id, time_played):
         """
-        Sets `game`'s time played to `time_played`.
+        Sets `app_id`'s time played to `time_played`.
         """
         column = self.time_played_col
-        return self.games.update_cell(game_name, column, time_played)
+        return self.steam.update_cell(app_id, column, time_played)
 
-    def set_play_status(self, game_name, status):
+    def set_play_status(self, app_id, status):
         """
-        Sets `game`'s Play Status cell to `status`.
+        Sets `app_id`'s Play Status cell to `status`.
         """
-        return self.games.update_cell(game_name, self.play_status_col, status)
+        return self.steam.update_cell(app_id, self.play_status_col, status)
 
-    def set_date_updated(self, game):
+    def set_date_updated(self, app_id):
         """
-        Sets `game`'s Date Updated cell to the current date.
+        Sets `app_id`'s Date Updated cell to the current date.
         """
         cur_date = dt.datetime.now()
-        return self.games.update_cell(game, self.date_updated_col, cur_date)
+        return self.steam.update_cell(app_id, self.date_updated_col, cur_date)
 
-    def get_store_link(self, appid):
+    def get_store_link(self, app_id):
         """
-        Generates a steam store link to the games page using it's `appid`.
+        Generates a steam store link to the games page using it's `app_id`.
         """
-        if not appid or appid == "None":
-            return False
-        return f"https://store.steampowered.com/app/{appid}/"
+        return f"https://store.steampowered.com/app/{app_id}/"
 
     def missing_info_check(self, skip_filled=1, check_status=0):
         """
@@ -611,8 +587,8 @@ class Tracker(Helper):
         """
         # creates checklist
         check_list = []
-        for game_name in self.games.row_idx:
-            play_status = self.games.get_cell(game_name, self.play_status_col)
+        for app_id in self.steam.row_idx:
+            play_status = self.steam.get_cell(app_id, self.play_status_col)
             if check_status:
                 if play_status not in [
                     "Unplayed",
@@ -638,12 +614,12 @@ class Tracker(Helper):
                     self.ea_col,
                 ]
                 for column in column_list:
-                    cell = self.games.get_cell(game_name, column)
-                    if cell == None and game_name not in check_list:
-                        check_list.append(game_name)
+                    cell = self.steam.get_cell(app_id, column)
+                    if cell == None and app_id not in check_list:
+                        check_list.append(app_id)
                         continue
             else:
-                check_list.append(game_name)
+                check_list.append(app_id)
         # checks if data should be updated
         missing_data = len(check_list)
         auto_run = 50
@@ -661,10 +637,8 @@ class Tracker(Helper):
         try:
             # updates missing data
             print("\nTime To Beat, Metacritic and other steam data check.")
-            save_interval = 15
-            running_interval = save_interval
             cur_itr = 0
-            for game_name in tqdm(
+            for app_id in tqdm(
                 iterable=check_list,
                 ascii=True,
                 unit=" games",
@@ -672,40 +646,32 @@ class Tracker(Helper):
                 dynamic_ncols=True,
             ):
                 # How long to beat check with scraping
-                filled_value = self.games.get_cell(game_name, self.time_to_beat_col)
+                filled_value = self.steam.get_cell(app_id, self.time_to_beat_col)
                 if not filled_value:
-                    time_to_beat = self.get_time_to_beat(game_name)
+                    time_to_beat = self.get_time_to_beat(app_id)
                     if time_to_beat:
-                        self.set_time_to_beat(game_name, time_to_beat)
+                        self.set_time_to_beat(app_id, time_to_beat)
                 # metacritic score check with scraping
-                filled_value = self.games.get_cell(game_name, self.metacritic_col)
+                filled_value = self.steam.get_cell(app_id, self.metacritic_col)
                 if not filled_value:
-                    platform = self.games.get_cell(game_name, self.platform_col)
-                    metacritic_score = self.get_metacritic(game_name, platform)
+                    metacritic_score = self.get_metacritic(app_id, "Steam")
                     if metacritic_score:
-                        self.set_metacritic(game_name, metacritic_score)
-                # gets steam info if an app id exists
-                appid = self.games.get_cell(game_name, self.appid_col)
-                if not appid:
-                    appid = self.get_appid(game_name)
-                    if appid:
-                        self.games.update_cell(game_name, self.appid_col, appid)
-                steam_info = self.get_game_info(appid)
-
+                        self.set_metacritic(app_id, metacritic_score)
+                steam_info = self.get_game_info(app_id)
                 # TODO test to be sure this works
                 special_case_col = [self.metacritic_col, self.release_col]
                 for key, val in steam_info.items():
                     if key in self.excel_columns and steam_info[key]:
                         if key not in special_case_col:
-                            self.games.update_cell(game_name, key, val)
+                            self.steam.update_cell(app_id, key, val)
                 # release year
                 if steam_info[self.release_col]:
                     year = steam_info[self.release_col]
-                    self.set_release_year(game_name, year)
-                running_interval -= 1
-                if running_interval == 0:
-                    running_interval = save_interval
-                    self.excel.save(use_print=False, backup=False)
+                    self.set_release_year(app_id, year)
+
+                # TODO create interval
+                # self.excel.save(use_print=False, backup=False)
+
                 # title progress percentage
                 cur_itr += 1
                 progress = cur_itr / missing_data * 100
@@ -737,7 +703,7 @@ class Tracker(Helper):
                 play_status = "Unplayed"
         return play_status
 
-    def get_owned_steam_games(self, steam_id=0):
+    def get_owned_steam_games(self, steam_key, steam_id=0):
         """
         Gets the games owned by the given `steam_id`.
         """
@@ -746,12 +712,28 @@ class Tracker(Helper):
         url = base_url + api_action
         self.api_sleeper("steam_owned_games")
         query = {
-            "key": self.steam_key,
+            "key": steam_key,
             "steamid": steam_id,
             "l": "english",
             "include_played_free_games": 0,
             "format": "json",
             "include_appinfo": 1,
+        }
+        response = self.request_url(url, params=query)
+        return response.json()["response"]["games"]
+    
+    def get_recently_played_steam_games(self, steam_id=0, game_count=10):
+        """
+        Gets the games owned by the given `steam_id`.
+        """
+        base_url = "http://api.steampowered.com/"
+        api_action = "IPlayerService/GetRecentlyPlayedGames/v1/"
+        url = base_url + api_action
+        self.api_sleeper("steam_owned_games")
+        query = {
+            "key": self.steam_key,
+            "steamid": steam_id,
+            "count": game_count,
         }
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
@@ -763,10 +745,10 @@ class Tracker(Helper):
         The games are not removed in case the steam database changed the games
         name so you can keep the data you had on from the original entry.
         """
-        removed_games_str = self.word_and_list(removed_games)
-        print(f"\nUnaccounted Steam games:\n{removed_games_str}")
+        # removed_games_str = self.word_and_list(removed_games)
+        print(f"\nUnaccounted Steam games:\n{removed_games}")
         for game in removed_games:
-            status = self.games.get_cell(game, self.play_status_col)
+            status = self.steam.get_cell(game, self.play_status_col)
             if status is not None:
                 if "Removed | " not in status:
                     removed_status = f"Removed | {status}"
@@ -778,53 +760,50 @@ class Tracker(Helper):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-        owned_games = self.get_owned_steam_games(steam_id)
-        if owned_games:
-            # creates a list of all games so found games can be removed from
-            # the list to detemine what was removed/renamed from steam
-            removed_games = [
-                str(game)
-                for game in self.games.row_idx.keys()
-                if self.games.get_cell(game, self.platform_col) == "Steam"
-            ]
+        steam_games = self.get_owned_steam_games(self.steam_key, steam_id)
+        if steam_games:
+            # creates a list of removed steam games
+            removed_games = [int(app_id) for app_id in self.steam.row_idx.keys()]
             self.num_games_updated = 0
             self.num_games_added = 0
             self.totaled_playtime = 0
             added_games = []
             updated_games = []
-            # save interval setup
-            save_interval = 20
-            checks = save_interval
+            name_changes = []
             # game checking
-            print(f"Found {len(owned_games)} Steam Games.\n")
+            print(f"Found {len(steam_games)} Steam Games.\n")
             for game in tqdm(
-                iterable=owned_games,
+                iterable=steam_games,
                 ascii=True,
                 unit=" games",
                 ncols=100,
             ):
-                game_name = game["name"]
-                appid = game["appid"]
-                if self.should_ignore(game_name, appid):
+                game_name, app_id = game["name"], game["appid"]
+                # ignore check
+                if self.should_ignore(game_name, app_id):
                     continue
-                # sets play time eariler so it only needs to be set up once
+                # name change check
+                cur_game_name = self.steam.get_cell(app_id, self.name_col)
+                if cur_game_name and cur_game_name != game_name:
+                    name_changes.append(f"{cur_game_name} changed to {game_name}")
+                # sets play time earlier so it only needs to be set up once
                 minutes_played = game["playtime_forever"]
-                time_played = self.convert_time_passed(min=minutes_played)
                 hours_played = self.hours_played(minutes_played)
+                time_played = self.convert_time_passed(min=minutes_played)
                 # linux time
                 linux_minutes_played = ""
                 if "playtime_linux_forever" in game.keys():
                     linux_minutes_played = game["playtime_linux_forever"]
-                cur_play_status = self.games.get_cell(game_name, self.play_status_col)
+                # play status
+                cur_play_status = self.steam.get_cell(app_id, self.play_status_col)
                 # checks if play status should change
                 play_status = self.play_status(cur_play_status, hours_played)
-                appid = game["appid"]
-                if game_name in self.games.row_idx.keys():
-                    # removes existing games from the list that will only
-                    # include games that have been removed or had a name changed
-                    if game_name in removed_games:
-                        removed_games.remove(game_name)
+                if str(app_id) in self.steam.row_idx.keys():
+                    # updates removed games list
+                    if app_id in removed_games:
+                        removed_games.remove(app_id)
                     update_info = self.update_game(
+                        app_id=app_id,
                         game_name=game_name,
                         minutes_played=minutes_played,
                         linux_minutes_played=linux_minutes_played,
@@ -839,17 +818,15 @@ class Tracker(Helper):
                         hours_played=hours_played,
                         linux_minutes_played=linux_minutes_played,
                         time_played=time_played,
-                        appid=appid,
+                        app_id=app_id,
                         play_status=play_status,
                     )
                     added_games.append(game_name)
                 # saves each time the checks count is divisible by 20 and
                 # total changes count is greater then a specific number
-                if self.num_games_added > save_interval:
-                    if checks % save_interval == 0:
-                        checks = save_interval
-                        self.excel.save(use_print=False)
-                    checks += 1
+
+            # TODO create interval
+
             # prints the total games updated and added
             if 0 < self.num_games_updated < 50:
                 print(f"\nGames Updated: {self.num_games_updated}")
@@ -859,6 +836,11 @@ class Tracker(Helper):
                 for game_info in updated_games:
                     for line in game_info:
                         print(line)
+            # game names changed
+            if name_changes:
+                for changes in name_changes:
+                    print(changes)
+            # games added
             if 0 < self.num_games_added < 50:
                 print(f"\nGames Added: {self.num_games_added}")
                 if added_games:
@@ -872,22 +854,22 @@ class Tracker(Helper):
             if removed_games:
                 self.update_removed_games(removed_games)
 
-    def should_ignore(self, name: str = None, appid: int = None) -> bool:
+    def should_ignore(self, name: str = None, app_id: int = None) -> bool:
         """
-        Checks if the item should be ignored based on name or appid.
+        Checks if the item should be ignored based on `name` or `app_id`.
 
         Returns False if neither are given and
-        priortizes checking appid if both are given.
+        priortizes checking `app_id` if both are given.
 
         `Name` check looks for keywords and if the name is in the name_ignore_list.
 
-        `Appid` check looks for the appid in the appid_ignore_list.
+        `app_id` check looks for the `app_id` in the app_id_ignore_list.
         """
-        # return False if name and appid is not given
-        if not name and not appid:
+        # return False if name and app_id is not given
+        if not name and not app_id:
             return False
-        # appid ignore list
-        if appid and appid in self.appid_ignore_list:
+        # app_id ignore list
+        if app_id and app_id in self.app_id_ignore_list:
             return True
         if name:
             # name ignore list
@@ -954,9 +936,9 @@ class Tracker(Helper):
                 # added this session
                 game_name in added_games,
                 # already exist
-                game_name in self.games.row_idx.keys(),
+                game_name in self.steam.row_idx.keys(),
                 # game exists with a playstation version already
-                f"{game_name} - Console" in self.games.row_idx.keys(),
+                f"{game_name} - Console" in self.steam.row_idx.keys(),
             ]
             if any(game_exists):
                 continue
@@ -965,7 +947,6 @@ class Tracker(Helper):
             self.add_game(
                 game_name=game_name,
                 play_status="Unplayed",
-                platform=game["platform"],
             )
         total_games_added = len(added_games)
         msg = f"Added {total_games_added} PS4/PS5 Games."
@@ -1002,15 +983,15 @@ class Tracker(Helper):
         self.data["last_runs"][name] = date
         self.save_json_output(self.data, self.config)
 
-    def steam_deck_compat(self, appid):
+    def steam_deck_compat(self, app_id):
         """
         Gets a games steam deck verification and other compatibility data
-        by `appid`.
+        by `app_id`.
         """
         main_url = "https://store.steampowered.com/"
         action_url = "saleaction/ajaxgetdeckappcompatibilityreport"
         url = main_url + action_url
-        query = {"nAppID": appid, "l": "english"}
+        query = {"nAppID": app_id, "l": "english"}
         data = self.request_url(url, params=query)
         if not data:
             return False
@@ -1026,60 +1007,58 @@ class Tracker(Helper):
         category_id = results["resolved_category"]
         return categories[category_id]
 
-    def steam_deck_check(self):
-        """
-        Checks steam_deck.txt and updates steam deck status with the new info.
-        """
-        print("\nSteam Deck Compatibility Check")
-        if self.steam_deck_col not in self.games.col_idx.keys():
-            print(
-                f"{self.steam_deck_col} column is missing.\n Add the column and try again."
-            )
-            return
-        steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
-        updated_games = []
-        empty_results = []
-        total_games = len(self.games.row_idx)
-        cur_itr = 0
-        for game_name in tqdm(
-            iterable=self.games.row_idx,
-            ascii=True,
-            unit=" games",
-            ncols=100,
-        ):
-            if game_name in steam_deck_ignore_list:
-                continue
-            appid = self.games.get_cell(game_name, self.appid_col)
-            if not appid:
-                continue
-            status = self.steam_deck_compat(appid)
-            self.api_sleeper("steam_deck")
-            if not status:
-                empty_results.append(game_name)
-                continue
-            if self.set_steam_deck(game_name, status):
-                info = f"{game_name} was updated to {status}"
-                if self.logging:
-                    self.tracker.info(info)
-                updated_games.append(info)
+    # def steam_deck_check(self):
+    #     """
+    #     Checks steam_deck.txt and updates steam deck status with the new info.
+    #     """
+    #     print("\nSteam Deck Compatibility Check")
+    #     if self.steam_deck_col not in self.steam.col_idx.keys():
+    #         print(
+    #             f"{self.steam_deck_col} column is missing.\n Add the column and try again."
+    #         )
+    #         return
+    #     steam_deck_ignore_list = self.data["steam_deck_ignore_list"]
+    #     updated_games = []
+    #     empty_results = []
+    #     total_games = len(self.steam.row_idx)
+    #     cur_itr = 0
+    #     for app_id in tqdm(
+    #         iterable=self.steam.row_idx,
+    #         ascii=True,
+    #         unit=" games",
+    #         ncols=100,
+    #     ):
+    #         game_name = self.steam.get_cell(self.name_col, self.app_id_col)
+    #         if game_name in steam_deck_ignore_list:
+    #             continue
+    #         status = self.steam_deck_compat(app_id)
+    #         self.api_sleeper("steam_deck")
+    #         if not status:
+    #             empty_results.append(game_name)
+    #             continue
+    #         if self.set_steam_deck(game_name, status):
+    #             info = f"{game_name} was updated to {status}"
+    #             if self.logging:
+    #                 self.tracker.info(info)
+    #             updated_games.append(info)
 
-            # title progress percentage
-            cur_itr += 1
-            progress = cur_itr / total_games * 100
-            self.set_title(f"{progress:.2f}% - {self.title}")
-        self.set_title()
-        if updated_games:
-            print("\nUpdated Games:")
-            for game in updated_games:
-                print(game)
-            if empty_results:
-                print("\nThe following Games failed to retrieve data.")
-                output = self.word_and_list(empty_results)
-                print(output)
-            self.excel.save()
-        else:
-            print("No Steam Deck Status Changes.")
-        self.update_last_run("steam_deck_check")
+    #         # title progress percentage
+    #         cur_itr += 1
+    #         progress = cur_itr / total_games * 100
+    #         self.set_title(f"{progress:.2f}% - {self.title}")
+    #     self.set_title()
+    #     if updated_games:
+    #         print("\nUpdated Games:")
+    #         for game in updated_games:
+    #             print(game)
+    #         if empty_results:
+    #             print("\nThe following Games failed to retrieve data.")
+    #             output = self.word_and_list(empty_results)
+    #             print(output)
+    #         self.excel.save()
+    #     else:
+    #         print("No Steam Deck Status Changes.")
+    #     self.update_last_run("steam_deck_check")
 
     def check_playstation_json(self):
         """
@@ -1094,6 +1073,7 @@ class Tracker(Helper):
 
     def update_game(
         self,
+        app_id,
         game_name,
         minutes_played,
         linux_minutes_played,
@@ -1104,11 +1084,11 @@ class Tracker(Helper):
         Updates the games playtime and play status if they changed.
         """
         # all hours
-        previous_hours_played = self.games.get_cell(game_name, self.hours_played_col)
+        previous_hours_played = self.steam.get_cell(app_id, self.hours_played_col)
         current_hours_played = self.hours_played(minutes_played)
         current_linux_hours_played = self.hours_played(linux_minutes_played)
         # prevents updating games that are owned on Steam and a console.
-        current_platform = self.games.get_cell(game_name, self.platform_col)
+        current_platform = self.steam.get_cell(app_id, self.platform_col)
         if current_platform != "Steam":
             return
         elif previous_hours_played == None or previous_hours_played == "None":
@@ -1121,13 +1101,13 @@ class Tracker(Helper):
             # TODO check if data can be made more accurate.
             hours_played = current_hours_played - previous_hours_played
             added_time_played = self.convert_time_passed(hr=hours_played)
-            self.set_hours_played(game_name, current_hours_played)
-            self.set_linux_hours_played(game_name, current_linux_hours_played)
-            self.set_last_playtime(game_name, added_time_played)
-            self.set_time_played(game_name, time_played)
-            self.set_date_updated(game_name)
-            self.set_play_status(game_name, play_status)
-            self.games.format_row(game_name)
+            self.set_hours_played(app_id, current_hours_played)
+            self.set_linux_hours_played(app_id, current_linux_hours_played)
+            self.set_last_playtime(app_id, added_time_played)
+            self.set_time_played(app_id, time_played)
+            self.set_date_updated(app_id)
+            self.set_play_status(app_id, play_status)
+            self.steam.format_row(app_id)
             self.totaled_playtime += hours_played
             self.num_games_updated += 1
             # updated game logging
@@ -1143,45 +1123,45 @@ class Tracker(Helper):
             return update_info
         return None
 
-    def manually_add_game(self):
-        """
-        Allows manually adding a game by giving the name,
-        platform and hours played.
-        """
-        game_name = input("\nWhat is the name of the game?\n:")
-        platform = input("\nWhat is the platform is this on?\n:")
-        platform_names = {
-            "playstation 5": "PS5",
-            "ps5": "PS5",
-            "playstation 4": "PS4",
-            "ps4": "PS4",
-            "sw": "Switch",
-            "uplay": "Uplay",
-            "gog": "GOG",
-            "ms store": "MS Store",
-            "ms": "MS Store",
-            "microsoft": "MS Store",
-        }
-        if platform.lower() in platform_names:
-            platform = platform_names[platform.lower()]
-        hours_played = int(input("\nHow many hours have you played it?\n:") or 0)
-        print("\nWhat Play Status should it have?")
-        play_status = self.play_status_picker() or "Unset"
-        minutes_played = hours_played * 60
-        time_played = self.convert_time_passed(min=minutes_played)
-        print(f"\nAdded Game:\n{game_name}")
-        print(f"Platform: {platform}")
-        print(f"Time Played: {time_played}")
-        print(f"Play Status: {play_status}")
-        self.add_game(
-            game_name=game_name,
-            play_status=play_status,
-            platform=platform,
-            hours_played=hours_played,
-            time_played=time_played,
-            save=True,
-        )
-        return game_name, minutes_played, play_status
+    # def manually_add_game(self):
+    #     """
+    #     Allows manually adding a game by giving the name,
+    #     platform and hours played.
+    #     """
+    #     game_name = input("\nWhat is the name of the game?\n:")
+    #     platform = input("\nWhat is the platform is this on?\n:")
+    #     platform_names = {
+    #         "playstation 5": "PS5",
+    #         "ps5": "PS5",
+    #         "playstation 4": "PS4",
+    #         "ps4": "PS4",
+    #         "sw": "Switch",
+    #         "uplay": "Uplay",
+    #         "gog": "GOG",
+    #         "ms store": "MS Store",
+    #         "ms": "MS Store",
+    #         "microsoft": "MS Store",
+    #     }
+    #     if platform.lower() in platform_names:
+    #         platform = platform_names[platform.lower()]
+    #     hours_played = int(input("\nHow many hours have you played it?\n:") or 0)
+    #     print("\nWhat Play Status should it have?")
+    #     play_status = self.play_status_picker() or "Unset"
+    #     minutes_played = hours_played * 60
+    #     time_played = self.convert_time_passed(min=minutes_played)
+    #     print(f"\nAdded Game:\n{game_name}")
+    #     print(f"Platform: {platform}")
+    #     print(f"Time Played: {time_played}")
+    #     print(f"Play Status: {play_status}")
+    #     self.add_game(
+    #         game_name=game_name,
+    #         play_status=play_status,
+    #         platform=platform,
+    #         hours_played=hours_played,
+    #         time_played=time_played,
+    #         save=True,
+    #     )
+    #     return game_name, minutes_played, play_status
 
     def add_game(
         self,
@@ -1189,13 +1169,12 @@ class Tracker(Helper):
         linux_minutes_played=None,
         hours_played=None,
         time_played=None,
-        appid=None,
+        app_id=None,
         play_status=None,
-        platform="Steam",
         save=False,
     ):
         """
-        Adds a game with the game_name, hours played using `minutes_played`, `play_status` and `platform`.
+        Adds a game with the game_name, hours played using `minutes_played` and `play_status`.
 
         If save is True, it will save after adding the game.
         """
@@ -1208,64 +1187,56 @@ class Tracker(Helper):
             linux_hours_played = self.hours_played(linux_minutes_played)
         # store link setup
         store_link_hyperlink = ""
-        store_link = self.get_store_link(appid)
+        store_link = self.get_store_link(app_id)
         if store_link:
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
         # base defaults
         steam_deck_status = "UNKNOWN"
         early_access = "No"
-        # sets defaults for consoles
-        # TODO decide if this is needed
-        if platform in ["PS5", "PS4", "Switch"]:
-            steam_deck_status = "UNSUPPORTED"
         # gets steam deck info
-        status = self.steam_deck_compat(appid)
+        status = self.steam_deck_compat(app_id)
         if status:
             steam_deck_status = status
         # indirect_cell setup
         rating_com = self.rating_comp_col
-        my_rating = self.games.indirect_cell(rating_com, self.my_rating_col)
-        metacritic = self.games.indirect_cell(rating_com, self.metacritic_col)
+        my_rating = self.steam.indirect_cell(rating_com, self.my_rating_col)
+        metacritic = self.steam.indirect_cell(rating_com, self.metacritic_col)
         prob_compl = self.prob_comp_col
-        hours = self.games.indirect_cell(prob_compl, self.hours_played_col)
-        ttb = self.games.indirect_cell(prob_compl, self.time_to_beat_col)
+        hours = self.steam.indirect_cell(prob_compl, self.hours_played_col)
+        ttb = self.steam.indirect_cell(prob_compl, self.time_to_beat_col)
         # sets excel column values
         column_info = {
             self.my_rating_col: "",
             self.name_col: game_name,
             self.play_status_col: play_status,
-            self.platform_col: platform,
             self.ea_col: early_access,
             self.steam_deck_col: steam_deck_status,
             self.time_to_beat_col: self.get_time_to_beat(game_name),
-            self.metacritic_col: self.get_metacritic(game_name, platform),
+            self.metacritic_col: self.get_metacritic(game_name, "Steam"),
             self.rating_comp_col: f'=IFERROR(({my_rating}*10)/{metacritic}, "Missing Data")',
             self.prob_comp_col: f'=IFERROR({hours}/{ttb},"Missing Data")',
             self.hours_played_col: hours_played,
             self.linux_hours_col: linux_hours_played,
             self.time_played_col: time_played,
-            self.appid_col: appid,
+            self.app_id_col: app_id,
             self.store_link_col: store_link_hyperlink,
             self.date_added_col: dt.datetime.now(),
             self.date_updated_col: dt.datetime.now(),
         }
-        steam_info = self.get_game_info(appid)
+        steam_info = self.get_game_info(app_id)
         if steam_info:
             for column in self.excel_columns:
                 if column in steam_info.keys():
                     column_info[column] = steam_info[column]
-        self.games.add_new_line(column_info)
+        self.steam.add_new_line(column_info)
         # logging
-        if platform == "Steam":
-            if not hours_played:
-                time_played = "no time"
-            info = f"Added {game_name} with {time_played} played"
-        else:
-            info = f"Added {game_name} on {platform}"
+        if not hours_played:
+            time_played = "no time"
+        info = f"Added {game_name} with {time_played} played"
         if self.logging:
             self.tracker.info(info)
         self.num_games_added += 1
-        self.games.format_row(game_name)
+        self.steam.format_row(app_id)
         if save:
             self.excel.save()
 
@@ -1287,35 +1258,42 @@ class Tracker(Helper):
                 print("\nInvalid Response")
                 continue
 
+    def get_random_game_name(self, play_status, choice_list = []):
+        '''
+        Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
+        '''
+        if not choice_list:
+            for app_id in self.steam.row_idx.keys():
+                game_play_status = self.steam.get_cell(app_id, self.play_status_col)
+                if not game_play_status:
+                    continue
+                if game_play_status.lower() == play_status.lower():
+                    choice_list.append(app_id)
+        # picks random game then removes it from the choice list so it wont show up again during this session
+        picked_app_id = random.choice(choice_list)
+        choice_list.pop(choice_list.index(picked_app_id))
+        picked_game_name = self.steam.get_cell(picked_app_id, self.name_col)
+        return picked_game_name, choice_list
+
     def pick_random_game(self):
         """
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         """
         print("\nWhat play status do you want a random game picked from?")
-        print("Press Enter to skip")
+        print("Press Enter to skip:")
         play_status = self.play_status_picker()
         if play_status == None:
             return
-        choice_list = []
-        for game in self.games.row_idx.keys():
-            game_play_status = self.games.get_cell(game, self.play_status_col)
-            if not game_play_status:
-                continue
-            if game_play_status.lower() == play_status.lower():
-                choice_list.append(game)
-        # picks random game then removes it from the choice list so it wont show up again during this session
-        picked_game = random.choice(choice_list)
-        choice_list.pop(choice_list.index(picked_game))
-        print(f"\nPicked game with {play_status} status:\n{picked_game}")
+        picked_game_name, choice_list = self.get_random_game_name(play_status)
+        print(f"\nGame: {picked_game_name}")
         # allows getting another random pick
-        msg = "\nPress Enter to pick another and No for finish.\n:"
+        msg = "\nPress Enter to pick another random game and No to finish:\n"
         while not input(msg).lower() in ["no", "n"]:
             if not choice_list:
-                print(f"All games with {play_status} have already been picked.\n")
+                print(f"All games with {play_status} play status have already been picked.\n")
                 return
-            picked_game = random.choice(choice_list)
-            choice_list.pop(choice_list.index(picked_game))
-            print(f"\nPicked game with {play_status} status:\n{picked_game}")
+            picked_game_name, choice_list = self.get_random_game_name(play_status)
+            print(f"\nGame: {picked_game_name}")
 
     def get_favorite_games(self, rating_limit=8):
         """
@@ -1325,19 +1303,19 @@ class Tracker(Helper):
         print("\nGame Sale Check\n")
         games = []
         for game in tqdm(
-            iterable=self.games.row_idx.keys(),
+            iterable=self.steam.row_idx.keys(),
             ascii=True,
             unit=" games",
             ncols=100,
         ):
-            my_rating = self.games.get_cell(game, self.my_rating_col)
-            store_link = self.games.get_cell(game, "Store Link")
-            ttb = self.games.get_cell(game, "Time To Beat in Hours")
+            my_rating = self.steam.get_cell(game, self.my_rating_col)
+            store_link = self.steam.get_cell(game, "Store Link")
+            ttb = self.steam.get_cell(game, "Time To Beat in Hours")
             if my_rating == None:
                 continue
-            appid = self.games.get_cell(game, "App ID")
-            if my_rating >= rating_limit and appid:
-                game_info = self.get_game_info(appid)
+            app_id = self.steam.get_cell(game, "App ID")
+            if my_rating >= rating_limit and app_id:
+                game_info = self.get_game_info(app_id)
                 if not game_info or not "on_sale" in game_info.keys():
                     continue
                 # create game_dict
@@ -1409,65 +1387,65 @@ class Tracker(Helper):
         print(f"\nFound {total} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
 
-    def custom_update_game(self):
-        """
-        Allows updating a game by typing in an as close a possible version of the game name.
-        """
-        game_name = input("\nWhat game do you want to update?\n")
-        game_idx = None
-        matched_games = self.lev_dist_matcher(game_name, self.games.row_idx.keys())
-        total_matches = len(matched_games)
-        if total_matches == 1:
-            match = matched_games[0]
-            if match in self.games.row_idx:
-                print(f"Found {match}.")
-                game_idx = self.games.row_idx[match]
-        elif total_matches >= 1:
-            games_string = "\n"
-            for i, game in enumerate(matched_games):
-                games_string += f"{i+1}. {game} | "
-            print(games_string[0:-3])
-            num = self.ask_for_integer("Type number for game you are looking for.\n")
-            game_idx = self.games.row_idx[matched_games[num - 1]]
-        else:
-            print(f"No Game found matching {game_name}.")
-            return
-        updated = False
-        # sets new hours if a number is given
-        print("\nHow many hours have you played?")
-        msg = "Add a + before the number to add that to the current total.\n"
-        hours = input(msg)
-        if hours.isnumeric():
-            # replaces current hours with new hours
-            self.set_hours_played(game_idx, float(hours))
-            print(f"\nUpdated to {hours} Hours.")
-            updated = True
-        if added_hours := re.search(r"\+\d+", hours).group(0):
-            # adds hours to current hours
-            added_hours = float(added_hours.replace("+", ""))
-            cur_hours = self.games.get_cell(game_name, self.hours_played_col)
-            new_hours = cur_hours + added_hours
-            self.set_hours_played(game_idx, float(new_hours))
-            print(f"Updated to {new_hours} Hours.")
-            updated = True
-        else:
-            print("Left Hours Played the same.")
-        # sets status if a status is given
-        status = input("\nWhat is the new Status?\n").title()
-        if status in self.play_status_choices.values():
-            self.set_play_status(game_idx, status)
-            print(f"Updated Play Status to {status}.")
-            updated = True
-        else:
-            print("Left Play Status the same.")
-        if updated:
-            self.set_date_updated(game_idx)
-            self.excel.save(backup=False)
-        else:
-            print("No changes made.")
-        response = input("Do you want to update another game?\n")
-        if response.lower() in ["yes", "yeah", "y"]:
-            self.custom_update_game()
+    # def custom_update_game(self):
+    #     """
+    #     Allows updating a game by typing in an as close a possible version of the game name.
+    #     """
+    #     game_name = input("\nWhat game do you want to update?\n")
+    #     game_idx = None
+    #     matched_games = self.lev_dist_matcher(game_name, self.steam.row_idx.keys())
+    #     total_matches = len(matched_games)
+    #     if total_matches == 1:
+    #         match = matched_games[0]
+    #         if match in self.steam.row_idx:
+    #             print(f"Found {match}.")
+    #             game_idx = self.steam.row_idx[match]
+    #     elif total_matches >= 1:
+    #         games_string = "\n"
+    #         for i, game in enumerate(matched_games):
+    #             games_string += f"{i+1}. {game} | "
+    #         print(games_string[0:-3])
+    #         num = self.ask_for_integer("Type number for game you are looking for.\n")
+    #         game_idx = self.steam.row_idx[matched_games[num - 1]]
+    #     else:
+    #         print(f"No Game found matching {game_name}.")
+    #         return
+    #     updated = False
+    #     # sets new hours if a number is given
+    #     print("\nHow many hours have you played?")
+    #     msg = "Add a + before the number to add that to the current total.\n"
+    #     hours = input(msg)
+    #     if hours.isnumeric():
+    #         # replaces current hours with new hours
+    #         self.set_hours_played(game_idx, float(hours))
+    #         print(f"\nUpdated to {hours} Hours.")
+    #         updated = True
+    #     if added_hours := re.search(r"\+\d+", hours).group(0):
+    #         # adds hours to current hours
+    #         added_hours = float(added_hours.replace("+", ""))
+    #         cur_hours = self.steam.get_cell(app_id, self.hours_played_col)
+    #         new_hours = cur_hours + added_hours
+    #         self.set_hours_played(game_idx, float(new_hours))
+    #         print(f"Updated to {new_hours} Hours.")
+    #         updated = True
+    #     else:
+    #         print("Left Hours Played the same.")
+    #     # sets status if a status is given
+    #     status = input("\nWhat is the new Status?\n").title()
+    #     if status in self.play_status_choices.values():
+    #         self.set_play_status(game_idx, status)
+    #         print(f"Updated Play Status to {status}.")
+    #         updated = True
+    #     else:
+    #         print("Left Play Status the same.")
+    #     if updated:
+    #         self.set_date_updated(game_idx)
+    #         self.excel.save(backup=False)
+    #     else:
+    #         print("No changes made.")
+    #     response = input("Do you want to update another game?\n")
+    #     if response.lower() in ["yes", "yeah", "y"]:
+    #         self.custom_update_game()
 
     def pick_game_to_update(self, games):
         """
@@ -1487,7 +1465,7 @@ class Tracker(Helper):
             return False
         # runs chosen function
         chosen_game = games[num - 1]
-        game_idx = self.games.row_idx[chosen_game]
+        game_idx = self.steam.row_idx[chosen_game]
         new_hours = self.ask_for_integer(
             "\nWhat are the new hours played?\n",
             allow_blank=True,
@@ -1496,37 +1474,6 @@ class Tracker(Helper):
             self.set_hours_played(game_idx, float(new_hours))
             print(f"\nUpdated to {new_hours} Hours.")
         self.set_date_updated(game_idx)
-
-    def update_console_play_session(self):
-        """
-        Updates a console games playtime.
-        """
-        console_games = []
-        # gets all console games with last update times
-        for game_name in self.games.row_idx:
-            platform = self.games.get_cell(game_name, self.platform_col)
-            last_updated = self.games.get_cell(game_name, self.date_updated_col)
-            if platform != "Steam":
-                console_games.append(
-                    {
-                        "name": game_name,
-                        "last_updated": last_updated,
-                    }
-                )
-        # sorts by last updated
-        sorted_console_games = sorted(
-            console_games,
-            key=lambda d: d["last_updated"],
-            reverse=True,
-        )
-        # creates list of games names only
-        last_played_console_games = [game["name"] for game in sorted_console_games][:10]
-        while True:
-            self.pick_game_to_update(last_played_console_games)
-            response = input("\nWant to update another game?\n")
-            if response.lower() not in ["y", "yes"]:
-                break
-        self.excel.save(backup=False)
 
     def update_playstation_data(self):
         """
@@ -1593,19 +1540,19 @@ class Tracker(Helper):
             "No Publisher",
             "No Developer",
         ]
-        df = self.games.create_dataframe(na_vals=na_values)
+        df = self.steam.create_dataframe(na_vals=na_values)
         stats = Stat(df)
         # choice picker
         choices = [
-            ("Sync Steam Deck Game Status", self.steam_deck_check),
+            # ("Sync Steam Deck Game Status", self.steam_deck_check),
             ("Pick Random Game", self.pick_random_game),
             ("Update Favorite Games Sales", self.update_favorite_games_sales),
-            ("Update Console Play Session", self.update_console_play_session),
-            ("Sync Playstation Games", self.update_playstation_data),
+            # ("Update Console Play Session", self.update_console_play_session),
+            # ("Sync Playstation Games", self.update_playstation_data),
             ("Calculate Statistics", stats.get_game_statistics),
             # ("Update Game", self.custom_update_game),
             # ("Add Game", self.manually_add_game),
-            # ("Update All Cell Formatting", self.games.format_all_cells),
+            # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
         msg = "\nEnter the Number for the action you want to do or just press enter to open in Excel.\n"
