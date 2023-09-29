@@ -29,6 +29,7 @@ def setup():
     # excel check
     excel = Path("Game Library.xlsx")
     if not excel.exists():
+        # TODO update template to new excel format
         excel_template = Path("templates/Game_Library_Template.xlsx")
         shutil.copyfile(excel_template, excel)
         all_clear = False
@@ -49,7 +50,6 @@ def setup():
 
 
 class Tracker(Helper):
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
@@ -721,7 +721,7 @@ class Tracker(Helper):
         }
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
-    
+
     def get_recently_played_steam_games(self, steam_id=0, game_count=10):
         """
         Gets the games owned by the given `steam_id`.
@@ -1258,10 +1258,10 @@ class Tracker(Helper):
                 print("\nInvalid Response")
                 continue
 
-    def get_random_game_name(self, play_status, choice_list = []):
-        '''
+    def get_random_game_name(self, play_status, choice_list=[]):
+        """
         Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
-        '''
+        """
         if not choice_list:
             for app_id in self.steam.row_idx.keys():
                 game_play_status = self.steam.get_cell(app_id, self.play_status_col)
@@ -1290,7 +1290,7 @@ class Tracker(Helper):
         msg = "\nPress Enter to pick another random game and No to finish:\n"
         while not input(msg).lower() in ["no", "n"]:
             if not choice_list:
-                print(f"All games with {play_status} play status have already been picked.\n")
+                print(f"All games have already been picked.\n")
                 return
             picked_game_name, choice_list = self.get_random_game_name(play_status)
             print(f"\nGame: {picked_game_name}")
