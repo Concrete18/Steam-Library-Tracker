@@ -599,12 +599,12 @@ class Tracker(Utils):
                     if time_to_beat:
                         self.set_time_to_beat(app_id, time_to_beat)
                 steam_info = self.get_game_info(app_id)
-                # TODO figure out if this is needed
-                # special_case_col = [self.release_col]
-                # for key, val in steam_info.items():
-                #     if key in self.excel_columns and steam_info[key]:
-                #         if key not in special_case_col:
-                #             self.steam.update_cell(app_id, key, val)
+                # updates sheet with data found in steam_info
+                special_case_col = [self.release_col]
+                for key, val in steam_info.items():
+                    if key in self.excel_columns and steam_info[key]:
+                        if key not in special_case_col:
+                            self.steam.update_cell(app_id, key, val)
                 # release year
                 if steam_info[self.release_col]:
                     year = steam_info[self.release_col]
