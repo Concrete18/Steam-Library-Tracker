@@ -2,7 +2,7 @@ from difflib import SequenceMatcher
 import time, json, requests, re
 import datetime as dt
 
-# logging import in case helper.py as main
+# logging import in case helper.py is main
 if __name__ != "__main__":
     from classes.logger import Logger
 else:
@@ -28,7 +28,6 @@ def keyboard_interrupt(func):
 
 
 class Helper:
-
     Log = Logger()
     error_log = Log.create_log(name="helper", log_path="logs/error.log")
 

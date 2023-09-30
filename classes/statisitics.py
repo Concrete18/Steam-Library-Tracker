@@ -54,10 +54,6 @@ class Stat:
         steam_ratings = self.df["Steam Review Percent"].astype("float")
         steam_avg = round(steam_ratings.mean(), 1)
         data["Reviews"]["Steam Average Rating"] = f"{round(steam_avg*100)}%"
-        metacritic_ratings = self.df["Metacritic"].astype("float")
-        data["Reviews"]["Average Metacritic Rating"] = round(
-            metacritic_ratings.mean(), 1
-        )
         # genres
         # TODO finish genre counter
 
@@ -69,58 +65,58 @@ class Stat:
                 print(f"{title}: {stat}")
         return data
 
-    def my_rating_comparison(self):
-        y_value = "Metacritic"
-        x_value = "My Rating"
-        df = self.df[[y_value, x_value]]
+    # def my_rating_comparison(self):
+    #     y_value = "Metacritic"
+    #     x_value = "My Rating"
+    #     df = self.df[[y_value, x_value]]
 
-        # sets up graph
-        plt.title("Metacritic vs. My Rating")
-        # x axis
-        x = df[x_value]
-        plt.xlabel(x_value)
-        plt.xlim([1, 10])
-        plt.xticks(range(1, 11))
+    #     # sets up graph
+    #     plt.title("Metacritic vs. My Rating")
+    #     # x axis
+    #     x = df[x_value]
+    #     plt.xlabel(x_value)
+    #     plt.xlim([1, 10])
+    #     plt.xticks(range(1, 11))
 
-        # y axis
-        y = df[y_value]
-        plt.ylim([1, 100])
-        plt.ylabel(y_value)
+    #     # y axis
+    #     y = df[y_value]
+    #     plt.ylim([1, 100])
+    #     plt.ylabel(y_value)
 
-        # base settings
-        plt.scatter(x, y, s=70, alpha=0.15)
-        plt.plot([1, 10], [1, 100], "g")
-        plt.xticks(rotation=90)
-        plt.tight_layout()
-        plt.show()
+    #     # base settings
+    #     plt.scatter(x, y, s=70, alpha=0.15)
+    #     plt.plot([1, 10], [1, 100], "g")
+    #     plt.xticks(rotation=90)
+    #     plt.tight_layout()
+    #     plt.show()
 
-    def steam_rating_comparison(self):
-        y_value = "Metacritic"
-        x_value = "Steam Review Percent"
-        df = self.df[[y_value, x_value]].copy()
-        df[x_value] = df[x_value] * 100
+    # def steam_rating_comparison(self):
+    #     y_value = "Metacritic"
+    #     x_value = "Steam Review Percent"
+    #     df = self.df[[y_value, x_value]].copy()
+    #     df[x_value] = df[x_value] * 100
 
-        # sets up graph
-        plt.title("Metacritic vs. Steam Review")
+    #     # sets up graph
+    #     plt.title("Metacritic vs. Steam Review")
 
-        # x axis
-        x = df[x_value]
-        plt.xlabel(x_value)
-        plt.xlim([1, 100])
-        plt.xticks(range(0, 101, 10), rotation=90)
+    #     # x axis
+    #     x = df[x_value]
+    #     plt.xlabel(x_value)
+    #     plt.xlim([1, 100])
+    #     plt.xticks(range(0, 101, 10), rotation=90)
 
-        # y axis
-        y = df[y_value]
-        plt.ylim([1, 100])
-        plt.ylabel(y_value)
+    #     # y axis
+    #     y = df[y_value]
+    #     plt.ylim([1, 100])
+    #     plt.ylabel(y_value)
 
-        # base settings
-        plt.scatter(x, y, 50, "0.0", lw=2)  # optional
-        plt.scatter(x, y, 50, "1.0", lw=0)  # optional
-        plt.scatter(x, y, 40, "C0", lw=0, alpha=0.3)
-        plt.plot([1, 100], [1, 100], "g")
-        plt.tight_layout()
-        plt.show()
+    #     # base settings
+    #     plt.scatter(x, y, 50, "0.0", lw=2)  # optional
+    #     plt.scatter(x, y, 50, "1.0", lw=0)  # optional
+    #     plt.scatter(x, y, 40, "C0", lw=0, alpha=0.3)
+    #     plt.plot([1, 100], [1, 100], "g")
+    #     plt.tight_layout()
+    #     plt.show()
 
     def rating_release_comparison(self, rating_column):
         y_value = rating_column
@@ -205,8 +201,7 @@ if __name__ == "__main__":
     # run
     stats = Stat(df)
     stats.get_game_statistics()
-    stats.my_rating_comparison()
+    # stats.my_rating_comparison()
     # stats.avg_rating_by_year()
     # stats.steam_rating_comparison()
-    # stats.rating_release_comparison("Metacritic")
     # stats.rating_release_comparison("Steam Review Percent")

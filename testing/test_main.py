@@ -6,10 +6,12 @@ from main import Tracker
 
 class GetOwnedGames(unittest.TestCase):
     t = Tracker()
-    owned_games = t.get_owned_steam_games( t.steam_key,  t.steam_id)
+    owned_games = t.get_owned_steam_games(t.steam_key, t.steam_id)
 
     def test_get_owned_steam_games(self):
-        found_game = next((game for game in self.owned_games if game['name'] == "Dishonored12"), None)
+        found_game = next(
+            (game for game in self.owned_games if game["name"] == "Dishonored12"), None
+        )
         # specific test if dishohored is owned
         if found_game:
             self.assertEqual(found_game["appid"], 205100)
@@ -17,6 +19,7 @@ class GetOwnedGames(unittest.TestCase):
         else:
             assert isinstance(self.owned_games[0]["appid"], int)
             assert isinstance(self.owned_games[0]["name"], str)
+
 
 class GetYear(unittest.TestCase):
     def setUp(self):
@@ -40,35 +43,6 @@ class GetYear(unittest.TestCase):
         self.assertEqual(result, "Invalid Date")
 
 
-class GetMetacritic(unittest.TestCase):
-    def setUp(self):
-        self.t = Tracker()
-
-    def test_inscryption(self):
-        result = self.t.get_metacritic("Inscryption", "PC")
-        self.assertEqual(result, 85)
-
-    def test_dishonored_2(self):
-        result = self.t.get_metacritic("Dishonored 2", "PC")
-        self.assertEqual(result, 86)
-
-    def test_drg(self):
-        result = self.t.get_metacritic("Deep Rock Galactic", "PC")
-        self.assertEqual(result, 85)
-
-    def test_jedi_fallen_order(self):
-        result = self.t.get_metacritic("STAR WARS Jedi: Fallen Order", "PS4")
-        self.assertEqual(result, 79)
-
-    def test_switch(self):
-        result = self.t.get_metacritic("Splatoon 3", "switch")
-        self.assertEqual(result, 83)
-
-    def test_invalid_game(self):
-        result = self.t.get_metacritic("Not a Real Game", "PC")
-        self.assertEqual(result, "NF - Error")
-
-
 class GetTimeToBeat(unittest.TestCase):
     def setUp(self):
         self.t = Tracker()
@@ -85,28 +59,6 @@ class GetTimeToBeat(unittest.TestCase):
                 self.assertIsInstance(result, float)
         result = self.t.get_time_to_beat("Not a Real Game")
         self.assertEqual(result, "NF - Error")
-
-
-class SteamDeckCompatability(unittest.TestCase):
-    def setUp(self):
-        self.t = Tracker()
-
-    def test_valid(self):
-        passes = [
-            "VERIFIED",
-            "PLAYABLE",
-            "UNSUPPORTED",
-            "UNKNOWN",
-        ]
-        appids = [1145360, 1167630, 667970, 1579380]
-        for app_id in appids:
-            with self.subTest(app_id=app_id):
-                result = self.t.steam_deck_compat(app_id)
-                self.assertIn(result, passes)
-
-    def test_invalid(self):
-        invalid_app_id = 9**30
-        self.assertFalse(self.t.steam_deck_compat(invalid_app_id))
 
 
 class GetStoreLink(unittest.TestCase):
