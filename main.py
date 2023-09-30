@@ -1,10 +1,9 @@
-import random, json, os, re, sys, webbrowser, subprocess, shutil, time, requests
+import random, json, os, re, sys, webbrowser, subprocess, shutil, time
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
 from tqdm import tqdm
 import datetime as dt
-import pandas as pd
 
 # classes
 from classes.utils import Utils, keyboard_interrupt
@@ -268,16 +267,6 @@ class Tracker(Utils):
             if time_to_beat == 0.0:
                 return "ND - Error"
         return time_to_beat
-
-    def get_year(self, date_string):
-        """
-        Gets the year from `date_string`.
-        """
-        year = re.search(r"[0-9]{4}", date_string)
-        if year:
-            return year.group(0)
-        else:
-            return "Invalid Date"
 
     def get_steam_review(self, app_id: int, response=None):
         """
@@ -832,25 +821,6 @@ class Tracker(Utils):
                     return True
         return False
 
-    @staticmethod
-    def unicode_fix(string):
-        """
-        Basic unicode cleaner.
-        """
-        inicode_dict = {
-            "â€": "'",
-            "®": "",
-            "™": "",
-            "â„¢": "",
-            "Â": "",
-            "Ã›": "U",
-            "ö": "o",
-            "Ã¶": "o",
-        }
-        for char, replace in inicode_dict.items():
-            string = string.replace(char, replace)
-        return string.strip()
-
     def add_playstation_games(self, games):
         """
         Adds playstation games to excel using the given `games` variable.
@@ -890,25 +860,6 @@ class Tracker(Utils):
             self.tracker.info(msg)
         if total_games_added:
             self.excel.save()
-
-    def create_dataframe(self, table):
-        """
-        Creates a dataframe from a `table` found using requests and
-        BeautifulSoup.
-        """
-        # find all headers
-        headers = []
-        for i in table.find_all("th"):
-            title = i.text
-            headers.append(title)
-        # creates and fills dataframe
-        df = pd.DataFrame(columns=headers)
-        for j in table.find_all("tr")[1:]:
-            row_data = j.find_all("td")
-            row = [i.text for i in row_data]
-            length = len(df)
-            df.loc[length] = row
-        return df
 
     def update_last_run(self, name):
         """

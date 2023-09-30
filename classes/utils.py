@@ -1,6 +1,8 @@
 from difflib import SequenceMatcher
 import time, json, requests, re
 import datetime as dt
+import pandas as pd
+
 
 # logging import in case helper.py is main
 if __name__ != "__main__":
@@ -117,6 +119,36 @@ class Utils:
         Converts String `date` in MM/DD/YYYY format to datetime object.
         """
         return dt.datetime.strptime(date, "%m/%d/%Y")
+
+    @staticmethod
+    def get_year(date_string):
+        """
+        Gets the year from `date_string`.
+        """
+        year = re.search(r"[0-9]{4}", date_string)
+        if year:
+            return year.group(0)
+        else:
+            return "Invalid Date"
+
+    @staticmethod
+    def unicode_fix(string):
+        """
+        Basic unicode cleaner.
+        """
+        inicode_dict = {
+            "â€": "'",
+            "®": "",
+            "™": "",
+            "â„¢": "",
+            "Â": "",
+            "Ã›": "U",
+            "ö": "o",
+            "Ã¶": "o",
+        }
+        for char, replace in inicode_dict.items():
+            string = string.replace(char, replace)
+        return string.strip()
 
     @staticmethod
     def days_since(past_date, current_date=None):
@@ -394,6 +426,25 @@ class Utils:
             if new_data != last_check_data:
                 raise PermissionError("Data did not save error.")
 
+    def create_dataframe(self, table):
+        """
+        Creates a dataframe from a `table` found using requests and
+        BeautifulSoup.
+        """
+        # find all headers
+        headers = []
+        for i in table.find_all("th"):
+            title = i.text
+            headers.append(title)
+        # creates and fills dataframe
+        df = pd.DataFrame(columns=headers)
+        for j in table.find_all("tr")[1:]:
+            row_data = j.find_all("td")
+            row = [i.text for i in row_data]
+            length = len(df)
+            df.loc[length] = row
+        return df
+
 
 if __name__ == "__main__":
-    App = Helper()
+    App = Utils()
