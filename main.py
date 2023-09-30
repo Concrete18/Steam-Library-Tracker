@@ -147,7 +147,6 @@ class Tracker(Utils):
         release_col := "Release Year",
         app_id_col := "App ID",
     ]
-    # TODO determine width for tqdm here
 
     def __init__(self) -> None:
         """
@@ -686,13 +685,13 @@ class Tracker(Utils):
         steam_games = self.get_owned_steam_games(self.steam_key, steam_id)
         if steam_games:
             # creates a list of removed steam games
-            removed_games = [int(app_id) for app_id in self.steam.row_idx.keys()]
             self.num_games_updated = 0
             self.num_games_added = 0
             self.total_session_playtime = 0
             added_games = []
             updated_games = []
             name_changes = []
+            removed_games = [int(app_id) for app_id in self.steam.row_idx.keys()]
             save_every_nth = self.create_save_every_nth()
             # game checking
             print(f"Found {len(steam_games)} Steam Games.\n")
@@ -1315,6 +1314,4 @@ class Tracker(Utils):
 
 if __name__ == "__main__":
     App = Tracker()
-    # App.update_favorite_games_sales()
-    # exit()
     App.run()
