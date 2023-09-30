@@ -7,7 +7,7 @@ import datetime as dt
 import pandas as pd
 
 # classes
-from classes.helper import Helper, keyboard_interrupt
+from classes.utils import Utils, keyboard_interrupt
 from classes.statisitics import Stat
 from classes.logger import Logger
 
@@ -49,7 +49,7 @@ def setup():
     exit()
 
 
-class Tracker(Helper):
+class Tracker(Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external

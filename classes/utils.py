@@ -27,7 +27,7 @@ def keyboard_interrupt(func):
     return wrapped
 
 
-class Helper:
+class Utils:
     Log = Logger()
     error_log = Log.create_log(name="helper", log_path="logs/error.log")
 

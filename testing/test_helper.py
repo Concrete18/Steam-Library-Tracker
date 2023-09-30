@@ -2,12 +2,12 @@ import datetime as dt
 import unittest
 
 # classes
-from classes.helper import Helper
+from classes.utils import Utils
 
 
 class HoursPlayed(unittest.TestCase):
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_hours_played(self):
         time_hours_played = {
@@ -28,7 +28,7 @@ class TimePassed(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_minutes(self):
         """
@@ -139,7 +139,7 @@ class DaysSince(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_days_since(self):
         date_tests = {
@@ -154,7 +154,7 @@ class DaysSince(unittest.TestCase):
 
 class UrlSanitize(unittest.TestCase):
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_url_sanitize(self):
         url_tests = {
@@ -172,7 +172,7 @@ class WordAndList(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_word_and_list(self):
         list_tests = [
@@ -192,7 +192,7 @@ class LevenshteinDistance(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_lev_distance_insert(self):
         """
@@ -221,7 +221,7 @@ class LevenshteinDistance(unittest.TestCase):
 
 class SimilarityMatching(unittest.TestCase):
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_lev_dist_matcher(self):
         test_list = [
@@ -263,7 +263,7 @@ class AnyIsNum(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_true_num(self):
         self.assertTrue(self.t.any_is_num(155))
