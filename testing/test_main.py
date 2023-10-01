@@ -237,7 +237,6 @@ class GetSteamID(unittest.TestCase):
         self.t.steam_key = data["settings"]["steam_api_key"]
 
     def test_get_steam_id(self):
-        # TODO move anything that uses an api or scraping to api test file
         gabe_steam_id = 76561197960287930
         result = self.t.get_steam_id("gabelogannewell")
         self.assertEqual(result, gabe_steam_id)

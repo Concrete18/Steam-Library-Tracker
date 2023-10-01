@@ -148,10 +148,13 @@ class Tracker(Utils):
         app_id_col := "App ID",
     ]
 
-    def __init__(self) -> None:
+    errors = []
+
+    def __init__(self, save) -> None:
         """
         Game Library Tracking Class.
         """
+        self.save_to_file = save
         if not self.steam_id:
             self.update_steam_id()
 
@@ -522,14 +525,14 @@ class Tracker(Utils):
         """
         return f"https://store.steampowered.com/app/{app_id}/"
 
-    def missing_info_check(self, skip_filled=1, check_status=0):
+    def missing_info_check(self, skip_filled=True, check_status=False):
         """
         Loops through games in row_idx and gets missing data for
         time to beat and additional game info from Steam API.
 
         Use `skip_filled` to skip non blank entries.
 
-        Use `check_status` to only check games with a with specific play status.
+        Use `check_status` to only check games with a specific play status.
         """
         # creates checklist
         check_list = []
@@ -566,13 +569,13 @@ class Tracker(Utils):
             else:
                 check_list.append(app_id)
         # checks if data should be updated
-        missing_data = len(check_list)
+        missing_data_total = len(check_list)
         auto_run = 50
-        if 0 < missing_data <= auto_run:
+        if 0 < missing_data_total <= auto_run:
             print(f"\nMissing data is within threshold of {auto_run}.")
-        elif missing_data > auto_run:
+        elif missing_data_total > auto_run:
             msg = (
-                f"\nSome data is missing for {missing_data} games."
+                f"\nSome data is missing for {missing_data_total} games."
                 "\nDo you want to retrieve it?\n:"
             )
             if not input(msg) in ["yes", "y"]:
@@ -609,16 +612,18 @@ class Tracker(Utils):
                 if steam_info[self.release_col]:
                     year = steam_info[self.release_col]
                     self.set_release_year(app_id, year)
-                save_every_nth()
+                if self.save_to_file:
+                    save_every_nth()
                 # title progress percentage
                 cur_itr += 1
-                progress = cur_itr / missing_data * 100
+                progress = cur_itr / missing_data_total * 100
                 self.set_title(f"{progress:.2f}% - {self.title}")
             self.set_title()
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
-            self.excel.save()
+            if self.save_to_file:
+                self.excel.save()
 
     @staticmethod
     def play_status(play_status: str, hours_played: float):
@@ -676,12 +681,39 @@ class Tracker(Utils):
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
 
+    def name_change_checker(self, name_changes):
+        """
+        Checks the `name_changes` to see if they contain any
+        name changes to possibly fufill.
+        """
+        name_change_warning_num = 5
+        name_changes_total = len(name_changes)
+        if name_changes_total == 0:
+            return
+        elif name_changes_total > name_change_warning_num:
+            print(f"Name Change Total {name_changes_total}")
+            print(f"Over Warning Threshold of {name_change_warning_num}")
+            return
+        print("\nName Changes:")
+        for names_dict in name_changes:
+            new_name = names_dict["new_name"]
+            old_name = names_dict["old_name"]
+            print(f'"{old_name}" to "{new_name}"')
+        msg = "Do you want to update the above game names?:\n"
+        if input(msg).lower() in ["yes", "y"]:
+            for names_dict in name_changes:
+                app_id = names_dict["app_id"]
+                new_name = names_dict["new_name"]
+                self.steam.update_cell(app_id, self.name_col, new_name)
+            return
+        print("Skipping Name Changes")
+
     def sync_steam_games(self, steam_id):
         """
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
-        # TODO update game data sometimes
+        # TODO auto update game data sometimes
         steam_games = self.get_owned_steam_games(self.steam_key, steam_id)
         if steam_games:
             # creates a list of removed steam games
@@ -708,7 +740,14 @@ class Tracker(Utils):
                 # name change check
                 cur_game_name = self.steam.get_cell(app_id, self.name_col)
                 if cur_game_name and cur_game_name != game_name:
-                    name_changes.append(f"{cur_game_name} changed to {game_name}")
+                    msg = f'Name Change: "{cur_game_name}" to "{game_name}"'
+                    self.tracker.info(msg)
+                    name_change_dict = {
+                        "new_name": game_name,
+                        "old_name": cur_game_name,
+                        "app_id": app_id,
+                    }
+                    name_changes.append(name_change_dict)
                 # sets play time earlier so it only needs to be set up once
                 minutes_played = game["playtime_forever"]
                 hours_played = self.hours_played(minutes_played)
@@ -747,7 +786,8 @@ class Tracker(Utils):
                     added_games.append(game_name)
                 # saves each time the checks count is divisible by 20 and
                 # total changes count is greater then a specific number
-            save_every_nth()
+            if self.save_to_file:
+                save_every_nth()
             # prints the total games updated and added
             if 0 < self.num_games_updated < 50:
                 print(f"\nGames Updated: {self.num_games_updated}")
@@ -760,10 +800,7 @@ class Tracker(Utils):
                     for line in game_info:
                         print(line)
             # game names changed
-            if name_changes:
-                print("\nName Changes:")
-                for changes in name_changes:
-                    print(changes)
+            self.name_change_checker(name_changes)
             # games added
             if 0 < self.num_games_added < 50:
                 print(f"\nGames Added: {self.num_games_added}")
@@ -771,7 +808,7 @@ class Tracker(Utils):
                     # prints each game that was added
                     output = self.word_and_list(added_games)
                     print(output)
-            if self.excel.changes_made:
+            if self.excel.changes_made and self.save_to_file:
                 self.excel.save()
             else:
                 print("\nNo Steam games were updated or added.")
@@ -853,11 +890,11 @@ class Tracker(Utils):
                 play_status="Unplayed",
             )
         total_games_added = len(added_games)
-        msg = f"Added {total_games_added} PS4/PS5 Games."
+        msg = f"New Game: Added {total_games_added} PS4/PS5 Games."
         print(msg)
         if self.logging:
             self.tracker.info(msg)
-        if total_games_added:
+        if total_games_added and self.save_to_file:
             self.excel.save()
 
     def update_last_run(self, name):
@@ -891,7 +928,6 @@ class Tracker(Utils):
         """
         Updates the games playtime and play status if they changed.
         """
-        self.steam.update_cell(app_id, self.name_col, game_name)
         # all hours
         previous_hours_played = self.steam.get_cell(app_id, self.hours_played_col)
         current_hours_played = self.hours_played(minutes_played)
@@ -912,12 +948,7 @@ class Tracker(Utils):
             self.set_time_played(app_id, time_played)
             self.set_date_updated(app_id)
             self.set_play_status(app_id, play_status)
-
-            try:
-                self.steam.format_row(app_id)
-            except:
-                print(f"broke on game: {game_name} with app ID: {app_id}")
-
+            self.steam.format_row(app_id)
             self.total_session_playtime += hours_played
             self.num_games_updated += 1
             # updated game logging
@@ -927,7 +958,7 @@ class Tracker(Utils):
                 f"   Total Playtime: {current_hours_played} Hours.",
             ]
             # logs play time
-            msg = f"{game_name} played for {added_time_played}"
+            msg = f"Playtime: {game_name} played for {added_time_played}"
             if self.logging:
                 self.tracker.info(msg)
             return update_info
@@ -982,7 +1013,7 @@ class Tracker(Utils):
         time_played=None,
         app_id=None,
         play_status=None,
-        save=False,
+        save_after_add=False,
     ):
         """
         Adds a game with the game_name, hours played using `minutes_played` and `play_status`.
@@ -1005,8 +1036,6 @@ class Tracker(Utils):
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
         early_access = "No"
         # indirect_cell setup
-        rating_com = self.rating_comp_col
-        my_rating = self.steam.indirect_cell(rating_com, self.my_rating_col)
         prob_compl = self.prob_comp_col
         hours = self.steam.indirect_cell(prob_compl, self.hours_played_col)
         ttb = self.steam.indirect_cell(prob_compl, self.time_to_beat_col)
@@ -1035,12 +1064,12 @@ class Tracker(Utils):
         # logging
         if not hours_played:
             time_played = "no time"
-        info = f"Added {game_name} with {time_played} played"
         if self.logging:
+            info = f"New Game: Added {game_name} with {time_played} played"
             self.tracker.info(info)
         self.num_games_added += 1
         self.steam.format_row(app_id)
-        if save:
+        if save_after_add and self.save_to_file:
             self.excel.save()
 
     def play_status_picker(self):
@@ -1162,7 +1191,8 @@ class Tracker(Utils):
                 continue
             self.sales.add_new_line(game)
         self.sales.format_all_cells()
-        self.excel.save()
+        if self.save_to_file:
+            self.excel.save()
 
     def update_favorite_games_sales(self):
         """
@@ -1300,6 +1330,17 @@ class Tracker(Utils):
         if not self.pick_task(choices, msg):
             self.excel.open_excel()
 
+    def show_errors(self):
+        """
+        Shows errors that occurred if they were added to the errors list.
+        """
+        error_total = len(self.errors)
+        if not error_total:
+            return
+        print(f"\n{error_total} Errors Occurred:")
+        for error in self.errors:
+            print(error)
+
     @keyboard_interrupt
     def run(self):
         """
@@ -1309,9 +1350,10 @@ class Tracker(Utils):
         print(f"Starting {self.title}")
         self.sync_steam_games(self.steam_id)
         self.missing_info_check()
+        self.show_errors()
         self.game_library_actions()
 
 
 if __name__ == "__main__":
-    App = Tracker()
+    App = Tracker(save=True)
     App.run()
