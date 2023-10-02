@@ -44,7 +44,10 @@ class Steam(Utils):
         url = "https://store.steampowered.com/api/appdetails"
         self.api_sleeper("steam_app_details")
         query = {"appids": app_id, "l": "english"}
-        return self.request_url(url, params=query)
+        response = self.request_url(url, params=query)
+        if response:
+            return response.json()
+        return None
 
     def get_app_list(self):
         """

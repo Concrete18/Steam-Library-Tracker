@@ -459,7 +459,6 @@ class Tracker(Steam, Utils):
         app_details = self.get_app_details(app_id)
         if not app_details:
             return info_dict
-        dict = response.json()
         # gets games store data
         store_link = self.get_store_link(app_id)
         self.api_sleeper("store_data")
@@ -472,8 +471,8 @@ class Tracker(Steam, Utils):
         tags = self.get_steam_user_tags(app_id=app_id, response=response)
         info_dict[self.user_tags_col] = ", ".join(tags)
         # info_dict setup
-        if "data" in dict[str(app_id)].keys():
-            game_info = dict[str(app_id)]["data"]
+        if "data" in app_details[str(app_id)].keys():
+            game_info = app_details[str(app_id)]["data"]
             keys = game_info.keys()
             # get game name
             if "name" in keys:
