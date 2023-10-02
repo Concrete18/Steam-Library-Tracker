@@ -5,7 +5,7 @@ from main import Tracker
 
 
 class GetOwnedGames(unittest.TestCase):
-    t = Tracker()
+    t = Tracker(save=False)
     owned_games = t.get_owned_steam_games(t.steam_key, t.steam_id)
 
     def test_get_owned_steam_games(self):
@@ -23,7 +23,7 @@ class GetOwnedGames(unittest.TestCase):
 
 class GetYear(unittest.TestCase):
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_valid(self):
         date_tests = {
@@ -45,7 +45,7 @@ class GetYear(unittest.TestCase):
 
 class GetTimeToBeat(unittest.TestCase):
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_get_time_to_beat(self):
         time_to_beat_tests = [
@@ -63,7 +63,7 @@ class GetTimeToBeat(unittest.TestCase):
 
 class GetStoreLink(unittest.TestCase):
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_get_store_link(self):
         store_link_tests = {
@@ -89,7 +89,7 @@ class SteamReview(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_get_steam_review(self):
         steam_review_tests = [
@@ -109,7 +109,7 @@ class GetGameInfo(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_has_keys(self):
         """
@@ -206,7 +206,7 @@ class GetProfileUsername(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_get_profile_username(self):
         gabe_username = "gabelogannewell"
@@ -231,7 +231,7 @@ class GetSteamID(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
         with open("configs\config.json") as file:
             data = json.load(file)
         self.t.steam_key = data["settings"]["steam_api_key"]
@@ -253,7 +253,7 @@ class ValidateSteamApiKey(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_True(self):
         test_api_key = "15D4C014D419C0642B1E707BED41G7D4"
@@ -273,7 +273,7 @@ class ValidateSteamID(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_True(self):
         steam_ids = [
@@ -296,13 +296,13 @@ class ValidateSteamID(unittest.TestCase):
                 self.assertFalse(result)
 
 
-class IgnoreFunc(unittest.TestCase):
+class SkipGame(unittest.TestCase):
     """
     Tests get_game_info function.
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_True(self):
         """
@@ -310,14 +310,15 @@ class IgnoreFunc(unittest.TestCase):
         """
         ignore_names = ["Half-Life 2: Lost Coast"]
         self.t.name_ignore_list = [string.lower() for string in ignore_names]
-        self.t.app_id_ignore_list = [61600, 12345864489]
+        self.t.app_id_ignore_list = [12345, 123458]
         # app_id return true
-        self.assertTrue(self.t.should_ignore(app_id=61600))
-        self.assertTrue(self.t.should_ignore(app_id=12345864489))
+        self.assertTrue(self.t.skip_game(app_id="12345"))
+        self.assertTrue(self.t.skip_game(app_id=12345))
+        self.assertTrue(self.t.skip_game(app_id=123458))
         # name return true
-        self.assertTrue(self.t.should_ignore(name="Game Beta"))
-        self.assertTrue(self.t.should_ignore(name="Squad - Public Testing"))
-        self.assertTrue(self.t.should_ignore(name="Half-Life 2: Lost Coast"))
+        self.assertTrue(self.t.skip_game(name="Game Beta"))
+        self.assertTrue(self.t.skip_game(name="Squad - Public Testing"))
+        self.assertTrue(self.t.skip_game(name="Half-Life 2: Lost Coast"))
 
     def test_False(self):
         """
@@ -326,15 +327,15 @@ class IgnoreFunc(unittest.TestCase):
         ignore_names = ["Half-Life 2: Lost Coast"]
         self.t.name_ignore_list = [string.lower() for string in ignore_names]
         # app_id return false
-        self.assertFalse(self.t.should_ignore(app_id=345643))
+        self.assertFalse(self.t.skip_game(app_id=345643))
         # name return false
-        self.assertFalse(self.t.should_ignore(name="This is a great game"))
+        self.assertFalse(self.t.skip_game(name="This is a great game"))
 
     def test_empty(self):
         """
         Empty args return False.
         """
-        self.assertFalse(self.t.should_ignore())
+        self.assertFalse(self.t.skip_game())
 
 
 class PlayStatus(unittest.TestCase):
@@ -343,51 +344,56 @@ class PlayStatus(unittest.TestCase):
     """
 
     def setUp(self):
-        self.t = Tracker()
+        self.t = Tracker(save=False)
 
     def test_base(self):
         """
         Tests average uses.
         """
         tests = [
-            {"play_status": "Unplayed", "hours": 0.1, "ans": "Unplayed"},
-            {"play_status": "Unplayed", "hours": 0.5, "ans": "Played"},
-            {"play_status": "Unplayed", "hours": 1, "ans": "Playing"},
-            {"play_status": "Unplayed", "hours": 0.5, "ans": "Played"},
-            {"play_status": "Finished", "hours": 0.1, "ans": "Finished"},
+            {"play_status": "Unplayed", "minutes": 5, "ans": "Unplayed"},
+            {"play_status": "Unplayed", "minutes": 30, "ans": "Played"},
+            {"play_status": "Unplayed", "minutes": 60, "ans": "Playing"},
+            {"play_status": "Unplayed", "minutes": 30, "ans": "Played"},
+            {"play_status": "Finished", "minutes": 5, "ans": "Finished"},
         ]
-        for a in tests:
-            self.assertEqual(self.t.play_status(a["play_status"], a["hours"]), a["ans"])
+        for test in tests:
+            play_status = test["play_status"]
+            minutes = test["minutes"]
+            awnser = test["ans"]
+            self.assertEqual(self.t.decide_play_status(play_status, minutes), awnser)
 
     def test_do_nothing(self):
         """
         Tests Instances where nothing should be changed.
         """
         tests = [
-            {"play_status": "Waiting", "hours": 100, "ans": "Waiting"},
-            {"play_status": "Quit", "hours": 100, "ans": "Quit"},
-            {"play_status": "Finished", "hours": 100, "ans": "Finished"},
-            {"play_status": "Ignore", "hours": 100, "ans": "Ignore"},
+            {"play_status": "Waiting", "minutes": 600, "ans": "Waiting"},
+            {"play_status": "Quit", "minutes": 600, "ans": "Quit"},
+            {"play_status": "Finished", "minutes": 600, "ans": "Finished"},
+            {"play_status": "Ignore", "minutes": 600, "ans": "Ignore"},
         ]
         for a in tests:
-            self.assertEqual(self.t.play_status(a["play_status"], a["hours"]), a["ans"])
+            self.assertEqual(
+                self.t.decide_play_status(a["play_status"], a["minutes"]), a["ans"]
+            )
 
     def test_play_status(self):
         tests = [
             # must play
-            {"play_status": "Must Play", "hours": 0, "ans": "Must Play"},
-            {"play_status": "Must Play", "hours": 0.5, "ans": "Played"},
-            {"play_status": "Must Play", "hours": 1, "ans": "Playing"},
+            {"play_status": "Must Play", "minutes": 0, "ans": "Must Play"},
+            {"play_status": "Must Play", "minutes": 30, "ans": "Played"},
+            {"play_status": "Must Play", "minutes": 60, "ans": "Playing"},
             # new game
-            {"play_status": None, "hours": 0, "ans": "Unplayed"},
-            {"play_status": None, "hours": 0.5, "ans": "Played"},
-            {"play_status": None, "hours": 1, "ans": "Playing"},
+            {"play_status": None, "minutes": 0, "ans": "Unplayed"},
+            {"play_status": None, "minutes": 30, "ans": "Played"},
+            {"play_status": None, "minutes": 60, "ans": "Playing"},
             # error
-            {"play_status": None, "hours": "Test", "ans": ""},
-            {"play_status": "Unplayed", "hours": "Test", "ans": "Unplayed"},
+            {"play_status": None, "minutes": "Test", "ans": ""},
+            {"play_status": "Unplayed", "minutes": "Test", "ans": "Unplayed"},
         ]
         for test in tests:
-            result = self.t.play_status(test["play_status"], test["hours"])
+            result = self.t.decide_play_status(test["play_status"], test["minutes"])
             self.assertEqual(result, test["ans"])
 
     def test_must_play(self):
@@ -396,24 +402,26 @@ class PlayStatus(unittest.TestCase):
         games to go back to normal status changing once they have been played.
         """
         tests = [
-            {"play_status": "Must Play", "hours": 0, "ans": "Must Play"},
-            {"play_status": "Must Play", "hours": 0.5, "ans": "Played"},
-            {"play_status": "Must Play", "hours": 1, "ans": "Playing"},
+            {"play_status": "Must Play", "minutes": 0, "ans": "Must Play"},
+            {"play_status": "Must Play", "minutes": 30, "ans": "Played"},
+            {"play_status": "Must Play", "minutes": 60, "ans": "Playing"},
         ]
         for a in tests:
-            self.assertEqual(self.t.play_status(a["play_status"], a["hours"]), a["ans"])
+            self.assertEqual(
+                self.t.decide_play_status(a["play_status"], a["minutes"]), a["ans"]
+            )
 
     def test_must_play(self):
         """
         Tests running on new games.
         """
         tests = [
-            {"play_status": None, "hours": 0, "ans": "Unplayed"},
-            {"play_status": None, "hours": 0.5, "ans": "Played"},
-            {"play_status": None, "hours": 1, "ans": "Playing"},
+            {"play_status": None, "minutes": 0, "ans": "Unplayed"},
+            {"play_status": None, "minutes": 30, "ans": "Played"},
+            {"play_status": None, "minutes": 60, "ans": "Playing"},
         ]
         for test in tests:
-            result = self.t.play_status(test["play_status"], test["hours"])
+            result = self.t.decide_play_status(test["play_status"], test["minutes"])
             self.assertEqual(result, test["ans"])
 
     def test_error(self):
@@ -421,11 +429,11 @@ class PlayStatus(unittest.TestCase):
         Tests for invalid values given causing nothing to be changed.
         """
         tests = [
-            {"play_status": None, "hours": "Test", "ans": ""},
-            {"play_status": "Unplayed", "hours": "Test", "ans": "Unplayed"},
+            {"play_status": None, "minutes": "Test", "ans": ""},
+            {"play_status": "Unplayed", "minutes": "Test", "ans": "Unplayed"},
         ]
         for test in tests:
-            result = self.t.play_status(test["play_status"], test["hours"])
+            result = self.t.decide_play_status(test["play_status"], test["minutes"])
             self.assertEqual(result, test["ans"])
 
 
