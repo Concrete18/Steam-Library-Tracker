@@ -7,6 +7,7 @@ import datetime as dt
 
 # classes
 from classes.steam import Steam
+from classes.playstation import Playstation
 from classes.utils import Utils, keyboard_interrupt
 from classes.statisitics import Stat
 from classes.logger import Logger
@@ -49,7 +50,7 @@ def setup():
     exit()
 
 
-class Tracker(Steam, Utils):
+class Tracker(Steam, Playstation, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
@@ -63,7 +64,6 @@ class Tracker(Steam, Utils):
     vanity_url = data["settings"]["vanity_url"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
-    playstation_data_link = data["settings"]["playstation_data_link"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     app_id_ignore_list = data["app_id_ignore_list"]
 
@@ -100,6 +100,7 @@ class Tracker(Steam, Utils):
         "date": ["Last Updated", "Date"],
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
     }
+    # excel setup
     excel = Excel(excel_filename, use_logging=logging)
     steam = Sheet(excel, sheet_name="Steam", column_name="App ID", options=options)
     playstation = Sheet(
@@ -575,6 +576,7 @@ class Tracker(Steam, Utils):
         missing_data_total = len(check_list)
         auto_run = 50
         if 0 < missing_data_total <= auto_run:
+            # TODO reword this
             print(f"\nMissing data is within threshold of {auto_run}.")
         elif missing_data_total > auto_run:
             msg = (
@@ -587,9 +589,9 @@ class Tracker(Steam, Utils):
             return
         try:
             # updates missing data
-            print("\nTime To Beat and other steam data check.")
             cur_itr = 0
             save_every_nth = self.create_save_every_nth()
+            games_with_added_data = []
             for app_id in tqdm(
                 iterable=check_list,
                 ascii=True,
@@ -601,6 +603,7 @@ class Tracker(Steam, Utils):
                 filled_value = self.steam.get_cell(app_id, self.time_to_beat_col)
                 if not filled_value:
                     if game_name := self.get_name(app_id):
+                        games_with_added_data.append(game_name)
                         if time_to_beat := self.get_time_to_beat(game_name):
                             self.set_time_to_beat(app_id, time_to_beat)
                 steam_info = self.get_game_info(app_id)
@@ -621,6 +624,8 @@ class Tracker(Steam, Utils):
                 progress = cur_itr / missing_data_total * 100
                 self.set_title(f"{progress:.2f}% - {self.title}")
             self.set_title()
+            print("Added Data for the following games:")
+            print(self.word_and_list(games_with_added_data))
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
@@ -731,8 +736,7 @@ class Tracker(Steam, Utils):
                 if update_info:
                     updated_games.append(update_info)
             else:
-                print(game_name)
-                self.add_game(
+                added_info = self.add_game(
                     game_name=game_name,
                     minutes_played=minutes_played,
                     linux_minutes_played=linux_minutes_played,
@@ -740,7 +744,7 @@ class Tracker(Steam, Utils):
                     app_id=app_id,
                     play_status=play_status,
                 )
-                added_games.append(game_name)
+                added_games.append(added_info)
         # saves each time the checks count is divisible by num
         if self.save_to_file:
             save_every_nth()
@@ -757,18 +761,23 @@ class Tracker(Steam, Utils):
         # game names changed
         self.name_change_checker(name_changes)
         # games added
-        if 0 < self.num_games_added < 50:
+        if self.num_games_added:
             print(f"\nGames Added: {self.num_games_added}")
+        if self.num_games_added < 10:
             if added_games:
-                # prints each game that was added
-                output = self.word_and_list(added_games)
-                print(output)
+                for game_info in added_games:
+                    for line in game_info:
+                        print(line)
+        elif self.num_games_added < 50:
+            print(self.word_and_list(added_games))
+        else:
+            print("Too Many to show.")
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
             print("\nGames Removed:", len(sheet_games))
             removed_games_names = [self.get_name(app_id) for app_id in sheet_games]
-            print(", ".join(removed_games_names))
+            print(self.word_and_list(removed_games_names))
             response = input("Do you want to delele all the above games?\n")
             if response.lower() in ["yes", "y"]:
                 for app_id in sheet_games:
@@ -841,46 +850,6 @@ class Tracker(Steam, Utils):
                     return True
         return False
 
-    def add_playstation_games(self, games):
-        """
-        Adds playstation games to excel using the given `games` variable.
-        """
-        added_games = []
-        for game in tqdm(
-            iterable=games,
-            ascii=True,
-            unit=" games",
-            ncols=100,
-        ):
-            game_name = self.unicode_fix(game["name"])
-            # skip if it any are true
-            game_exists = [
-                # should be ignored
-                self.skip_game(name=game_name),
-                # added this session
-                game_name in added_games,
-                # already exist
-                game_name in self.steam.row_idx.keys(),
-                # game exists with a playstation version already
-                f"{game_name} - Console" in self.steam.row_idx.keys(),
-            ]
-            if any(game_exists):
-                continue
-            # adds the game
-            added_games.append(game_name)
-            self.add_game(
-                sheet=self.playstation,
-                game_name=game_name,
-                play_status="Unplayed",
-            )
-        total_games_added = len(added_games)
-        msg = f"New Game: Added {total_games_added} PS4/PS5 Games."
-        print(msg)
-        if self.logging:
-            self.tracker.info(msg)
-        if total_games_added and self.save_to_file:
-            self.excel.save()
-
     def update_last_run(self, name):
         """
         Updates json by `name` with the current date.
@@ -888,17 +857,6 @@ class Tracker(Steam, Utils):
         date = dt.datetime.now().strftime("%m/%d/%Y")
         self.data["last_runs"][name] = date
         self.save_json_output(self.data, self.config)
-
-    def check_playstation_json(self):
-        """
-        Checks `playstation_games.json` to find out if it is newly updated so
-        it can add the new games to the sheet.
-        """
-        with open(self.ps_data) as file:
-            data = json.load(file)
-        print("\nChecking for new games for PS4 or PS5.")
-        games = data["data"]["purchasedTitlesRetrieve"]["games"]
-        self.add_playstation_games(games)
 
     def update_game(
         self,
@@ -1053,6 +1011,11 @@ class Tracker(Steam, Utils):
         self.steam.format_row(app_id)
         if save_after_add and self.save_to_file:
             self.excel.save()
+        added_info = [
+            f"\n > {game_name} added.",
+            f"   Total Playtime: {hours_played} Hours.",
+        ]
+        return added_info
 
     def play_status_picker(self):
         """
@@ -1229,21 +1192,6 @@ class Tracker(Steam, Utils):
             self.set_hours_played(game_idx, float(new_hours))
             print(f"\nUpdated to {new_hours} Hours.")
         self.set_date_updated(game_idx)
-
-    def update_playstation_data(self):
-        """
-        Opens playstation data json file and web json with latest data
-        for manual updating.
-        """
-        # checks if json exists
-        if not self.ps_data.exists():
-            print("\nPlayStation JSON does not exist.\nCreating file now.\n")
-            self.ps_data.touch()
-        subprocess.Popen(f'notepad "{self.ps_data}"')
-        webbrowser.open(self.playstation_data_link)
-        webbrowser.open(r"https://store.playstation.com/")
-        input("\nPress Enter when done.\n")
-        self.check_playstation_json()
 
     def open_log(self):
         osCommandString = f"notepad.exe {self.tracker_log_path}"

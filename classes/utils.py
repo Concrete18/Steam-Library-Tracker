@@ -272,6 +272,7 @@ class Utils:
         Converts a string into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
         """
+        # TODO improve by just changing last comma into " and"
         length = len(str_list)
         if length == 1:
             return str_list[0]
