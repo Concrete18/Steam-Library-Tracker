@@ -775,13 +775,13 @@ class Tracker(Steam, Playstation, Utils):
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
-            print("\nGames Removed:", len(sheet_games))
+            print("\nGames To Be Removed:", len(sheet_games))
             removed_games_names = [self.get_name(app_id) for app_id in sheet_games]
             print(self.word_and_list(removed_games_names))
-            response = input("Do you want to delele all the above games?\n")
+            response = input("\nDo you want to delele all the above games?\n")
             if response.lower() in ["yes", "y"]:
                 for app_id in sheet_games:
-                    print(self.steam.delete_row(str(app_id)))
+                    self.steam.delete_row(str(app_id))
         if self.excel.changes_made and self.save_to_file:
             self.excel.save()
         else:
