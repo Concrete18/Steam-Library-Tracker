@@ -1,7 +1,4 @@
-import random, json, os, re, sys, webbrowser, subprocess, shutil, time
-from howlongtobeatpy import HowLongToBeat
-from bs4 import BeautifulSoup
-from pathlib import Path
+import json, webbrowser, subprocess
 from tqdm import tqdm
 
 # classes
@@ -20,7 +17,7 @@ class Playstation(Utils):
             unit=" games",
             ncols=100,
         ):
-            game_name = self.unicode_fix(game["name"])
+            game_name = self.unicode_remover(game["name"])
             # skip if it any are true
             game_exists = [
                 # should be ignored
@@ -36,8 +33,7 @@ class Playstation(Utils):
                 continue
             # adds the game
             added_games.append(game_name)
-            self.add_game(
-                sheet=self.playstation,
+            self.add_ps_game(
                 game_name=game_name,
                 play_status="Unplayed",
             )
@@ -48,6 +44,46 @@ class Playstation(Utils):
             self.tracker.info(msg)
         if total_games_added and self.save_to_file:
             self.excel.save()
+
+    # def add_ps_game(self, game_name=None):
+    #     """
+    #     Adds a playstation games.
+    #     """
+    #     # sets excel column values
+    #     column_info = {
+    #         self.my_rating_col: "",
+    #         self.name_col: game_name,
+    #         self.play_status_col: "Unplayed",
+    #         self.ea_col: early_access,
+    #         self.time_to_beat_col: self.get_time_to_beat(game_name),
+    #         self.prob_comp_col: f'=IFERROR({hours}/{ttb},"Missing Data")',
+    #         self.hours_played_col: hours_played,
+    #         self.linux_hours_col: linux_hours_played,
+    #         self.time_played_col: time_played,
+    #         self.app_id_col: app_id,
+    #         self.store_link_col: store_link_hyperlink,
+    #         self.date_added_col: dt.datetime.now(),
+    #         self.date_updated_col: dt.datetime.now(),
+    #     }
+    #     if steam_info:
+    #         for column in self.excel_columns:
+    #             if column in steam_info.keys():
+    #                 column_info[column] = steam_info[column]
+    #     self.steam.add_new_line(column_info)
+    #     # logging
+    #     if not hours_played:
+    #         time_played = "no time"
+    #     if self.logging:
+    #         info = f"New Game: Added {game_name} with {time_played} played"
+    #         self.tracker.info(info)
+    #     self.num_games_added += 1
+    #     self.steam.format_row(app_id)
+    #     self.excel.save()
+    #     added_info = [
+    #         f"\n > {game_name} added.",
+    #         f"   Total Playtime: {hours_played} Hours.",
+    #     ]
+    #     return added_info
 
     def check_playstation_json(self):
         """

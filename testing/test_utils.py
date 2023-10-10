@@ -141,15 +141,16 @@ class DaysSince(unittest.TestCase):
     def setUp(self):
         self.t = Utils()
 
-    def test_days_since(self):
-        date_tests = {
-            2: dt.datetime(2022, 4, 22),
-            10: dt.datetime(2022, 4, 14),
-            365: dt.datetime(2021, 4, 24),
-        }
-        past_date = dt.datetime(2022, 4, 24)
-        for answer, current_date in date_tests.items():
-            self.assertEqual(self.t.days_since(current_date, past_date), answer)
+    def test_set_date(self):
+        past_date = dt.datetime(2022, 4, 22)
+        current_date = dt.datetime(2022, 4, 24)
+        days_since = self.t.days_since(past_date, current_date)
+        self.assertEqual(days_since, 2)
+
+    def test_todays_date(self):
+        past_date = dt.datetime.now() - dt.timedelta(days=7)
+        days_since = self.t.days_since(past_date)
+        self.assertEqual(days_since, 7)
 
 
 class UrlSanitize(unittest.TestCase):
@@ -166,15 +167,40 @@ class UrlSanitize(unittest.TestCase):
             self.assertEqual(self.t.url_sanitize(string), result)
 
 
-class WordAndList(unittest.TestCase):
+class UnicodeRemover(unittest.TestCase):
     """
-    Tests word_and_list function.
+    Tests unicode_remover function
     """
 
     def setUp(self):
         self.t = Utils()
 
-    def test_word_and_list(self):
+    def test_trademark(self):
+        new_string = self.t.unicode_remover("Game Name™")
+        self.assertEqual(new_string, "Game Name")
+
+    def test_trim_removal(self):
+        new_string = self.t.unicode_remover("® ® ® ö Test ® ® ®")
+        self.assertEqual(new_string, "o Test")
+
+    def test_trim_removal(self):
+        new_string = self.t.unicode_remover("\u2122 \u2013Test\u2013 \u2122")
+        self.assertEqual(new_string, "-Test-")
+
+    def test_not_string(self):
+        new_string = self.t.unicode_remover(123)
+        self.assertEqual(new_string, 123)
+
+
+class WordAndList(unittest.TestCase):
+    """
+    Tests create_and_sentence function.
+    """
+
+    def setUp(self):
+        self.t = Utils()
+
+    def test_create_and_sentence(self):
         list_tests = [
             (["Test1"], "Test1"),
             (["Test1", "Test2"], "Test1 and Test2"),
@@ -182,7 +208,7 @@ class WordAndList(unittest.TestCase):
         ]
         for list, answer in list_tests:
             with self.subTest(list=list, answer=answer):
-                result = self.t.word_and_list(list)
+                result = self.t.create_and_sentence(list)
                 self.assertEqual(result, answer)
 
 
@@ -255,6 +281,44 @@ class SimilarityMatching(unittest.TestCase):
         for string, answer in string_tests.items():
             result = self.t.lev_dist_matcher(string, test_list)[0]
             self.assertEqual(result, answer)
+
+
+# class SimMatcher(unittest.TestCase):
+#     def setUp(self):
+#         self.t = Utils()
+
+#     def test_lev_dist_matcher(self):
+#         test_list = [
+#             "This is a test, yay",
+#             "this is not it, arg",
+#             "Find the batman!",
+#             "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+#             "The Last of Us",
+#             "Elden Ring",
+#             "The Last of Us Part I",
+#             "The Last of Us Part II",
+#             "Waltz of the Wizard: Natural Magic",
+#             "Life is Strange™",
+#             "The Witcher 3: Wild Hunt",
+#             "Marvel's Spider-Man: Miles Morales",
+#             "Crypt Of The Necrodancer: Nintendo Switch Edition",
+#         ]
+#         string_tests = {
+#             "This is a test": "This is a test, yay",
+#             "find th bamtan": "Find the batman!",
+#             "Eldn Rings": "Elden Ring",
+#             "Shadow Tactics Blades of the Shougn Aikos Choce": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+#             "the last of us": "The Last of Us",
+#             "Walk of the Wizard: Natural Magik": "Waltz of the Wizard: Natural Magic",
+#             "The last of us Part I": "The Last of Us Part I",
+#             "Life is Strange 1": "Life is Strange™",
+#             "Witcher 3: The Wild Hunt": "The Witcher 3: Wild Hunt",
+#             "Spider-Man: Miles Morales": "Marvel's Spider-Man: Miles Morales",
+#             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
+#         }
+#         for string, answer in string_tests.items():
+#             result = self.t.sim_matcher(string, test_list)[0]
+#             self.assertEqual(result, answer)
 
 
 class AnyIsNum(unittest.TestCase):

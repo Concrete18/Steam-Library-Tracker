@@ -127,7 +127,6 @@ class GetGameInfo(unittest.TestCase):
             "price",
             "discount",
             "on_sale",
-            "linux_compat",
             "drm_notice",
             "categories",
             "ext_user_account_notice",
@@ -159,7 +158,6 @@ class GetGameInfo(unittest.TestCase):
         self.assertIsInstance(game_info["Developers"], str)
         self.assertIsInstance(game_info["Publishers"], str)
         self.assertIsInstance(game_info["Genre"], str)
-        self.assertIsInstance(game_info["linux_compat"], str)
         self.assertIsInstance(game_info["drm_notice"], str)
         self.assertIsInstance(game_info["categories"], str)
         self.assertIsInstance(game_info["Release Year"], str)
@@ -188,16 +186,23 @@ class GetGameInfo(unittest.TestCase):
             self.t.steam_rev_total_col: "No Reviews",
             self.t.user_tags_col: "No Tags",
             self.t.release_col: "No Year",
-            "game_name": "Unset",
+            "game_name": "ND - Error",
             "price": "ND - Error",
             "discount": 0.0,
             "on_sale": False,
-            "linux_compat": "Unsupported",
             "drm_notice": "ND - Error",
             "categories": "ND - Error",
             "ext_user_account_notice": "ND - Error",
         }
         self.assertEqual(self.t.get_game_info(None), default_dict)
+
+    def test_not_empty_string(self):
+        """
+        Tests to be sure the get_game_info function has no empty string values.
+        """
+        game_info = self.t.get_game_info(app_id=26500)
+        for entry in game_info.values():
+            self.assertFalse(entry == "")
 
 
 class GetProfileUsername(unittest.TestCase):

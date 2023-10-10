@@ -1,4 +1,4 @@
-import random, json, os, re, sys, webbrowser, subprocess, shutil, time
+import random, json, os, re, sys, shutil, time
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -30,7 +30,6 @@ def setup():
     # excel check
     excel = Path("Game Library.xlsx")
     if not excel.exists():
-        # TODO update template to new excel format
         excel_template = Path("templates/Game_Library_Template.xlsx")
         shutil.copyfile(excel_template, excel)
         all_clear = False
@@ -62,6 +61,7 @@ class Tracker(Steam, Playstation, Utils):
     steam_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
     vanity_url = data["settings"]["vanity_url"]
+    playstation_data_link = data["settings"]["excel_filename"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
@@ -84,6 +84,7 @@ class Tracker(Steam, Playstation, Utils):
             "Developers",
             "Publishers",
             "User Tags",
+            "Notes",
             "Genre",
         ],
         "light_grey_fill": ["Rating Comparison", "Probable Completion"],
@@ -436,7 +437,7 @@ class Tracker(Steam, Playstation, Utils):
         Gets game info with steam api using a `app_id`.
         """
         info_dict = {
-            "game_name": "Unset",
+            "game_name": "ND - Error",
             self.dev_col: "ND - Error",
             self.pub_col: "ND - Error",
             self.genre_col: "ND - Error",
@@ -448,7 +449,6 @@ class Tracker(Steam, Playstation, Utils):
             "price": "ND - Error",
             "discount": 0.0,
             "on_sale": False,
-            "linux_compat": "Unsupported",
             "drm_notice": "ND - Error",
             "categories": "ND - Error",
             "ext_user_account_notice": "ND - Error",
@@ -480,12 +480,14 @@ class Tracker(Steam, Playstation, Utils):
                 info_dict["game_name"] = game_info["name"]
             # get developer
             if "developers" in keys:
-                output = self.word_and_list(game_info["developers"])
-                info_dict[self.dev_col] = output
+                output = self.create_and_sentence(game_info["developers"])
+                if output != "":
+                    info_dict[self.dev_col] = output
             # get publishers
             if "publishers" in keys:
-                output = self.word_and_list(game_info["publishers"])
-                info_dict[self.pub_col] = output
+                output = self.create_and_sentence(game_info["publishers"])
+                if output != "":
+                    info_dict[self.pub_col] = output
             # get genre
             if "genres" in keys:
                 genres = get_json_desc(game_info["genres"])
@@ -516,7 +518,7 @@ class Tracker(Steam, Playstation, Utils):
             # categories
             if "categories" in keys:
                 categories = get_json_desc(game_info["categories"])
-                info_dict["categories"] = self.word_and_list(categories)
+                info_dict["categories"] = self.create_and_sentence(categories)
             # drm info
             if "drm_notice" in keys:
                 info_dict["drm_notice"] = game_info["drm_notice"]
@@ -538,8 +540,19 @@ class Tracker(Steam, Playstation, Utils):
 
         Use `check_status` to only check games with a specific play status.
         """
-        # creates checklist
         check_list = []
+        column_list = [
+            self.genre_col,
+            self.pub_col,
+            self.dev_col,
+            self.steam_rev_per_col,
+            self.steam_rev_total_col,
+            self.user_tags_col,
+            self.time_to_beat_col,
+            self.release_col,
+            self.ea_col,
+        ]
+        # creates checklist
         for app_id in self.steam.row_idx:
             play_status = self.steam.get_cell(app_id, self.play_status_col)
             if check_status:
@@ -554,17 +567,6 @@ class Tracker(Steam, Playstation, Utils):
                 ]:
                     continue
             if skip_filled:
-                column_list = [
-                    self.genre_col,
-                    self.pub_col,
-                    self.dev_col,
-                    self.steam_rev_per_col,
-                    self.steam_rev_total_col,
-                    self.user_tags_col,
-                    self.time_to_beat_col,
-                    self.release_col,
-                    self.ea_col,
-                ]
                 for column in column_list:
                     cell = self.steam.get_cell(app_id, column)
                     if cell == None and app_id not in check_list:
@@ -574,13 +576,12 @@ class Tracker(Steam, Playstation, Utils):
                 check_list.append(app_id)
         # checks if data should be updated
         missing_data_total = len(check_list)
-        auto_run = 50
-        if 0 < missing_data_total <= auto_run:
-            # TODO reword this
-            print(f"\nMissing data is within threshold of {auto_run}.")
-        elif missing_data_total > auto_run:
+        auto_run_limit = 50
+        if 0 < missing_data_total <= auto_run_limit:
+            print(f"\nGames with missing data is within threshold of {auto_run_limit}.")
+        elif missing_data_total > auto_run_limit:
             msg = (
-                f"\nSome data is missing for {missing_data_total} games."
+                f"\n{missing_data_total} games are missing data."
                 "\nDo you want to retrieve it?\n:"
             )
             if not input(msg) in ["yes", "y"]:
@@ -588,7 +589,7 @@ class Tracker(Steam, Playstation, Utils):
         else:
             return
         try:
-            # updates missing data
+            # updates missing column data
             cur_itr = 0
             save_every_nth = self.create_save_every_nth()
             games_with_added_data = []
@@ -599,13 +600,13 @@ class Tracker(Steam, Playstation, Utils):
                 ncols=40,
                 dynamic_ncols=True,
             ):
-                # How long to beat check with scraping
-                filled_value = self.steam.get_cell(app_id, self.time_to_beat_col)
-                if not filled_value:
-                    if game_name := self.get_name(app_id):
-                        games_with_added_data.append(game_name)
-                        if time_to_beat := self.get_time_to_beat(game_name):
-                            self.set_time_to_beat(app_id, time_to_beat)
+                game_name = self.get_name(app_id)
+                games_with_added_data.append(game_name)
+                # How long to beat check
+                prev_time_to_beat = self.steam.get_cell(app_id, self.time_to_beat_col)
+                if not prev_time_to_beat:
+                    if time_to_beat := self.get_time_to_beat(game_name) and game_name:
+                        self.set_time_to_beat(app_id, time_to_beat)
                 steam_info = self.get_game_info(app_id)
                 # updates sheet with data found in steam_info
                 special_case_col = [self.release_col]
@@ -624,8 +625,8 @@ class Tracker(Steam, Playstation, Utils):
                 progress = cur_itr / missing_data_total * 100
                 self.set_title(f"{progress:.2f}% - {self.title}")
             self.set_title()
-            print("Added Data for the following games:")
-            print(self.word_and_list(games_with_added_data))
+            print("\nAdded Data for the following games:")
+            print(self.create_and_sentence(games_with_added_data))
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
@@ -696,7 +697,7 @@ class Tracker(Steam, Playstation, Utils):
             iterable=steam_games,
             ascii=True,
             unit=" games",
-            ncols=100,
+            ncols=40,
         ):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -769,7 +770,7 @@ class Tracker(Steam, Playstation, Utils):
                     for line in game_info:
                         print(line)
         elif self.num_games_added < 50:
-            print(self.word_and_list(added_games))
+            print(self.create_and_sentence(added_games))
         else:
             print("Too Many to show.")
         # checks for removed games
@@ -777,7 +778,7 @@ class Tracker(Steam, Playstation, Utils):
         if total_removed_games:
             print("\nGames To Be Removed:", len(sheet_games))
             removed_games_names = [self.get_name(app_id) for app_id in sheet_games]
-            print(self.word_and_list(removed_games_names))
+            print(self.create_and_sentence(removed_games_names))
             response = input("\nDo you want to delele all the above games?\n")
             if response.lower() in ["yes", "y"]:
                 for app_id in sheet_games:
@@ -795,12 +796,12 @@ class Tracker(Steam, Playstation, Utils):
         # TODO auto update game data sometimes
         steam_games = self.get_owned_steam_games(self.steam_key, steam_id)
         sheet_games = [int(app_id) for app_id in self.steam.row_idx.keys()]
-        print(f"Found {len(steam_games)} Steam Games.\n")
         if not steam_games:
             print("\nFailed to retrieve Steam Games")
-        elif not sheet_games:
-            print("\nFailed to retrieve Excel Sheet Games")
         else:
+            if not sheet_games:
+                print(f"Starting First Steam Sync")
+            print(f"Found {len(steam_games)} Steam Games\n")
             self.game_check(steam_games, sheet_games)
             return
         input()
@@ -1022,7 +1023,7 @@ class Tracker(Steam, Playstation, Utils):
         Shows a list of Play Status's to choose from.
         Respond with the playstatus or numerical postion of the status from the list.
         """
-        prompt = self.word_and_list(self.play_status_choices.values()) + "\n:"
+        prompt = self.create_and_sentence(self.play_status_choices.values()) + "\n:"
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
@@ -1252,7 +1253,6 @@ class Tracker(Steam, Playstation, Utils):
             ("Update Favorite Games Sales", self.update_favorite_games_sales),
             ("Sync Playstation Games", self.update_playstation_data),
             ("Calculate Statistics", stats.get_game_statistics),
-            ("Fix App ID's", self.fix_app_ids),
             # ("Add Game", self.manually_add_game),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
@@ -1276,19 +1276,19 @@ class Tracker(Steam, Playstation, Utils):
         """
         Created to fix steam ID's in case they get messed up.
         """
-        app_list = App.get_app_list()
-        for app_id in App.steam.row_idx:
-            name = App.steam.get_cell(app_id, App.name_col)
-            correct_app_id = App.get_app_id(name, app_list)
+        app_list = self.get_app_list()
+        for app_id in self.steam.row_idx:
+            name = self.steam.get_cell(app_id, self.name_col)
+            correct_app_id = self.get_app_id(name, app_list)
             if app_id and correct_app_id:
                 if int(app_id) != int(correct_app_id):
                     print(name, app_id, correct_app_id)
                     if correct_app_id:
-                        App.steam.update_cell(app_id, App.app_id_col, correct_app_id)
+                        self.steam.update_cell(app_id, self.app_id_col, correct_app_id)
             else:
                 print(name, app_id, correct_app_id)
-                App.steam.update_cell(app_id, App.app_id_col, "")
-        App.excel.save()
+                self.steam.update_cell(app_id, self.app_id_col, "")
+        self.excel.save()
 
     @keyboard_interrupt
     def run(self):

@@ -132,25 +132,6 @@ class Utils:
             return "Invalid Date"
 
     @staticmethod
-    def unicode_fix(string):
-        """
-        Basic unicode cleaner.
-        """
-        inicode_dict = {
-            "â€": "'",
-            "®": "",
-            "™": "",
-            "â„¢": "",
-            "Â": "",
-            "Ã›": "U",
-            "ö": "o",
-            "Ã¶": "o",
-        }
-        for char, replace in inicode_dict.items():
-            string = string.replace(char, replace)
-        return string.strip()
-
-    @staticmethod
     def days_since(past_date, current_date=None):
         """
         Gets the days since a `past_date`.
@@ -249,8 +230,15 @@ class Utils:
         if type(string) != str:
             return string
         replace_dict = {
+            "â€": "'",
+            "®": "",
+            "™": "",
+            "â„¢": "",
+            "Â": "",
+            "Ã›": "U",
+            "ö": "o",
+            "Ã¶": "o",
             "\u2122": "",  # Trademarked sign
-            "\u00ae": "",  # REGISTERED SIGN
             "\u00ae": "",  # REGISTERED SIGN
             "\u00e5": "a",  # a
             "\u00f6": "o",  # LATIN SMALL LETTER O WITH DIAERESIS
@@ -262,35 +250,24 @@ class Utils:
             if unicode in string:
                 for unicode, sub in replace_dict.items():
                     string = string.replace(unicode, sub)
-                break
         conv_string = string.encode("ascii", "ignore").decode()
         return conv_string.strip()
 
     @staticmethod
-    def word_and_list(str_list) -> str:
+    def create_and_sentence(str_list) -> str:
         """
         Converts a string into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
         """
-        # TODO improve by just changing last comma into " and"
-        length = len(str_list)
-        if length == 1:
-            return str_list[0]
-        elif length == 2:
-            return f"{str_list[0]} and {str_list[1]}"
-        final_string = ""
-        for i, entry in enumerate(str_list):
-            # first entry
-            if i == 0:
-                final_string += entry
-                continue
-            # last entry
-            elif i == length - 1:
-                final_string += f" and {entry}"
-                return final_string
-            # middle entries
-            else:
-                final_string += f", {entry}"
+        str_list_length = len(str_list)
+        if str_list_length == 0:
+            result = ""
+        elif str_list_length == 1:
+            result = str_list[0]
+        else:
+            result = ", ".join(str_list[:-1])
+            result += " and " + str_list[-1]
+        return result
 
     @staticmethod
     def check_for_shared_games(lists_to_check):
