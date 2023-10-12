@@ -1,4 +1,4 @@
-import random, json, os, re, sys, shutil, time
+import random, json, os, re, sys, shutil, time, subprocess, webbrowser
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -7,7 +7,6 @@ import datetime as dt
 
 # classes
 from classes.steam import Steam
-from classes.playstation import Playstation
 from classes.utils import Utils, keyboard_interrupt
 from classes.statisitics import Stat
 from classes.logger import Logger
@@ -49,7 +48,7 @@ def setup():
     exit()
 
 
-class Tracker(Steam, Playstation, Utils):
+class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
@@ -597,7 +596,7 @@ class Tracker(Steam, Playstation, Utils):
                 iterable=check_list,
                 ascii=True,
                 unit=" games",
-                ncols=40,
+                ncols=80,
                 dynamic_ncols=True,
             ):
                 game_name = self.get_name(app_id)
@@ -697,7 +696,7 @@ class Tracker(Steam, Playstation, Utils):
             iterable=steam_games,
             ascii=True,
             unit=" games",
-            ncols=40,
+            ncols=80,
         ):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -737,12 +736,12 @@ class Tracker(Steam, Playstation, Utils):
                 if update_info:
                     updated_games.append(update_info)
             else:
-                added_info = self.add_game(
+                added_info = self.add_steam_game(
+                    app_id=app_id,
                     game_name=game_name,
                     minutes_played=minutes_played,
                     linux_minutes_played=linux_minutes_played,
                     time_played=time_played,
-                    app_id=app_id,
                     play_status=play_status,
                 )
                 added_games.append(added_info)
@@ -829,6 +828,22 @@ class Tracker(Steam, Playstation, Utils):
             filtered_name = self.unicode_remover(name)
             if filtered_name and filtered_name.lower() in self.name_ignore_list:
                 return True
+            # media ingore
+            media_list = [
+                "Amazon Prime Video",
+                "HBO GO",
+                "Hulu",
+                "Media Player",
+                "Spotify",
+                "Netflix",
+                "PlayStationVue",
+                "Plex",
+                "Pluto",
+                "YouTube VR",
+                "Youtube",
+            ]
+            if filtered_name and filtered_name.lower() in media_list:
+                return True
             # keyword check
             keyword_ignore_list = [
                 "demo",
@@ -838,10 +853,10 @@ class Tracker(Steam, Playstation, Utils):
                 "preorder",
                 "pre-order",
                 "soundtrack",
-                "yest server",
-                "Bonus content",
-                "yrial edition",
-                "vlosed test",
+                "test server",
+                "bonus content",
+                "trial edition",
+                "closed test",
                 "public test",
                 "public testing",
                 "directors' commentary",
@@ -907,53 +922,13 @@ class Tracker(Steam, Playstation, Utils):
             return update_info
         return None
 
-    # def manually_add_game(self):
-    #     """
-    #     Allows manually adding a game by giving the name,
-    #     platform and hours played.
-    #     """
-    #     game_name = input("\nWhat is the name of the game?\n:")
-    #     platform = input("\nWhat is the platform is this on?\n:")
-    #     platform_names = {
-    #         "playstation 5": "PS5",
-    #         "ps5": "PS5",
-    #         "playstation 4": "PS4",
-    #         "ps4": "PS4",
-    #         "sw": "Switch",
-    #         "uplay": "Uplay",
-    #         "gog": "GOG",
-    #         "ms store": "MS Store",
-    #         "ms": "MS Store",
-    #         "microsoft": "MS Store",
-    #     }
-    #     if platform.lower() in platform_names:
-    #         platform = platform_names[platform.lower()]
-    #     hours_played = int(input("\nHow many hours have you played it?\n:") or 0)
-    #     print("\nWhat Play Status should it have?")
-    #     play_status = self.play_status_picker() or "Unset"
-    #     minutes_played = hours_played * 60
-    #     time_played = self.convert_time_passed(min=minutes_played)
-    #     print(f"\nAdded Game:\n{game_name}")
-    #     print(f"Platform: {platform}")
-    #     print(f"Time Played: {time_played}")
-    #     print(f"Play Status: {play_status}")
-    #     self.add_game(
-    #         game_name=game_name,
-    #         play_status=play_status,
-    #         platform=platform,
-    #         hours_played=hours_played,
-    #         time_played=time_played,
-    #         save=True,
-    #     )
-    #     return game_name, minutes_played, play_status
-
-    def add_game(
+    def add_steam_game(
         self,
+        app_id=None,
         game_name=None,
         minutes_played=None,
         linux_minutes_played=None,
         time_played=None,
-        app_id=None,
         play_status=None,
         save_after_add=False,
     ):
@@ -1014,9 +989,109 @@ class Tracker(Steam, Playstation, Utils):
             self.excel.save()
         added_info = [
             f"\n > {game_name} added.",
-            f"   Total Playtime: {hours_played} Hours.",
+            f"   Total Playtime: {hours_played or 0} Hours.",
         ]
         return added_info
+
+    def add_ps_game(self, game_name, platform):
+        """
+        Adds a playstation games.
+        """
+        # sets excel column values
+        column_info = {
+            self.date_added_col: dt.datetime.now(),
+            self.date_updated_col: dt.datetime.now(),
+            self.name_col: game_name,
+            self.play_status_col: "Unplayed",
+            self.platform_col: platform,
+            self.time_to_beat_col: self.get_time_to_beat(game_name),
+        }
+        self.playstation.add_new_line(column_info)
+        # logging
+        if self.logging:
+            info = f"New PS Game: Added {game_name} for {platform}"
+            self.tracker.info(info)
+        self.playstation.format_row(game_name)
+        return f"\n > {game_name} added."
+
+    def check_playstation_json(self):
+        """
+        Checks `playstation_games.json` to find out if it is newly updated so
+        it can add the new games to the sheet.
+        """
+        with open(self.ps_data) as file:
+            data = json.load(file)
+        return data["data"]["purchasedTitlesRetrieve"]["games"]
+
+    def update_playstation_data(self):
+        """
+        Opens playstation data json file and web json with latest data
+        for manual updating.
+        """
+        if not self.ps_data.exists():  # checks if json exists
+            print("\nPlayStation JSON does not exist.\nCreating file now.\n")
+            self.ps_data.touch()
+        subprocess.Popen(f'notepad "{self.ps_data}"')
+        webbrowser.open(self.playstation_data_link)
+        webbrowser.open("https://store.playstation.com/")
+        input("\nPress Enter when done.\n")
+
+    def sync_playstation_games(self):
+        """
+        Adds playstation games to excel using the given `games` variable.
+        """
+        resonse = input("\nDo you want to get your most recent Playstation data?\n")
+        if resonse.lower() in ["yes", "y"]:
+            self.update_playstation_data()
+        print("\nChecking for new games for Playstation.")
+        games = self.check_playstation_json()
+        if not games:
+            print("No Playstation Games Found.")
+            return
+        save_every_nth = self.create_save_every_nth()
+        added_ps_games = []
+        updated_ps_games = []
+        for game in tqdm(
+            iterable=games,
+            unit=" games",
+            ascii=True,
+            ncols=80,
+        ):
+            latest_platform = "PS5"
+            game_name = self.unicode_remover(game["name"])
+            platform = game["platform"]
+            # ignore check
+            if self.skip_game(game_name):
+                continue
+            # updates existing games
+            if game_name in self.playstation.row_idx.keys():
+                cur_platform = self.playstation.get_cell(game_name, self.platform_col)
+                # sets platform to latest one if that version is owned
+                if cur_platform != latest_platform and platform == latest_platform:
+                    self.playstation.update_cell(
+                        game_name, self.platform_col, latest_platform
+                    )
+                    updated_info = f"\n > {game_name} Updated to {latest_platform}"
+                    updated_ps_games.append(updated_info)
+            # adds new games
+            else:
+                added_info = self.add_ps_game(game_name, platform)
+                added_ps_games.append(added_info)
+            save_every_nth()
+        # added
+        total_added = len(added_ps_games)
+        if total_added := len(added_ps_games):
+            print(f"\nAdded {total_added} PS4/PS5 Games.")
+            for game_info in added_ps_games:
+                print(game_info)
+        # updated
+        if total_updated := len(updated_ps_games):
+            print(f"\nUpdated {total_updated} PS4 Games to {latest_platform} versions.")
+            for game_info in updated_ps_games:
+                print(game_info)
+        # saving
+        if total_added or total_updated and self.save_to_file:
+            self.excel.save()
 
     def play_status_picker(self):
         """
@@ -1140,7 +1215,7 @@ class Tracker(Steam, Playstation, Utils):
         if self.save_to_file:
             self.excel.save()
 
-    def update_favorite_games_sales(self):
+    def get_favorite_games_sales(self):
         """
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an input after running.
@@ -1198,22 +1273,20 @@ class Tracker(Steam, Playstation, Utils):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices, msg=None, repeat=True):
+    def pick_task(self, choices, msg="What do you want to do?", repeat=True):
         """
         Allows picking a task to do next using a matching number.
         """
-        ext_terminal = sys.stdout.isatty()
-        if not ext_terminal:
+        # runs if it is not an interactable terminal
+        if not sys.stdout.isatty():
             print("\nSkipping Task Picker.\nInput can't be used.")
             return False
-        if not msg:
-            msg = "\nWhat do you want to do?\n"
-        print(msg)
+        print(f"\n{msg}\n")
+        print("0. Exit and Open the Excel File")
         for count, (choice, action) in enumerate(choices):
             print(f"{count+1}. {choice}")
-        msg = "\nEnter the Number for the corresponding action.\n"
         num = self.ask_for_integer(
-            msg,
+            msg="",
             num_range=(1, len(choices)),
             allow_blank=True,
         )
@@ -1250,15 +1323,13 @@ class Tracker(Steam, Playstation, Utils):
         # choice picker
         choices = [
             ("Pick Random Game", self.pick_random_game),
-            ("Update Favorite Games Sales", self.update_favorite_games_sales),
-            ("Sync Playstation Games", self.update_playstation_data),
+            ("Update Favorite Games Sales", self.get_favorite_games_sales),
+            ("Sync Playstation Games", self.sync_playstation_games),
             ("Calculate Statistics", stats.get_game_statistics),
-            # ("Add Game", self.manually_add_game),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
-        msg = "\nEnter the Number for the action you want to do or just press enter to open in Excel.\n"
-        if not self.pick_task(choices, msg):
+        if not self.pick_task(choices):
             self.excel.open_excel()
 
     def show_errors(self):
