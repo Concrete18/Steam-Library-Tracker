@@ -309,32 +309,38 @@ class SkipGame(unittest.TestCase):
     def setUp(self):
         self.t = Tracker(save=False)
 
-    def test_True(self):
+    def test_skip_game(self):
         """
         Tests for True returns.
         """
-        ignore_names = ["Half-Life 2: Lost Coast"]
-        self.t.name_ignore_list = [string.lower() for string in ignore_names]
+        self.t.name_ignore_list = ["Half-Life 2: Lost Coast"]
         self.t.app_id_ignore_list = [12345, 123458]
         # app_id return true
         self.assertTrue(self.t.skip_game(app_id="12345"))
         self.assertTrue(self.t.skip_game(app_id=12345))
         self.assertTrue(self.t.skip_game(app_id=123458))
         # name return true
-        self.assertTrue(self.t.skip_game(name="Game Beta"))
-        self.assertTrue(self.t.skip_game(name="Squad - Public Testing"))
-        self.assertTrue(self.t.skip_game(name="Half-Life 2: Lost Coast"))
+        self.assertTrue(self.t.skip_game(game_name="Game Beta"))
+        self.assertTrue(self.t.skip_game(game_name="Squad - Public Testing"))
+        self.assertTrue(self.t.skip_game(game_name="Half-Life 2: Lost Coast"))
+        self.assertTrue(self.t.skip_game(game_name="Half-Life 2: Lost Coast".lower()))
 
-    def test_False(self):
+    def test_skip_media(self):
+        """
+        Tests for True returns.
+        """
+        self.assertTrue(self.t.skip_game(game_name="Spotify"))
+        self.assertTrue(self.t.skip_game(game_name="youtube"))
+
+    def test_dont_skip(self):
         """
         Tests for False returns.
         """
-        ignore_names = ["Half-Life 2: Lost Coast"]
-        self.t.name_ignore_list = [string.lower() for string in ignore_names]
+        self.t.name_ignore_list = ["Half-Life 2: Lost Coast"]
         # app_id return false
         self.assertFalse(self.t.skip_game(app_id=345643))
         # name return false
-        self.assertFalse(self.t.skip_game(name="This is a great game"))
+        self.assertFalse(self.t.skip_game(game_name="This is a great game"))
 
     def test_empty(self):
         """

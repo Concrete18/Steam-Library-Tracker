@@ -806,43 +806,44 @@ class Tracker(Steam, Utils):
         input()
         exit()
 
-    def skip_game(self, name: str = None, app_id: int = None) -> bool:
+    def skip_game(self, game_name: str = None, app_id: int = None) -> bool:
         """
         Checks if the item should be ignored based on `name` or `app_id`.
 
         Returns False if neither are given and
         priortizes checking `app_id` if both are given.
 
-        `Name` check looks for keywords and if the name is in the name_ignore_list.
+        `Name` check looks for keywords and if the name is in the name_ignore_list or media list.
 
         `app_id` check looks for the `app_id` in the app_id_ignore_list.
         """
         # return False if name and app_id is not given
-        if not any([name, app_id]):
+        if not any([game_name, app_id]):
             return False
-        # app_id ignore list
+        # ignore by app id
         if app_id and int(app_id) in self.app_id_ignore_list:
             return True
-        if name:
-            # name ignore list
-            filtered_name = self.unicode_remover(name)
-            if filtered_name and filtered_name.lower() in self.name_ignore_list:
-                return True
-            # media ingore
+        # ignore by name
+        if game_name:
+            # creates name ignore list
             media_list = [
                 "Amazon Prime Video",
                 "HBO GO",
+                "Max",
                 "Hulu",
                 "Media Player",
                 "Spotify",
                 "Netflix",
-                "PlayStationVue",
+                "PlayStationvue",
                 "Plex",
                 "Pluto",
                 "YouTube VR",
                 "Youtube",
             ]
-            if filtered_name and filtered_name.lower() in media_list:
+            ignore_list = self.name_ignore_list + media_list
+            # checks if name means it should be skipped
+            cleaned_name = self.unicode_remover(game_name).lower()
+            if cleaned_name and cleaned_name in (name.lower() for name in ignore_list):
                 return True
             # keyword check
             keyword_ignore_list = [
@@ -862,7 +863,7 @@ class Tracker(Steam, Utils):
                 "directors' commentary",
             ]
             for string in keyword_ignore_list:
-                if re.search(rf"\b{string}\b", name.lower()):
+                if re.search(rf"\b{string}\b", game_name.lower()):
                     return True
         return False
 
