@@ -192,7 +192,7 @@ class UnicodeRemover(unittest.TestCase):
         self.assertEqual(new_string, 123)
 
 
-class WordAndList(unittest.TestCase):
+class CreateAndSentence(unittest.TestCase):
     """
     Tests create_and_sentence function.
     """
@@ -205,6 +205,7 @@ class WordAndList(unittest.TestCase):
             (["Test1"], "Test1"),
             (["Test1", "Test2"], "Test1 and Test2"),
             (["Test1", "Test2", "Test3"], "Test1, Test2 and Test3"),
+            ([], ""),
         ]
         for list, answer in list_tests:
             with self.subTest(list=list, answer=answer):
@@ -225,18 +226,21 @@ class LevenshteinDistance(unittest.TestCase):
         Tests Levenshtein Distance insert difference.
         """
         self.assertEqual(self.t.lev_distance("test", "tests"), 1)
+        self.assertEqual(self.t.lev_distance("test", "the tests"), 5)
 
     def test_lev_distance_delete(self):
         """
         Tests Levenshtein Distance delete difference.
         """
         self.assertEqual(self.t.lev_distance("bolt", "bot"), 1)
+        self.assertEqual(self.t.lev_distance("bridges", "bride"), 2)
 
     def test_lev_distance_replace(self):
         """
         Tests Levenshtein Distance replace difference.
         """
         self.assertEqual(self.t.lev_distance("spell", "spelt"), 1)
+        self.assertEqual(self.t.lev_distance("car", "bat"), 2)
 
     def test_lev_distance_all_change(self):
         """

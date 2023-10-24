@@ -364,7 +364,6 @@ class PlayStatus(unittest.TestCase):
         tests = [
             {"play_status": "Unplayed", "minutes": 5, "ans": "Unplayed"},
             {"play_status": "Unplayed", "minutes": 30, "ans": "Played"},
-            {"play_status": "Unplayed", "minutes": 60, "ans": "Playing"},
             {"play_status": "Unplayed", "minutes": 30, "ans": "Played"},
             {"play_status": "Finished", "minutes": 5, "ans": "Finished"},
         ]
@@ -394,11 +393,9 @@ class PlayStatus(unittest.TestCase):
             # must play
             {"play_status": "Must Play", "minutes": 0, "ans": "Must Play"},
             {"play_status": "Must Play", "minutes": 30, "ans": "Played"},
-            {"play_status": "Must Play", "minutes": 60, "ans": "Playing"},
             # new game
             {"play_status": None, "minutes": 0, "ans": "Unplayed"},
             {"play_status": None, "minutes": 30, "ans": "Played"},
-            {"play_status": None, "minutes": 60, "ans": "Playing"},
             # error
             {"play_status": None, "minutes": "Test", "ans": ""},
             {"play_status": "Unplayed", "minutes": "Test", "ans": "Unplayed"},
@@ -415,7 +412,6 @@ class PlayStatus(unittest.TestCase):
         tests = [
             {"play_status": "Must Play", "minutes": 0, "ans": "Must Play"},
             {"play_status": "Must Play", "minutes": 30, "ans": "Played"},
-            {"play_status": "Must Play", "minutes": 60, "ans": "Playing"},
         ]
         for a in tests:
             self.assertEqual(
@@ -429,7 +425,6 @@ class PlayStatus(unittest.TestCase):
         tests = [
             {"play_status": None, "minutes": 0, "ans": "Unplayed"},
             {"play_status": None, "minutes": 30, "ans": "Played"},
-            {"play_status": None, "minutes": 60, "ans": "Playing"},
         ]
         for test in tests:
             result = self.t.decide_play_status(test["play_status"], test["minutes"])

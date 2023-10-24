@@ -61,7 +61,6 @@ You can label any game with a status (Listed Below) and it will auto highlight.
 
 This uses Excel's Conditional Formatting so it can mess up sometimes if you change things manually such as reordering columns.
 
-- Playing
 - Played
 - Finished
 - Unplayed

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from pathlib import Path
+import pandas as pd
 import numpy as np
 import json
 
@@ -14,7 +15,7 @@ class Stat:
         self.df["Genre"] = self.df["Genre"].str.replace(" ", "")
         self.df["Genre"] = self.df["Genre"].str.split(",")
 
-    def get_game_statistics(self):
+    def get_game_statistics(self, print_stats=True):
         """
         Prints and returns many differents statistics on the game library
         given as a dataframe.
@@ -32,7 +33,9 @@ class Stat:
         total_hours_sum = hours_played.sum()
         linux_hours_sum = linux_hours.sum()
         data["Playtime"]["Total Hours"] = round(total_hours_sum, 1)
+        data["Playtime"]["Total Days"] = round(total_hours_sum / 24, 1)
         data["Playtime"]["Total Linux Hours"] = round(linux_hours_sum, 1)
+        data["Playtime"]["Total Linux Days"] = round(linux_hours_sum / 24, 1)
         linux_percent = round((linux_hours_sum / total_hours_sum) * 100, 1)
         data["Playtime"]["Percent Linux Hours"] = f"%{linux_percent}"
         # averages
@@ -55,40 +58,41 @@ class Stat:
         steam_avg = round(steam_ratings.mean(), 1)
         data["Reviews"]["Steam Average Rating"] = f"{round(steam_avg*100)}%"
         # genres
-        # TODO finish genre counter
+        # TODO create genre counter
 
-        # print statistics and return stat dict
-        print("Game Library Statistics")
-        for section, dict in data.items():
-            print(f"\n{section}")
-            for title, stat in dict.items():
-                print(f"{title}: {stat}")
+        if print_stats:
+            # print statistics and return stat dict
+            print("Game Library Statistics")
+            for section, dict in data.items():
+                print(f"\n-| {section} |-")
+                for title, stat in dict.items():
+                    print(f"{title}: {stat}")
         return data
 
-    # def my_rating_comparison(self):
-    #     y_value = "Metacritic"
-    #     x_value = "My Rating"
-    #     df = self.df[[y_value, x_value]]
+    def my_rating_comparison(self):
+        y_value = "Steam Review Percent"
+        x_value = "My Rating"
+        df = self.df[[y_value, x_value]]
 
-    #     # sets up graph
-    #     plt.title("Metacritic vs. My Rating")
-    #     # x axis
-    #     x = df[x_value]
-    #     plt.xlabel(x_value)
-    #     plt.xlim([1, 10])
-    #     plt.xticks(range(1, 11))
+        # sets up graph
+        plt.title("Steam Reviews vs. My Ratings")
+        # x axis
+        x = df[x_value]
+        plt.xlabel(x_value)
+        plt.xlim([1, 10])
+        plt.xticks(range(1, 11))
 
-    #     # y axis
-    #     y = df[y_value]
-    #     plt.ylim([1, 100])
-    #     plt.ylabel(y_value)
+        # y axis
+        y = df[y_value]
+        plt.ylim([1, 100])
+        plt.ylabel(y_value)
 
-    #     # base settings
-    #     plt.scatter(x, y, s=70, alpha=0.15)
-    #     plt.plot([1, 10], [1, 100], "g")
-    #     plt.xticks(rotation=90)
-    #     plt.tight_layout()
-    #     plt.show()
+        # base settings
+        plt.scatter(x, y, s=70, alpha=0.15)
+        plt.plot([1, 10], [1, 100], "g")
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+        plt.show()
 
     # def steam_rating_comparison(self):
     #     y_value = "Metacritic"
@@ -195,13 +199,11 @@ if __name__ == "__main__":
         "No Publisher",
         "No Developer",
     ]
-    games = Sheet(excel, "Name", sheet_name="Games")
-    df = games.create_dataframe(na_vals=na_values)
+    steam = Sheet(excel, sheet_name="Steam", column_name="App ID")
+    df = steam.create_dataframe(na_vals=na_values)
 
     # run
     stats = Stat(df)
     stats.get_game_statistics()
-    # stats.my_rating_comparison()
-    # stats.avg_rating_by_year()
-    # stats.steam_rating_comparison()
+    stats.my_rating_comparison()
     # stats.rating_release_comparison("Steam Review Percent")

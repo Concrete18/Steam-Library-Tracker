@@ -230,6 +230,7 @@ class Utils:
         if type(string) != str:
             return string
         replace_dict = {
+            # unicode character
             "â€": "'",
             "®": "",
             "™": "",
@@ -238,13 +239,20 @@ class Utils:
             "Ã›": "U",
             "ö": "o",
             "Ã¶": "o",
+            # unicode value
             "\u2122": "",  # Trademarked sign
             "\u00ae": "",  # REGISTERED SIGN
             "\u00e5": "a",  # a
             "\u00f6": "o",  # LATIN SMALL LETTER O WITH DIAERESIS
             "\u00e9": "e",  # LATIN SMALL LETTER E WITH ACUTE
             "\u2013": "-",  # EN DASH
+            # HTML entities
             "&amp": "&",  # &
+            "&quot;": '"',  # "
+            "&apos;": "'",  # '
+            "&cent;": "",  # cent
+            "&copy;": "",  # copyright sign
+            "&reg;": "",  # trademark sign
         }
         for unicode in replace_dict.keys():
             if unicode in string:
@@ -268,16 +276,6 @@ class Utils:
             result = ", ".join(str_list[:-1])
             result += " and " + str_list[-1]
         return result
-
-    @staticmethod
-    def check_for_shared_games(lists_to_check):
-        """
-        Finds the entries in lists that are within all lists given in `lists_to_check`.
-        """
-        common_entries = set(lists_to_check[0])
-        for entry in lists_to_check:
-            common_entries &= set(entry)
-        return common_entries
 
     def ask_for_integer(
         self, msg=None, num_range=False, allow_blank=False

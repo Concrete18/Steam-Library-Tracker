@@ -86,13 +86,11 @@ class Tracker(Steam, Utils):
             "Notes",
             "Genre",
         ],
-        "light_grey_fill": ["Rating Comparison", "Probable Completion"],
+        # "light_grey_fill": [],
         "percent": [
             "%",
             "Percent",
             "Discount",
-            "Rating Comparison",
-            "Probable Completion",
         ],
         "currency": ["Price", "MSRP", "Cost"],
         "integer": ["App ID", "Number", "Release Year"],
@@ -110,15 +108,14 @@ class Tracker(Steam, Utils):
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
-        "2": "Playing",
-        "3": "Waiting",
-        "4": "Finished",
-        "5": "Endless",
-        "6": "Replay",
-        "7": "Must Play",
-        "8": "Quit",
-        "9": "Unplayed",
-        "10": "Ignore",
+        "2": "Waiting",
+        "3": "Finished",
+        "4": "Endless",
+        "5": "Replay",
+        "6": "Must Play",
+        "7": "Quit",
+        "8": "Unplayed",
+        "9": "Ignore",
     }
     # misc
     ps_data = Path("configs\playstation_games.json")
@@ -144,7 +141,6 @@ class Tracker(Steam, Utils):
         linux_hours_col := "Linux Hours",
         last_play_time_col := "Last Play Time",
         time_to_beat_col := "Time To Beat in Hours",
-        prob_comp_col := "Probable Completion",
         store_link_col := "Store Link",
         release_col := "Release Year",
         app_id_col := "App ID",
@@ -425,12 +421,6 @@ class Tracker(Steam, Utils):
         """
         return f"https://store.steampowered.com/app/{app_id}/"
 
-    def get_name(self, app_id):
-        """
-        Gets the games name from the excel sheet.
-        """
-        return self.steam.get_cell(app_id, self.name_col)
-
     def get_game_info(self, app_id):
         """
         Gets game info with steam api using a `app_id`.
@@ -553,11 +543,10 @@ class Tracker(Steam, Utils):
         ]
         # creates checklist
         for app_id in self.steam.row_idx:
-            play_status = self.steam.get_cell(app_id, self.play_status_col)
+            game_data = self.steam.get_row(app_id)
             if check_status:
-                if play_status not in [
+                if game_data[self.play_status_col] not in [
                     "Unplayed",
-                    "Playing",
                     "Played",
                     "Finished",
                     "Quit",
@@ -567,6 +556,7 @@ class Tracker(Steam, Utils):
                     continue
             if skip_filled:
                 for column in column_list:
+                    # TODO switch to using game_data
                     cell = self.steam.get_cell(app_id, column)
                     if cell == None and app_id not in check_list:
                         check_list.append(app_id)
@@ -599,12 +589,11 @@ class Tracker(Steam, Utils):
                 ncols=80,
                 dynamic_ncols=True,
             ):
-                game_name = self.get_name(app_id)
-                games_with_added_data.append(game_name)
+                game_data = self.steam.get_row(app_id)
+                games_with_added_data.append(game_data[self.name_col])
                 # How long to beat check
-                prev_time_to_beat = self.steam.get_cell(app_id, self.time_to_beat_col)
-                if not prev_time_to_beat:
-                    if time_to_beat := self.get_time_to_beat(game_name) and game_name:
+                if not game_data[self.time_to_beat_col]:
+                    if time_to_beat := self.get_time_to_beat(game_data[self.name_col]):
                         self.set_time_to_beat(app_id, time_to_beat)
                 steam_info = self.get_game_info(app_id)
                 # updates sheet with data found in steam_info
@@ -644,9 +633,7 @@ class Tracker(Steam, Utils):
         if play_status not in ["Played", "Unplayed", "Must Play", None]:
             return play_status
         # play status change
-        if minutes_played >= 60:
-            play_status = "Playing"
-        elif minutes_played >= 30:
+        if minutes_played >= 30:
             play_status = "Played"
         else:
             if play_status != "Must Play":
@@ -703,13 +690,17 @@ class Tracker(Steam, Utils):
             if self.skip_game(game_name, app_id):
                 continue
             # name change check
-            cur_game_name = self.get_name(app_id)
-            if cur_game_name and cur_game_name != game_name:
-                msg = f'Name Change: "{cur_game_name}" to "{game_name}"'
+            # TODO below fails if game is added at this time.
+            cur_game_data = self.steam.get_row(app_id)
+            if (
+                cur_game_data[self.name_col]
+                and cur_game_data[self.name_col] != game_name
+            ):
+                msg = f'Name Change: "{cur_game_data[self.name_col]}" to "{game_name}"'
                 self.tracker.info(msg)
                 name_change_dict = {
                     "new_name": game_name,
-                    "old_name": cur_game_name,
+                    "old_name": cur_game_data[self.name_col],
                     "app_id": app_id,
                 }
                 name_changes.append(name_change_dict)
@@ -720,8 +711,9 @@ class Tracker(Steam, Utils):
             if "playtime_linux_forever" in game.keys():
                 linux_minutes_played = game["playtime_linux_forever"]
             # play status
-            cur_play_status = self.steam.get_cell(app_id, self.play_status_col)
-            play_status = self.decide_play_status(cur_play_status, minutes_played)
+            play_status = self.decide_play_status(
+                cur_game_data[self.play_status_col], minutes_played
+            )
             # updates or adds game
             if app_id in sheet_games:
                 sheet_games.remove(app_id)
@@ -776,7 +768,9 @@ class Tracker(Steam, Utils):
         total_removed_games = len(sheet_games)
         if total_removed_games:
             print("\nGames To Be Removed:", len(sheet_games))
-            removed_games_names = [self.get_name(app_id) for app_id in sheet_games]
+            removed_games_names = [
+                self.steam.get_cell(app_id, self.name_col) for app_id in sheet_games
+            ]
             print(self.create_and_sentence(removed_games_names))
             response = input("\nDo you want to delele all the above games?\n")
             if response.lower() in ["yes", "y"]:
@@ -800,7 +794,7 @@ class Tracker(Steam, Utils):
         else:
             if not sheet_games:
                 print(f"Starting First Steam Sync")
-            print(f"Found {len(steam_games)} Steam Games\n")
+            print(f"\nFound {len(steam_games)} Steam Games")
             self.game_check(steam_games, sheet_games)
             return
         input()
@@ -829,6 +823,7 @@ class Tracker(Steam, Utils):
             media_list = [
                 "Amazon Prime Video",
                 "HBO GO",
+                "HBO Max",
                 "Max",
                 "Hulu",
                 "Media Player",
@@ -953,9 +948,6 @@ class Tracker(Steam, Utils):
         if store_link:
             store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
         early_access = "No"
-        # indirect_cell setup
-        hours = self.steam.indirect_cell(self.prob_comp_col, self.hours_played_col)
-        ttb = self.steam.indirect_cell(self.prob_comp_col, self.time_to_beat_col)
         # sets excel column values
         column_info = {
             self.my_rating_col: "",
@@ -963,7 +955,6 @@ class Tracker(Steam, Utils):
             self.play_status_col: play_status,
             self.ea_col: early_access,
             self.time_to_beat_col: self.get_time_to_beat(game_name),
-            self.prob_comp_col: f'=IFERROR({hours}/{ttb},"Missing Data")',
             self.hours_played_col: hours_played,
             self.linux_hours_col: linux_hours_played,
             self.time_played_col: time_played,
@@ -1156,33 +1147,30 @@ class Tracker(Steam, Utils):
         # starts check with progress bar
         print("\nGame Sale Check\n")
         games = []
-        for game in tqdm(
+        for app_id in tqdm(
             iterable=self.steam.row_idx.keys(),
             ascii=True,
             unit=" games",
             ncols=100,
         ):
-            my_rating = self.steam.get_cell(game, self.my_rating_col)
-            store_link = self.steam.get_cell(game, "Store Link")
-            ttb = self.steam.get_cell(game, "Time To Beat in Hours")
-            if my_rating == None:
+            game_data = self.steam.get_row(app_id)
+            if game_data[self.my_rating_col] == None:
                 continue
-            app_id = self.steam.get_cell(game, "App ID")
-            if my_rating >= rating_limit and app_id:
+            if game_data[self.my_rating_col] >= rating_limit and app_id:
                 game_info = self.get_game_info(app_id)
                 if not game_info or not "on_sale" in game_info.keys():
                     continue
                 # create game_dict
                 game_dict = {
-                    "Date Updated": dt.datetime.now(),
-                    "Name": game_info["game_name"],
+                    self.date_updated_col: dt.datetime.now(),
+                    self.name_col: game_info["game_name"],
                     "Discount": game_info["discount"] * 0.01,
                     "Price": game_info["price"],
-                    "My Rating": my_rating,
+                    self.my_rating_col: game_data[self.my_rating_col],
                     self.steam_rev_per_col: game_info[self.steam_rev_per_col],
                     self.steam_rev_total_col: game_info[self.steam_rev_total_col],
-                    self.store_link_col: f'=HYPERLINK("{store_link}","Store")',
-                    self.time_to_beat_col: ttb,
+                    self.store_link_col: f'=HYPERLINK("{game_data[self.store_link_col]}","Store")',
+                    self.time_to_beat_col: game_data[self.time_to_beat_col],
                     self.user_tags_col: game_info[self.user_tags_col],
                     self.release_col: game_info[self.release_col],
                     self.genre_col: game_info[self.genre_col],
@@ -1368,7 +1356,7 @@ class Tracker(Steam, Utils):
         Main run function.
         """
         self.config_check()
-        print(f"Starting {self.title}")
+        print(self.title)
         self.sync_steam_games(self.steam_id)
         self.missing_info_check()
         self.show_errors()
