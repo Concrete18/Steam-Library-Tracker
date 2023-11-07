@@ -278,7 +278,10 @@ class Utils:
         return result
 
     def ask_for_integer(
-        self, msg=None, num_range=False, allow_blank=False
+        self,
+        msg=None,
+        num_range=False,
+        allow_blank=False,
     ) -> int or bool:
         """
         Asks for a integer until an integer is given.

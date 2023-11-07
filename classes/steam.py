@@ -72,3 +72,18 @@ class Steam(Utils):
             if item["name"] == game:
                 return item["appid"]
         return None
+
+    @staticmethod
+    def get_steam_game_player_count(
+        self, app_id: int, steam_api_key: int
+    ) -> int | None:
+        """
+        Gets a games current player count by `app_id` using the Steam API via the `steam_api_key`.
+        """
+        url = f"http://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}&key={steam_api_key}"
+        response = self.request_url(url)
+        if response:
+            data = response.json()
+            current_players = data.get("response", {}).get("player_count", "N/A")
+            return current_players
+        return None
