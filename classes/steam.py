@@ -73,7 +73,6 @@ class Steam(Utils):
                 return item["appid"]
         return None
 
-    @staticmethod
     def get_steam_game_player_count(
         self, app_id: int, steam_api_key: int
     ) -> int | None:

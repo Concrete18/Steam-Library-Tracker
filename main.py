@@ -944,10 +944,9 @@ class Tracker(Steam, Utils):
         if linux_minutes_played:
             linux_hours_played = self.hours_played(linux_minutes_played)
         # store link setup
-        store_link_hyperlink = ""
         store_link = self.get_store_link(app_id)
-        if store_link:
-            store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
+        store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
+        # misc
         early_access = "No"
         # sets excel column values
         column_info = {
@@ -1162,12 +1161,12 @@ class Tracker(Steam, Utils):
             picked_game_name, choice_list = self.get_random_game_name(play_status)
             print(f"\nGame: {picked_game_name}")
 
-    def get_favorite_games(self, rating_limit=8):
+    def get_favorite_games(self, min_rating=8):
         """
         gets favorite games from excel file as a list of dicts
         """
         # starts check with progress bar
-        print("\nGame Sale Check\n")
+        print(f"\nGame Sale Check\nMinimum Rating set to {min_rating}")
         games = []
         for app_id in tqdm(
             iterable=self.steam.row_idx.keys(),
@@ -1178,7 +1177,7 @@ class Tracker(Steam, Utils):
             game_data = self.steam.get_row(app_id)
             if game_data[self.my_rating_col] == None:
                 continue
-            if game_data[self.my_rating_col] >= rating_limit and app_id:
+            if game_data[self.my_rating_col] >= min_rating and app_id:
                 game_info = self.get_game_info(app_id)
                 if not game_info or not "on_sale" in game_info.keys():
                     continue
@@ -1187,11 +1186,11 @@ class Tracker(Steam, Utils):
                     self.date_updated_col: dt.datetime.now(),
                     self.name_col: game_info["game_name"],
                     "Discount": game_info["discount"] * 0.01,
-                    "Price": game_info["price"],
+                    "Price": game_info["price"].replace("$", ""),
                     self.my_rating_col: game_data[self.my_rating_col],
                     self.steam_rev_per_col: game_info[self.steam_rev_per_col],
                     self.steam_rev_total_col: game_info[self.steam_rev_total_col],
-                    self.store_link_col: f'=HYPERLINK("{game_data[self.store_link_col]}","Store")',
+                    self.store_link_col: game_data[self.store_link_col],
                     self.time_to_beat_col: game_data[self.time_to_beat_col],
                     self.user_tags_col: game_info[self.user_tags_col],
                     self.release_col: game_info[self.release_col],
@@ -1226,30 +1225,29 @@ class Tracker(Steam, Utils):
         if self.save_to_file:
             self.excel.save()
 
-    def get_favorite_games_sales(self):
+    def sync_favorite_games_sales(self):
         """
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an input after running.
         """
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         msg = "\nWhat is the minimum rating for this search? (1-10)\n"
-        rating_limit = input(msg) or "8"
-        if rating_limit.isnumeric():
-            rating_limit = int(rating_limit)
+        min_rating = input(msg) or "8"
+        if min_rating.isnumeric():
+            min_rating = int(min_rating)
         else:
             print("Invalid response - Using 8 instead.")
-            rating_limit = 8
-        games = self.get_favorite_games(rating_limit)
+            min_rating = 8
         # delete old game sales
         cur_rows = [game for game in self.sales.row_idx.keys()].reverse()
         if cur_rows:
             for game in cur_rows:
                 self.sales.delete_row(game)
         # get new game sales
-        games = self.get_favorite_games()
-        total = len(games)
+        games = self.get_favorite_games(min_rating)
+        total_sales = len(games)
         # prints info
-        print(f"\nFound {total} Favorite Game Sales:\n")
+        print(f"\nFound {total_sales} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
 
     def update_player_counts(self):
@@ -1356,7 +1354,7 @@ class Tracker(Steam, Utils):
         choices = [
             ("Pick Random Game", self.pick_random_game),
             ("Update Player Counts", self.update_player_counts),
-            ("Update Favorite Games Sales", self.get_favorite_games_sales),
+            ("Update Favorite Games Sales", self.sync_favorite_games_sales),
             ("Sync Playstation Games", self.sync_playstation_games),
             ("Calculate Statistics", stats.get_game_statistics),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
