@@ -2,7 +2,7 @@ from classes.utils import Utils
 
 
 class Steam(Utils):
-    def get_owned_steam_games(self, steam_key, steam_id=0):
+    def get_owned_steam_games(self, steam_key: str, steam_id: int):
         """
         Gets the games owned by the given `steam_id`.
         """
@@ -21,7 +21,9 @@ class Steam(Utils):
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
 
-    def get_recently_played_steam_games(self, steam_key, steam_id=0, game_count=10):
+    def get_recently_played_steam_games(
+        self, steam_key: str, steam_id: int, game_count: int = 10
+    ):
         """
         Gets the games owned by the given `steam_id`.
         """
@@ -37,7 +39,7 @@ class Steam(Utils):
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
 
-    def get_app_details(self, app_id):
+    def get_app_details(self, app_id) -> [{}]:
         """
         Gets game details.
         """
@@ -49,7 +51,7 @@ class Steam(Utils):
             return response.json()
         return None
 
-    def get_app_list(self):
+    def get_app_list(self) -> [{}]:
         """
         Gets the full Steam app list as a dict.
         """
@@ -64,7 +66,7 @@ class Steam(Utils):
         return app_list
 
     @staticmethod
-    def get_app_id(game, app_list):
+    def get_app_id(game: str, app_list: [{}]) -> int | None:
         """
         Gets the games app ID from the `app_list`.
         """

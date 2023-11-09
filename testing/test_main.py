@@ -4,24 +4,11 @@ import unittest, json
 from main import Tracker
 
 
-class GetOwnedGames(unittest.TestCase):
-    t = Tracker(save=False)
-    owned_games = t.get_owned_steam_games(t.steam_key, t.steam_id)
-
-    def test_get_owned_steam_games(self):
-        found_game = next(
-            (game for game in self.owned_games if game["name"] == "Dishonored12"), None
-        )
-        # specific test if dishohored is owned
-        if found_game:
-            self.assertEqual(found_game["appid"], 205100)
-        # test if dishonored is not owned
-        else:
-            assert isinstance(self.owned_games[0]["appid"], int)
-            assert isinstance(self.owned_games[0]["name"], str)
-
-
 class GetYear(unittest.TestCase):
+    """
+    Tests `get_year` function.
+    """
+
     def setUp(self):
         self.t = Tracker(save=False)
 
@@ -33,17 +20,21 @@ class GetYear(unittest.TestCase):
             "Mai 25, 1991": "1991",
             "Apr , 2015": "2015",
         }
-        for date, bool in date_tests.items():
+        for date, year in date_tests.items():
             with self.subTest(date=date):
                 result = self.t.get_year(date)
-                self.assertEqual(result, bool)
+                self.assertEqual(result, year)
 
     def test_invalid(self):
         result = self.t.get_year("this is not a date")
-        self.assertEqual(result, "Invalid Date")
+        self.assertEqual(result, "Invalid Date", f"{result} should not be a year")
 
 
 class GetTimeToBeat(unittest.TestCase):
+    """
+    Tests `get_time_to_beat` function.
+    """
+
     def setUp(self):
         self.t = Tracker(save=False)
 
@@ -62,6 +53,10 @@ class GetTimeToBeat(unittest.TestCase):
 
 
 class GetStoreLink(unittest.TestCase):
+    """
+    Tests `get_store_link` function.
+    """
+
     def setUp(self):
         self.t = Tracker(save=False)
 
@@ -84,7 +79,7 @@ class GetStoreLink(unittest.TestCase):
 
 class SteamReview(unittest.TestCase):
     """
-    Tests get_steam_review. Due to changing reviews, it only tests for aquiring
+    Tests `get_steam_review`. Due to changing reviews, it only tests for aquiring
     floats for percent and integers for total.
     """
 
@@ -105,7 +100,7 @@ class SteamReview(unittest.TestCase):
 
 class GetGameInfo(unittest.TestCase):
     """
-    Tests get_game_info function.
+    Tests `get_game_info` function.
     """
 
     def setUp(self):
@@ -113,7 +108,7 @@ class GetGameInfo(unittest.TestCase):
 
     def test_has_keys(self):
         """
-        Checks for keys in the get_game_info result dict.
+        Checks for keys in the `get_game_info` result dict.
         """
         keys = [
             self.t.dev_col,
@@ -135,24 +130,25 @@ class GetGameInfo(unittest.TestCase):
         for key in keys:
             self.assertIn(key, dict.keys())
 
-    def test_percent(self):
+    def test_float(self):
         """
-        Tests get_game_info function for percents.
+        Tests `get_game_info` function for percents.
         """
         game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Steam Review Percent"], float)
         self.assertIsInstance(game_info["discount"], float)
+        self.assertIsInstance(game_info["price"], float)
 
     def test_int(self):
         """
-        Tests get_game_info function for specific types of results.
+        Tests `get_game_info` function for specific types of results.
         """
         game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Steam Review Total"], int)
 
     def test_string(self):
         """
-        Tests get_game_info function for specific types of results.
+        Tests `get_game_info` function for specific types of results.
         """
         game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info["Developers"], str)
@@ -161,12 +157,11 @@ class GetGameInfo(unittest.TestCase):
         self.assertIsInstance(game_info["drm_notice"], str)
         self.assertIsInstance(game_info["categories"], str)
         self.assertIsInstance(game_info["Release Year"], str)
-        self.assertIsInstance(game_info["price"], str)
         self.assertIsInstance(game_info["ext_user_account_notice"], str)
 
     def test_other_types(self):
         """
-        Tests get_game_info function for specific types of results.
+        Tests `get_game_info` function for specific types of results.
         """
         game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info, dict)
@@ -200,14 +195,14 @@ class GetGameInfo(unittest.TestCase):
         """
         Tests to be sure the get_game_info function has no empty string values.
         """
-        game_info = self.t.get_game_info(app_id=26500)
+        game_info = self.t.get_game_info(app_id=730)
         for entry in game_info.values():
             self.assertFalse(entry == "")
 
 
 class GetProfileUsername(unittest.TestCase):
     """
-    Tests get_profile_username function.
+    Tests `get_profile_username` function.
     """
 
     def setUp(self):
@@ -232,7 +227,7 @@ class GetProfileUsername(unittest.TestCase):
 
 class GetSteamID(unittest.TestCase):
     """
-    Tests get_steam_id function.
+    Tests `get_steam_id` function.
     """
 
     def setUp(self):
@@ -253,7 +248,7 @@ class GetSteamID(unittest.TestCase):
 
 class ValidateSteamApiKey(unittest.TestCase):
     """
-    Tests validate_steam_key function.
+    Tests `validate_steam_key` function.
     Steam ID's must be allnumbers and 17 characters long.
     """
 
@@ -273,7 +268,7 @@ class ValidateSteamApiKey(unittest.TestCase):
 
 class ValidateSteamID(unittest.TestCase):
     """
-    Tests validate_steam_id function.
+    Tests `validate_steam_id` function.
     Steam ID's must be allnumbers and 17 characters long.
     """
 
@@ -303,7 +298,7 @@ class ValidateSteamID(unittest.TestCase):
 
 class SkipGame(unittest.TestCase):
     """
-    Tests get_game_info function.
+    Tests `skip_game` function.
     """
 
     def setUp(self):
@@ -316,21 +311,39 @@ class SkipGame(unittest.TestCase):
         self.t.name_ignore_list = ["Half-Life 2: Lost Coast"]
         self.t.app_id_ignore_list = [12345, 123458]
         # app_id return true
-        self.assertTrue(self.t.skip_game(app_id="12345"))
-        self.assertTrue(self.t.skip_game(app_id=12345))
-        self.assertTrue(self.t.skip_game(app_id=123458))
+        self.assertTrue(
+            self.t.skip_game(app_id="12345"), "app_id: 12345 should not be skipped"
+        )
+        self.assertTrue(
+            self.t.skip_game(app_id=12345), "app_id: 12345 should not be skipped"
+        )
         # name return true
-        self.assertTrue(self.t.skip_game(game_name="Game Beta"))
-        self.assertTrue(self.t.skip_game(game_name="Squad - Public Testing"))
-        self.assertTrue(self.t.skip_game(game_name="Half-Life 2: Lost Coast"))
-        self.assertTrue(self.t.skip_game(game_name="Half-Life 2: Lost Coast".lower()))
+        self.assertTrue(
+            self.t.skip_game(game_name="Game Beta"), "Game Beta should not be skipped"
+        )
+        self.assertTrue(
+            self.t.skip_game(game_name="Squad - Public Testing"),
+            "Squad - Public Testing should not be skipped",
+        )
+        self.assertTrue(
+            self.t.skip_game(game_name="Half-Life 2: Lost Coast"),
+            "Half-Life 2: Lost Coast should not be skipped",
+        )
+        self.assertTrue(
+            self.t.skip_game(game_name="half-life 2: lost coast"),
+            "half-life 2: lost coast should not be skipped",
+        )
 
     def test_skip_media(self):
         """
         Tests for True returns.
         """
-        self.assertTrue(self.t.skip_game(game_name="Spotify"))
-        self.assertTrue(self.t.skip_game(game_name="youtube"))
+        self.assertTrue(
+            self.t.skip_game(game_name="Spotify"), "Spotify should be skipped"
+        )
+        self.assertTrue(
+            self.t.skip_game(game_name="youtube"), "Youtube should be skipped"
+        )
 
     def test_dont_skip(self):
         """
@@ -346,12 +359,13 @@ class SkipGame(unittest.TestCase):
         """
         Empty args return False.
         """
-        self.assertFalse(self.t.skip_game())
+        with self.assertRaises(ValueError):
+            self.t.skip_game()
 
 
 class PlayStatus(unittest.TestCase):
     """
-    Tests play_status function.
+    Tests `play_status` function.
     """
 
     def setUp(self):

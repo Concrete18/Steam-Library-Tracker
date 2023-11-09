@@ -6,6 +6,10 @@ from classes.utils import Utils
 
 
 class HoursPlayed(unittest.TestCase):
+    """
+    Tests `hours_played` function
+    """
+
     def setUp(self):
         self.t = Utils()
 
@@ -24,7 +28,7 @@ class HoursPlayed(unittest.TestCase):
 
 class TimePassed(unittest.TestCase):
     """
-    Tests convert_time_passed function
+    Tests `convert_time_passed` function
     """
 
     def setUp(self):
@@ -135,7 +139,7 @@ class TimePassed(unittest.TestCase):
 
 class DaysSince(unittest.TestCase):
     """
-    Tests days_since function
+    Tests `days_since` function
     """
 
     def setUp(self):
@@ -153,7 +157,28 @@ class DaysSince(unittest.TestCase):
         self.assertEqual(days_since, 7)
 
 
+class StringToDate(unittest.TestCase):
+    """
+    Tests `string_to_date` function
+    """
+
+    def setUp(self):
+        self.t = Utils()
+
+    def test_valid(self):
+        date = self.t.string_to_date("02/24/2022")
+        self.assertEqual(date, dt.datetime(2022, 2, 24, 0, 0))
+
+    def test_not_valid(self):
+        with self.assertRaises(ValueError):
+            self.t.string_to_date("")
+
+
 class UrlSanitize(unittest.TestCase):
+    """
+    Tests `url_sanitize` function
+    """
+
     def setUp(self):
         self.t = Utils()
 
@@ -169,7 +194,7 @@ class UrlSanitize(unittest.TestCase):
 
 class UnicodeRemover(unittest.TestCase):
     """
-    Tests unicode_remover function
+    Tests `unicode_remover` function
     """
 
     def setUp(self):
@@ -194,7 +219,7 @@ class UnicodeRemover(unittest.TestCase):
 
 class CreateAndSentence(unittest.TestCase):
     """
-    Tests create_and_sentence function.
+    Tests `create_and_sentence` function.
     """
 
     def setUp(self):
@@ -215,7 +240,7 @@ class CreateAndSentence(unittest.TestCase):
 
 class LevenshteinDistance(unittest.TestCase):
     """
-    Tests Similarity Matching Functions.
+    Tests `lev_distance` Function.
     """
 
     def setUp(self):
@@ -327,7 +352,7 @@ class SimilarityMatching(unittest.TestCase):
 
 class AnyIsNum(unittest.TestCase):
     """
-    Tests any_is_num function.
+    Tests `any_is_num` function.
     """
 
     def setUp(self):

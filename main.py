@@ -494,7 +494,8 @@ class Tracker(Steam, Utils):
                 discount = price_data["discount_percent"]
                 on_sale = price_data["discount_percent"] > 0
                 if price:
-                    info_dict["price"] = price
+                    # BUG fails when it cant convert string to float
+                    info_dict["price"] = float(price.replace("$", ""))
                 if discount:
                     info_dict["discount"] = float(discount)
                 if on_sale:
@@ -813,7 +814,7 @@ class Tracker(Steam, Utils):
         """
         # return False if name and app_id is not given
         if not any([game_name, app_id]):
-            return False
+            raise ValueError("No game_name or app_id was given.")
         # ignore by app id
         if app_id and int(app_id) in self.app_id_ignore_list:
             return True
@@ -1186,7 +1187,7 @@ class Tracker(Steam, Utils):
                     self.date_updated_col: dt.datetime.now(),
                     self.name_col: game_info["game_name"],
                     "Discount": game_info["discount"] * 0.01,
-                    "Price": game_info["price"].replace("$", ""),
+                    "Price": game_info["price"],
                     self.my_rating_col: game_data[self.my_rating_col],
                     self.steam_rev_per_col: game_info[self.steam_rev_per_col],
                     self.steam_rev_total_col: game_info[self.steam_rev_total_col],
