@@ -1,7 +1,8 @@
-import unittest, json
+import unittest
 
 # classes
 from main import Tracker
+from classes.utils import get_steam_key_and_id
 
 
 class GetYear(unittest.TestCase):
@@ -20,10 +21,10 @@ class GetYear(unittest.TestCase):
             "Mai 25, 1991": "1991",
             "Apr , 2015": "2015",
         }
-        for date, year in date_tests.items():
+        for date, answer in date_tests.items():
             with self.subTest(date=date):
-                result = self.t.get_year(date)
-                self.assertEqual(result, year)
+                year = self.t.get_year(date)
+                self.assertEqual(year, answer, "The year was not correctly found.")
 
     def test_invalid(self):
         result = self.t.get_year("this is not a date")
@@ -46,10 +47,12 @@ class GetTimeToBeat(unittest.TestCase):
         ]
         for name in time_to_beat_tests:
             with self.subTest(name=name):
-                result = self.t.get_time_to_beat(name)
-                self.assertIsInstance(result, float)
-        result = self.t.get_time_to_beat("Not a Real Game")
-        self.assertEqual(result, "NF - Error")
+                ttb = self.t.get_time_to_beat(name)
+                self.assertIsInstance(ttb, float, "The time to beat is not a float")
+
+    def test_not_found(self):
+        result = self.t.get_time_to_beat("6574654 Not a Real Game 564654")
+        self.assertEqual(result, "NF - Error", "No time to beat should be found")
 
 
 class GetStoreLink(unittest.TestCase):
@@ -66,15 +69,24 @@ class GetStoreLink(unittest.TestCase):
             "629730": "https://store.steampowered.com/app/629730/",
         }
         for app_id, answer in store_link_tests.items():
-            self.assertEqual(self.t.get_store_link(app_id), answer)
+            store_link = self.t.get_store_link(app_id)
+            self.assertEqual(store_link, answer, "The store link does mot match")
             # tests that the url exists
-            response = self.t.request_url(answer)
-            self.assertIn(app_id, response.url)
-            self.assertTrue(response)
-        # test for broken link that redirects due to app id not being found
-        invalid_url = "https://store.steampowered.com/app/6546546545465484213211545730/"
+            response = self.t.request_url(store_link)
+            self.assertTrue(response, "The link does not go to a real page")
+
+    def test_invalid_link(self):
+        """
+        Test for broken link that redirects due to the app ID not being found
+        """
+        fake_app_id = "6546546545465484213211545730"
+        invalid_url = f"https://store.steampowered.com/app/{fake_app_id}/"
         response = self.t.request_url(invalid_url)
-        self.assertNotIn("6546546545465484213211545730", response.url)
+        self.assertNotIn(
+            fake_app_id,
+            response.url,
+            "The fake app ID should not be in the url",
+        )
 
 
 class SteamReview(unittest.TestCase):
@@ -94,8 +106,66 @@ class SteamReview(unittest.TestCase):
         ]
         for app_id in steam_review_tests:
             percent, total = self.t.get_steam_review(app_id=app_id)
-            self.assertIsInstance(percent, float)
-            self.assertIsInstance(total, int)
+            self.assertIsInstance(
+                percent,
+                float,
+                "Steam review percent should be a float",
+            )
+            self.assertIsInstance(
+                total,
+                int,
+                "Steam review percent should be an int",
+            )
+
+
+class GetPriceInfo(unittest.TestCase):
+    """
+    ph
+    """
+
+    def setUp(self):
+        self.t = Tracker(save=False)
+
+    def test_normal_data(self):
+        game_info = {
+            "price_overview": {
+                "final_formatted": "20.99$",
+                "discount_percent": 0.50,
+            }
+        }
+        price, discount, on_sale = self.t.get_price_info(game_info)
+        self.assertEqual(price, 20.99)
+        self.assertEqual(discount, 0.5)
+        self.assertEqual(on_sale, True)
+
+    def test_wrong_currency(self):
+        """
+        Confirms that a non US Dollar currency for the price causes the price to return as None.
+        """
+        game_info = {
+            "price_overview": {
+                "final_formatted": "20.99€",
+                "discount_percent": 0.50,
+            }
+        }
+        price, _, _ = self.t.get_price_info(game_info)
+        self.assertIsNone(price, "Price should be None if it is not in US currency")
+
+    def test_invalid_data(self):
+        """
+        Should return all None if the game_info dict is not correct.
+        """
+        game_info = {}
+        price, discount, on_sale = self.t.get_price_info(game_info)
+        self.assertIsNone(price)
+        self.assertIsNone(discount)
+        self.assertIsNone(on_sale)
+
+        game_info = {"price_overview": {}}
+        price, discount, on_sale = self.t.get_price_info(game_info)
+        self.assertIsNone(price)
+        self.assertIsNone(discount)
+        self.assertIsNone(on_sale)
 
 
 class GetGameInfo(unittest.TestCase):
@@ -128,36 +198,81 @@ class GetGameInfo(unittest.TestCase):
         ]
         dict = self.t.get_game_info(1145360)
         for key in keys:
-            self.assertIn(key, dict.keys())
+            self.assertIn(key, dict.keys(), f"{key} should exist")
 
     def test_float(self):
         """
         Tests `get_game_info` function for percents.
         """
         game_info = self.t.get_game_info(app_id=752590)
-        self.assertIsInstance(game_info["Steam Review Percent"], float)
-        self.assertIsInstance(game_info["discount"], float)
-        self.assertIsInstance(game_info["price"], float)
+        print(game_info)
+        self.assertIsInstance(
+            game_info["Steam Review Percent"],
+            float,
+            "Steam review percent should be a float",
+        )
+        self.assertIsInstance(
+            game_info["discount"],
+            float,
+            "Discount percent should be a float",
+        )
+        self.assertIsInstance(
+            game_info["price"],
+            float,
+            "Price should be a float",
+        )
 
     def test_int(self):
         """
         Tests `get_game_info` function for specific types of results.
         """
         game_info = self.t.get_game_info(app_id=752590)
-        self.assertIsInstance(game_info["Steam Review Total"], int)
+        self.assertIsInstance(
+            game_info["Steam Review Total"],
+            int,
+            "Steam Review Total should be an int",
+        )
 
     def test_string(self):
         """
         Tests `get_game_info` function for specific types of results.
         """
         game_info = self.t.get_game_info(app_id=752590)
-        self.assertIsInstance(game_info["Developers"], str)
-        self.assertIsInstance(game_info["Publishers"], str)
-        self.assertIsInstance(game_info["Genre"], str)
-        self.assertIsInstance(game_info["drm_notice"], str)
-        self.assertIsInstance(game_info["categories"], str)
-        self.assertIsInstance(game_info["Release Year"], str)
-        self.assertIsInstance(game_info["ext_user_account_notice"], str)
+        self.assertIsInstance(
+            game_info["Developers"],
+            str,
+            "Developers should be a string",
+        )
+        self.assertIsInstance(
+            game_info["Publishers"],
+            str,
+            "Publishers should be a string",
+        )
+        self.assertIsInstance(
+            game_info["Genre"],
+            str,
+            "Genre should be a string",
+        )
+        self.assertIsInstance(
+            game_info["drm_notice"],
+            str,
+            "drm_notice should be a string",
+        )
+        self.assertIsInstance(
+            game_info["categories"],
+            str,
+            "categories should be a string",
+        )
+        self.assertIsInstance(
+            game_info["Release Year"],
+            str,
+            "Release year should be a string",
+        )
+        self.assertIsInstance(
+            game_info["ext_user_account_notice"],
+            str,
+            "ext_user_account_notice should be a string",
+        )
 
     def test_other_types(self):
         """
@@ -165,8 +280,16 @@ class GetGameInfo(unittest.TestCase):
         """
         game_info = self.t.get_game_info(app_id=752590)
         self.assertIsInstance(game_info, dict)
-        self.assertIn(game_info["Early Access"], ["Yes", "No"])
-        self.assertIn(game_info["on_sale"], [True, False])
+        self.assertIn(
+            game_info["Early Access"],
+            ["Yes", "No"],
+            "Early Access key value should be Yes or No",
+        )
+        self.assertIn(
+            game_info["on_sale"],
+            [True, False],
+            "on_sale key value should be True or False",
+        )
 
     def test_check_for_default(self):
         """
@@ -196,8 +319,8 @@ class GetGameInfo(unittest.TestCase):
         Tests to be sure the get_game_info function has no empty string values.
         """
         game_info = self.t.get_game_info(app_id=730)
-        for entry in game_info.values():
-            self.assertFalse(entry == "")
+        for value in game_info.values():
+            self.assertNotEqual(value, "", "No values should be blank")
 
 
 class GetProfileUsername(unittest.TestCase):
@@ -212,17 +335,17 @@ class GetProfileUsername(unittest.TestCase):
         gabe_username = "gabelogannewell"
         # ends with no /
         no_slash = "http://steamcommunity.com/id/gabelogannewell"
-        result = self.t.get_profile_username(no_slash)
-        self.assertEqual(result, gabe_username)
+        username = self.t.get_profile_username(no_slash)
+        self.assertEqual(username, gabe_username, f"Should return {gabe_username}")
         # ends with /
         with_slash = "http://steamcommunity.com/id/gabelogannewell/"
-        result = self.t.get_profile_username(with_slash)
-        self.assertEqual(result, gabe_username)
+        username = self.t.get_profile_username(with_slash)
+        self.assertEqual(username, gabe_username, f"Should return {gabe_username}")
 
     def test_False(self):
         string = "this is not a url"
-        result = self.t.get_profile_username(string)
-        self.assertFalse(result)
+        username = self.t.get_profile_username(string)
+        self.assertIsNone(username, "Should return None")
 
 
 class GetSteamID(unittest.TestCase):
@@ -230,20 +353,20 @@ class GetSteamID(unittest.TestCase):
     Tests `get_steam_id` function.
     """
 
+    steam_key, steam_id = get_steam_key_and_id()
+
     def setUp(self):
         self.t = Tracker(save=False)
-        with open("configs\config.json") as file:
-            data = json.load(file)
-        self.t.steam_key = data["settings"]["steam_api_key"]
+        self.t.steam_key = self.steam_key
 
     def test_get_steam_id(self):
         gabe_steam_id = 76561197960287930
-        result = self.t.get_steam_id("gabelogannewell")
-        self.assertEqual(result, gabe_steam_id)
+        steam_id = self.t.get_steam_id("gabelogannewell")
+        self.assertEqual(steam_id, gabe_steam_id, "steam_id should be gabelogannewell")
 
     def test_False(self):
-        result = self.t.get_steam_id(".")
-        self.assertFalse(result)
+        steam_id = self.t.get_steam_id(".")
+        self.assertIsNone(steam_id, "steam_id should be None")
 
 
 class ValidateSteamApiKey(unittest.TestCase):
@@ -257,13 +380,13 @@ class ValidateSteamApiKey(unittest.TestCase):
 
     def test_True(self):
         test_api_key = "15D4C014D419C0642B1E707BED41G7D4"
-        result = self.t.validate_steam_key(test_api_key)
-        self.assertTrue(result)
+        is_steam_key = self.t.validate_steam_key(test_api_key)
+        self.assertTrue(is_steam_key, "Should be a steam key")
 
     def test_False(self):
         test_api_key = "15D4C014D419C0642B7D4"
-        result = self.t.validate_steam_key(test_api_key)
-        self.assertFalse(result)
+        is_steam_key = self.t.validate_steam_key(test_api_key)
+        self.assertFalse(is_steam_key, "Should not be a steam key")
 
 
 class ValidateSteamID(unittest.TestCase):
@@ -312,26 +435,26 @@ class SkipGame(unittest.TestCase):
         self.t.app_id_ignore_list = [12345, 123458]
         # app_id return true
         self.assertTrue(
-            self.t.skip_game(app_id="12345"), "app_id: 12345 should not be skipped"
+            self.t.skip_game(app_id="12345"), "app_id: 12345 should be skipped"
         )
         self.assertTrue(
-            self.t.skip_game(app_id=12345), "app_id: 12345 should not be skipped"
+            self.t.skip_game(app_id=12345), "app_id: 12345 should be skipped"
         )
         # name return true
         self.assertTrue(
-            self.t.skip_game(game_name="Game Beta"), "Game Beta should not be skipped"
+            self.t.skip_game(game_name="Game Beta"), "Game Beta should be skipped"
         )
         self.assertTrue(
             self.t.skip_game(game_name="Squad - Public Testing"),
-            "Squad - Public Testing should not be skipped",
+            "Squad - Public Testing should be skipped",
         )
         self.assertTrue(
             self.t.skip_game(game_name="Half-Life 2: Lost Coast"),
-            "Half-Life 2: Lost Coast should not be skipped",
+            "Half-Life 2: Lost Coast should be skipped",
         )
         self.assertTrue(
             self.t.skip_game(game_name="half-life 2: lost coast"),
-            "half-life 2: lost coast should not be skipped",
+            "half-life 2: lost coast should be skipped",
         )
 
     def test_skip_media(self):

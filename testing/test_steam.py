@@ -1,20 +1,8 @@
-from pathlib import Path
-import unittest, json
+import unittest
 
 # classes
 from classes.steam import Steam
-
-
-def get_steam_key_and_id():
-    """
-    ph
-    """
-    config = Path("configs/config.json")
-    with open(config) as file:
-        data = json.load(file)
-    steam_key = data["settings"]["steam_api_key"]
-    steam_id = str(data["settings"]["steam_id"])
-    return steam_key, steam_id
+from classes.utils import get_steam_key_and_id
 
 
 class GetOwnedGames(unittest.TestCase):
@@ -23,7 +11,7 @@ class GetOwnedGames(unittest.TestCase):
 
     def test_get_owned_steam_games(self):
         """
-        Tests `get_game_info` function.
+        Tests `get_owned_steam_games` function.
         """
         owned_games = self.steam.get_owned_steam_games(
             self.steam_key,

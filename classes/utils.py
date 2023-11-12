@@ -1,4 +1,5 @@
 from difflib import SequenceMatcher
+from pathlib import Path
 import time, json, requests, re
 import datetime as dt
 import pandas as pd
@@ -27,6 +28,18 @@ def keyboard_interrupt(func):
             exit()
 
     return wrapped
+
+
+def get_steam_key_and_id():
+    """
+    ph
+    """
+    config = Path("configs/config.json")
+    with open(config) as file:
+        data = json.load(file)
+    steam_key = data["settings"]["steam_api_key"]
+    steam_id = str(data["settings"]["steam_id"])
+    return steam_key, steam_id
 
 
 class Utils:

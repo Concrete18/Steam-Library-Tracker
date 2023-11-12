@@ -222,8 +222,8 @@ class Tracker(Steam, Utils):
         if "steamcommunity.com/id" in vanity_url:
             if vanity_url[-1] == "/":
                 vanity_url = vanity_url[:-1]
-            result = vanity_url.split("/")[-1]
-        return result
+            return vanity_url.split("/")[-1]
+        return None
 
     def get_steam_id(self, vanity_url):
         """
@@ -242,7 +242,7 @@ class Tracker(Steam, Utils):
             if "steamid" in data.keys():
                 steam_id = data["steamid"]
                 return int(steam_id)
-        return False
+        return None
 
     def set_title(self, title=None):
         """
@@ -419,6 +419,31 @@ class Tracker(Steam, Utils):
         """
         return f"https://store.steampowered.com/app/{app_id}/"
 
+    @staticmethod
+    def get_price_info(game_info: {}):
+        """
+        Gets price info from `game_info` and returns None if anything is set up
+        wrong for any or all return values.
+        """
+        if "price_overview" not in game_info.keys():
+            return None, None, None
+        price_data = game_info["price_overview"]
+        # price
+        price = None
+        if "final_formatted" in price_data.keys():
+            price_value = price_data["final_formatted"]
+            if "$" in price_value:
+                price = float(price_value.replace("$", ""))
+        # discount
+        discount = None
+        if "discount_percent" in price_data.keys():
+            discount = float(price_data["discount_percent"])
+        # on sale
+        on_sale = None
+        if "discount_percent" in price_data.keys():
+            on_sale = price_data["discount_percent"] > 0
+        return price, discount, on_sale
+
     def get_game_info(self, app_id):
         """
         Gets game info with steam api using a `app_id`.
@@ -489,15 +514,11 @@ class Tracker(Steam, Utils):
                 info_dict[self.release_col] = release_date
             # get price_info
             if "price_overview" in keys:
-                price_data = game_info["price_overview"]
-                price = price_data["final_formatted"]
-                discount = price_data["discount_percent"]
-                on_sale = price_data["discount_percent"] > 0
+                price, discount, on_sale = self.get_price_info(game_info)
                 if price:
-                    # BUG fails when it cant convert string to float
-                    info_dict["price"] = float(price.replace("$", ""))
+                    info_dict["price"] = price
                 if discount:
-                    info_dict["discount"] = float(discount)
+                    info_dict["discount"] = discount
                 if on_sale:
                     info_dict["on_sale"] = on_sale
             # get linux compat
@@ -745,8 +766,7 @@ class Tracker(Steam, Utils):
         if 0 < self.num_games_updated < 50:
             print(f"\nGames Updated: {self.num_games_updated}")
             if self.num_games_updated > 1:
-                session_time = round(self.total_session_playtime)
-                print(f"Last Session Playtime: {session_time} Hours")
+                print(f"Last Session Playtime: {self.total_session_playtime:.1f} Hours")
             # prints each game that was updated with info
             for game_info in updated_games:
                 for line in game_info:
@@ -964,8 +984,7 @@ class Tracker(Steam, Utils):
             self.date_added_col: dt.datetime.now(),
             self.date_updated_col: dt.datetime.now(),
         }
-        steam_info = self.get_game_info(app_id)
-        if steam_info:
+        if steam_info := self.get_game_info(app_id):
             for column in self.excel_columns:
                 if column in steam_info.keys():
                     column_info[column] = steam_info[column]
