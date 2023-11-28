@@ -3,6 +3,6 @@ beautifulsoup4==4.11.1
 coverage==7.0.0
 openpyxl==3.0.10
 pandas==1.5.2
-tqdm==4.64.1
 matplotlib==3.6.2
 easierexcel
+rich==13.3.2

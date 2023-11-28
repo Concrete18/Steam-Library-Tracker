@@ -22,7 +22,7 @@ def keyboard_interrupt(func):
         try:
             func(*args, **kwargs)
         except KeyboardInterrupt:
-            delay = 0.5
+            delay = 0.1
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
             exit()
@@ -89,13 +89,13 @@ class Utils:
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
-            msg = "Server Error: make sure your api key and steam id is valid."
+            msg = "Server Error: make sure your api key and steam id is valid"
             self.error_log.warning(msg)
         elif response.status_code == 404:
             msg = f"Server Error: 404 Content does not exist. URL: {url}"
             self.error_log.warning(msg)
         elif response.status_code == 429 or response.status_code == 403:
-            msg = "Server Error: Too Many reqeuests made. Waiting to try again."
+            msg = "Server Error: Too Many reqeuests made. Waiting to try again"
             self.error_log.warning(msg)
             self.error_log.warning(response)
             time.sleep(5)
@@ -275,9 +275,9 @@ class Utils:
         return conv_string.strip()
 
     @staticmethod
-    def create_and_sentence(str_list) -> str:
+    def create_and_sentence(str_list: [str]) -> str:
         """
-        Converts a string into a comma seperated string of words
+        Converts a list of strings into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
         """
         str_list_length = len(str_list)
@@ -289,37 +289,6 @@ class Utils:
             result = ", ".join(str_list[:-1])
             result += " and " + str_list[-1]
         return result
-
-    def ask_for_integer(
-        self,
-        msg=None,
-        num_range=False,
-        allow_blank=False,
-    ) -> int or bool:
-        """
-        Asks for a integer until an integer is given.
-        """
-        if msg is None:
-            msg = "Type a Number: "
-        num = input(msg)
-        if allow_blank and num == "":
-            return ""
-        if num_range:
-            min = num_range[0]
-            max = num_range[1]
-            while True:
-                if num.isdigit():
-                    if min <= int(num) <= max:
-                        break
-                num = input(msg)
-                if allow_blank and num == "":
-                    return ""
-        else:
-            while not num.isdigit():
-                num = input(msg)
-                if allow_blank and num == "":
-                    return ""
-        return int(num)
 
     def lev_distance(self, word1: str, word2: str, lower=True) -> int:
         """
@@ -416,7 +385,7 @@ class Utils:
         with open(filename) as file:
             last_check_data = json.load(file)
             if new_data != last_check_data:
-                raise PermissionError("Data did not save error.")
+                raise PermissionError("Data did not save error")
 
     def create_dataframe(self, table):
         """

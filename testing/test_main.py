@@ -1,3 +1,4 @@
+from unittest.mock import patch, call
 import unittest
 
 # classes
@@ -24,7 +25,7 @@ class GetYear(unittest.TestCase):
         for date, answer in date_tests.items():
             with self.subTest(date=date):
                 year = self.t.get_year(date)
-                self.assertEqual(year, answer, "The year was not correctly found.")
+                self.assertEqual(year, answer, "The year was not correctly found")
 
     def test_invalid(self):
         result = self.t.get_year("this is not a date")
@@ -365,7 +366,7 @@ class GetSteamID(unittest.TestCase):
         self.assertEqual(steam_id, gabe_steam_id, "steam_id should be gabelogannewell")
 
     def test_False(self):
-        steam_id = self.t.get_steam_id(".")
+        steam_id = self.t.get_steam_id("")
         self.assertIsNone(steam_id, "steam_id should be None")
 
 
@@ -578,6 +579,31 @@ class PlayStatus(unittest.TestCase):
         for test in tests:
             result = self.t.decide_play_status(test["play_status"], test["minutes"])
             self.assertEqual(result, test["ans"])
+
+
+@patch("builtins.print")
+class ShowErrors(unittest.TestCase):
+    def setUp(self):
+        self.t = Tracker(save=False)
+
+    def test_show_errors(self, mock_print):
+        """
+        ph
+        """
+        self.t.errors = ["This failed"]
+
+        self.t.show_errors()
+
+        # import sys
+        # sys.stdout.write(str(mock_print.call_args) + "\n")
+        # sys.stdout.write(str(mock_print.call_args_list) + "\n")
+
+        expected_calls = [
+            call(f"\n1 Errors Occurred:"),
+            call("This failed"),
+        ]
+
+        mock_print.assert_has_calls(expected_calls, any_order=False)
 
 
 if __name__ == "__main__":

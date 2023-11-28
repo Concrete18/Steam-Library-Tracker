@@ -2,8 +2,12 @@ import random, json, os, re, sys, shutil, time, subprocess, webbrowser
 from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
-from tqdm import tqdm
 import datetime as dt
+from rich.console import Console
+from rich.table import Table
+from rich.progress import track
+from rich.prompt import IntPrompt
+
 
 # classes
 from classes.steam import Steam
@@ -40,11 +44,11 @@ def setup():
         "Open the config and update the following entries:",
         "steam_id",
         "steam_api_key",
-        "\nOnce updated run again.",
+        "\nOnce updated, run again",
     ]
     for line in instructsions:
         print(line)
-    input("Press Enter to Close.")
+    input("Press Enter to Close")
     exit()
 
 
@@ -52,6 +56,7 @@ class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     ext_terminal = sys.stdout.isatty()  # is True if terminal is external
+    console = Console()
     title = "Game Library Tracker"
     # config init
     config = setup()
@@ -131,7 +136,7 @@ class Tracker(Steam, Utils):
         "9": "Ignore",
     }
     # misc
-    ps_data = Path("configs\playstation_games.json")
+    ps_data = Path("configs/playstation_games.json")
 
     # columns
     excel_columns = [
@@ -197,9 +202,9 @@ class Tracker(Steam, Utils):
         """
         errors = []
         if not self.validate_steam_id(self.steam_id):
-            errors.append("Steam ID is Invalid.")
+            errors.append("Steam ID is Invalid")
         if not self.validate_steam_key(self.steam_key):
-            errors.append("Steam API Key is Invalid.")
+            errors.append("Steam API Key is Invalid")
         if errors:
             return False, errors
         else:
@@ -210,7 +215,7 @@ class Tracker(Steam, Utils):
         Updates the steam id in the config using the given vanity url if present.
         """
         if not self.vanity_url:
-            raise "Steam ID and Vanity URL is blank. Please enter at one of them."
+            raise "Steam ID and Vanity URL is blank. Please enter at one of them"
         steam_id = self.get_steam_id(self.vanity_url)
         if steam_id:
             self.data["settings"]["steam_id"] = steam_id
@@ -433,7 +438,8 @@ class Tracker(Steam, Utils):
         if "final_formatted" in price_data.keys():
             price_value = price_data["final_formatted"]
             if "$" in price_value:
-                price = float(price_value.replace("$", ""))
+                if price_value.isnumeric():
+                    price = float(price_value.replace("$", ""))
         # discount
         discount = None
         if "discount_percent" in price_data.keys():
@@ -587,10 +593,10 @@ class Tracker(Steam, Utils):
         missing_data_total = len(check_list)
         auto_run_limit = 50
         if 0 < missing_data_total <= auto_run_limit:
-            print(f"\nGames with missing data is within threshold of {auto_run_limit}.")
+            print(f"\nGames with missing data is within threshold of {auto_run_limit}")
         elif missing_data_total > auto_run_limit:
             msg = (
-                f"\n{missing_data_total} games are missing data."
+                f"\n{missing_data_total} games are missing data"
                 "\nDo you want to retrieve it?\n:"
             )
             if not input(msg) in ["yes", "y"]:
@@ -602,13 +608,8 @@ class Tracker(Steam, Utils):
             cur_itr = 0
             save_every_nth = self.create_save_every_nth()
             games_with_added_data = []
-            for app_id in tqdm(
-                iterable=check_list,
-                ascii=True,
-                unit=" games",
-                ncols=80,
-                dynamic_ncols=True,
-            ):
+            print()
+            for app_id in track(check_list, description="Updating Missing Info"):
                 game_data = self.steam.get_row(app_id)
                 game_name = game_data[self.name_col]
                 games_with_added_data.append(game_data[self.name_col])
@@ -689,23 +690,58 @@ class Tracker(Steam, Utils):
             return
         print("Skipping Name Changes")
 
+    def print_played_games_info(self, played_games):
+        """
+        ph
+        """
+        total_games_played = len(played_games)
+        title = f"Games Played: {len(played_games)}"
+        if total_games_played > 1:
+            title += f"\nLast Session Playtime: {self.total_session_playtime:.1f} Hours"
+        table = Table(title=title, show_lines=True)
+        table.add_column("Name", style="deep_sky_blue1", justify="left")
+        table.add_column("Time\nPlayed", justify="center")
+        table.add_column("Total\nPlaytime", justify="center")
+
+        for game in played_games:
+            row = [
+                game["name"],
+                game["added_time_played"],
+                f"{game['total_playtime']} Hours",
+            ]
+            table.add_row(*row)
+        self.console.print(table, new_line_start=True)
+
+    def print_added_games_info(self, added_games):
+        """
+        ph
+        """
+        table = Table(title=f"Games Added: {len(added_games)}", show_lines=True)
+        table.add_column("Name", style="deep_sky_blue1", justify="left")
+        table.add_column("Total Playtime", justify="center")
+
+        for game in added_games:
+            row = [
+                game["name"],
+                f"{game['total_playtime']} Hours",
+            ]
+            table.add_row(*row)
+        self.console.print(table, new_line_start=True)
+
     def game_check(self, steam_games, sheet_games):
         """
         Checks for new games or game updates from `steam_games` based on `sheet_games`.
         """
-        self.num_games_updated = 0
-        self.num_games_added = 0
         self.total_session_playtime = 0
         added_games = []
-        updated_games = []
+        played_games = []
         name_changes = []
         save_every_nth = self.create_save_every_nth()
         # game checking
-        for game in tqdm(
-            iterable=steam_games,
-            ascii=True,
-            unit=" games",
-            ncols=80,
+        print("")
+        total_games = len(steam_games)
+        for game in track(
+            steam_games, description=f"Syncing {total_games:,} Steam Games"
         ):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -738,7 +774,7 @@ class Tracker(Steam, Utils):
             # updates or adds game
             if app_id in sheet_games:
                 sheet_games.remove(app_id)
-                update_info = self.update_game(
+                update_info = self.update_steam_game(
                     app_id,
                     game_name,
                     minutes_played,
@@ -748,7 +784,7 @@ class Tracker(Steam, Utils):
                     time_played,
                 )
                 if update_info:
-                    updated_games.append(update_info)
+                    played_games.append(update_info)
             else:
                 added_info = self.add_steam_game(
                     app_id,
@@ -763,28 +799,17 @@ class Tracker(Steam, Utils):
         if self.save_to_file:
             save_every_nth()
         # prints the total games updated and added
-        if 0 < self.num_games_updated < 50:
-            print(f"\nGames Updated: {self.num_games_updated}")
-            if self.num_games_updated > 1:
-                print(f"Last Session Playtime: {self.total_session_playtime:.1f} Hours")
-            # prints each game that was updated with info
-            for game_info in updated_games:
-                for line in game_info:
-                    print(line)
+        if 0 < len(played_games) < 50:
+            self.print_played_games_info(played_games)
         # game names changed
         self.name_change_checker(name_changes)
         # games added
-        if self.num_games_added:
-            print(f"\nGames Added: {self.num_games_added}")
-        if self.num_games_added < 10:
-            if added_games:
-                for game_info in added_games:
-                    for line in game_info:
-                        print(line)
-        elif self.num_games_added < 50:
-            print(self.create_and_sentence(added_games))
-        else:
-            print("Too Many to show.")
+        total_added_games = len(added_games)
+        if 0 < total_added_games < 50:
+            if total_added_games > 50:
+                added_games = added_games[:50]
+                print("Showing First 50 Games Added")
+            self.print_added_games_info(added_games)
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
@@ -800,7 +825,7 @@ class Tracker(Steam, Utils):
         if self.excel.changes_made and self.save_to_file:
             self.excel.save()
         else:
-            print("\nNo Steam games were updated or added.")
+            print("\nNo Steam games were updated or added")
 
     def sync_steam_games(self, steam_id):
         """
@@ -815,7 +840,6 @@ class Tracker(Steam, Utils):
         else:
             if not sheet_games:
                 print(f"Starting First Steam Sync")
-            print(f"\nFound {len(steam_games):,} Steam Games")
             self.game_check(steam_games, sheet_games)
             return
         input()
@@ -834,7 +858,7 @@ class Tracker(Steam, Utils):
         """
         # return False if name and app_id is not given
         if not any([game_name, app_id]):
-            raise ValueError("No game_name or app_id was given.")
+            raise ValueError("No game_name or app_id was given")
         # ignore by app id
         if app_id and int(app_id) in self.app_id_ignore_list:
             return True
@@ -891,7 +915,7 @@ class Tracker(Steam, Utils):
         self.data["last_runs"][name] = date
         self.save_json_output(self.data, self.config)
 
-    def update_game(
+    def update_steam_game(
         self,
         app_id,
         game_name,
@@ -926,18 +950,15 @@ class Tracker(Steam, Utils):
             self.set_play_status(app_id, new_status, cur_status)
             self.steam.format_row(app_id)
             self.total_session_playtime += hours_played
-            self.num_games_updated += 1
             # updated game logging
-            update_info = [
-                f"\n > {game_name} updated.",
-                f"   Played {added_time_played}",
-                f"   Total Playtime: {current_hours_played} Hours.",
-            ]
-            # logs play time
             msg = f"Playtime: {game_name} played for {added_time_played}"
             if self.logging:
                 self.tracker.info(msg)
-            return update_info
+            return {
+                "name": game_name,
+                "added_time_played": added_time_played,
+                "total_playtime": current_hours_played,
+            }
         return None
 
     def add_steam_game(
@@ -995,15 +1016,13 @@ class Tracker(Steam, Utils):
         if self.logging:
             info = f"New Game: Added {game_name} with {time_played} played"
             self.tracker.info(info)
-        self.num_games_added += 1
         self.steam.format_row(app_id)
         if save_after_add and self.save_to_file:
             self.excel.save()
-        added_info = [
-            f"\n > {game_name} added.",
-            f"   Total Playtime: {hours_played or 0} Hours.",
-        ]
-        return added_info
+        return {
+            "name": game_name,
+            "total_playtime": hours_played or 0,
+        }
 
     def add_ps_game(self, game_name, platform):
         """
@@ -1024,7 +1043,7 @@ class Tracker(Steam, Utils):
             info = f"New PS Game: Added {game_name} for {platform}"
             self.tracker.info(info)
         self.playstation.format_row(game_name)
-        return f"\n > {game_name} added."
+        return f"\n > {game_name} added"
 
     def check_playstation_json(self):
         """
@@ -1055,21 +1074,17 @@ class Tracker(Steam, Utils):
         resonse = input("\nDo you want to get your most recent Playstation data?\n")
         if resonse.lower() in ["yes", "y"]:
             self.update_playstation_data()
-        print("\nChecking for new games for Playstation.")
+        print("\nChecking for new games for Playstation")
         games = self.check_playstation_json()
         if not games:
-            print("No Playstation Games Found.")
+            print("No Playstation Games Found")
             return
         save_every_nth = self.create_save_every_nth()
         added_ps_games = []
         updated_ps_games = []
         all_game_names = []
-        for game in tqdm(
-            iterable=games,
-            unit=" games",
-            ascii=True,
-            ncols=80,
-        ):
+        print("")
+        for game in track(games, description="Syncing Playstation Games"):
             game_name = self.unicode_remover(game["name"])
             all_game_names.append(game_name)
             latest_platform = "PS5"
@@ -1112,12 +1127,12 @@ class Tracker(Steam, Utils):
         #         print("removed", game_row)
         # added
         if total_added := len(added_ps_games):
-            print(f"\nAdded {total_added} PS4/PS5 Games.")
+            print(f"\nAdded {total_added} PS4/PS5 Games")
             for game_info in added_ps_games:
                 print(game_info)
         # updated
         if total_updated := len(updated_ps_games):
-            print(f"\nUpdated {total_updated} PS4 Games to {latest_platform} versions.")
+            print(f"\nUpdated {total_updated} PS4 Games to {latest_platform} versions")
             for game_info in updated_ps_games:
                 print(game_info)
         # removed
@@ -1131,7 +1146,10 @@ class Tracker(Steam, Utils):
         Shows a list of Play Status's to choose from.
         Respond with the playstatus or numerical postion of the status from the list.
         """
-        prompt = self.create_and_sentence(self.play_status_choices.values()) + "\n:"
+        prompt = (
+            self.create_and_sentence(list(self.play_status_choices.values())) + "\n:"
+        )
+        # TODO switch to rich prompt
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
@@ -1171,7 +1189,7 @@ class Tracker(Steam, Utils):
         if play_status == None:
             return
         picked_game_name, choice_list = self.get_random_game_name(play_status)
-        print(f"\nGame: {picked_game_name}")
+        self.console.print(f"\nPicked: [bold deep_sky_blue1]{picked_game_name}[/]")
         # allows getting another random pick
         msg = "\nPress Enter to pick another random game and No to finish:\n"
         while not input(msg).lower() in ["no", "n"]:
@@ -1179,20 +1197,18 @@ class Tracker(Steam, Utils):
                 print(f"All games have already been picked.\n")
                 return
             picked_game_name, choice_list = self.get_random_game_name(play_status)
-            print(f"\nGame: {picked_game_name}")
+            self.console.print(f"\nPicked: [bold deep_sky_blue1]{picked_game_name}[/]")
 
     def get_favorite_games(self, min_rating=8):
         """
         gets favorite games from excel file as a list of dicts
         """
         # starts check with progress bar
-        print(f"\nGame Sale Check\nMinimum Rating set to {min_rating}")
+        print(f"Minimum Rating set to {min_rating}")
+        print("")
         games = []
-        for app_id in tqdm(
-            iterable=self.steam.row_idx.keys(),
-            ascii=True,
-            unit=" games",
-            ncols=100,
+        for app_id in track(
+            self.steam.row_idx.keys(), description="Finding Favorite Games"
         ):
             game_data = self.steam.get_row(app_id)
             if game_data[self.my_rating_col] == None:
@@ -1235,7 +1251,7 @@ class Tracker(Steam, Utils):
             # checks to see if it should skip the game
             skip_checks = [
                 name == "Unset",
-                "$" not in price,
+                (type(price) is str and "$" not in price),
                 discount == 0,
             ]
             if any(skip_checks):
@@ -1251,13 +1267,13 @@ class Tracker(Steam, Utils):
         Rating is set up using an input after running.
         """
         # sets minimum rating to and defaults to 8 if response is blank or invalid
-        msg = "\nWhat is the minimum rating for this search? (1-10)\n"
-        min_rating = input(msg) or "8"
-        if min_rating.isnumeric():
-            min_rating = int(min_rating)
-        else:
-            print("Invalid response - Using 8 instead.")
-            min_rating = 8
+        min_rating = IntPrompt.ask(
+            "\nWhat is the minimum rating for this search? (1-10)",
+            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+            default=8,
+            show_choices=False,
+            show_default=False,
+        )
         # delete old game sales
         cur_rows = [game for game in self.sales.row_idx.keys()].reverse()
         if cur_rows:
@@ -1277,12 +1293,9 @@ class Tracker(Steam, Utils):
         # last_num = 50
         # msg = f"\nPress 1 to get all game player counts\nPress 2 for only the {last_num} latest games\nDefaults to 1"
         # response = input(msg)
-        for app_id in tqdm(
-            iterable=self.steam.row_idx.keys(),
-            ascii=True,
-            unit=" games",
-            ncols=40,
-            dynamic_ncols=True,
+        print("")
+        for app_id in track(
+            self.steam.row_idx.keys(), description="Updating Player Counts"
         ):
             # if response == "2":
             #     self.steam.get_cell(app_id, self.steam_player_count_col)
@@ -1316,38 +1329,44 @@ class Tracker(Steam, Utils):
         )
         if new_hours:
             self.set_hours_played(game_idx, float(new_hours))
-            print(f"\nUpdated to {new_hours} Hours.")
+            print(f"\nUpdated to {new_hours} Hours")
         self.set_date_updated(game_idx)
 
     def open_log(self):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices, msg="What do you want to do?", repeat=True):
+    def pick_task(self, choices, repeat=True):
         """
         Allows picking a task to do next using a matching number.
         """
-        # runs if it is not an interactable terminal
         if not sys.stdout.isatty():
-            print("\nSkipping Task Picker.\nInput can't be used.")
-            return True
-        print(f"\n{msg}\n")
-        print("0. Exit and Open the Excel File")
+            # runs if it is not an interactable terminal
+            print("\nSkipping Task Picker.\nInput can't be used")
+            return
+        print("")
+        allowed_choices = []
         for count, (choice, action) in enumerate(choices):
-            print(f"{count+1}. {choice}")
-        num = self.ask_for_integer(
-            msg="",
-            num_range=(1, len(choices)),
-            allow_blank=True,
+            allowed_choices.append(str(count + 1))
+            msg = f"[b]{count+1}.[/] [underline]{choice}[/]"
+            self.console.print(msg, highlight=False)
+        num = IntPrompt.ask(
+            "\nWhat do you want to do?",
+            choices=allowed_choices,
+            default=1,
+            show_choices=False,
+            show_default=False,
         )
-        if num == "":
-            return False
+        selected_action = choices[num - 1][0]
+        msg = f"\n[b underline]{selected_action}[/] Selected"
+        self.console.print(msg, highlight=False)
         # runs chosen function
-        choice_num = num - 1
-        choices[choice_num][1]()
+        choices[num - 1][1]()
+        # finish if left blank
+        if num == 1:
+            return
         if repeat:
-            self.pick_task(choices, msg, repeat)
-        return True
+            self.pick_task(choices, repeat)
 
     def game_library_actions(self):
         """
@@ -1372,6 +1391,7 @@ class Tracker(Steam, Utils):
         stats = Stat(df)
         # choice picker
         choices = [
+            ("Exit and Open the Excel File", self.excel.open_excel),
             ("Pick Random Game", self.pick_random_game),
             ("Update Player Counts", self.update_player_counts),
             ("Update Favorite Games Sales", self.sync_favorite_games_sales),
@@ -1380,8 +1400,8 @@ class Tracker(Steam, Utils):
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
-        if not self.pick_task(choices):
-            self.excel.open_excel()
+        self.pick_task(choices)
+        exit()
 
     def show_errors(self):
         """
@@ -1418,7 +1438,7 @@ class Tracker(Steam, Utils):
         Main run function.
         """
         self.config_check()
-        print(self.title)
+        self.console.print(self.title, style="bold deep_sky_blue1")
         self.sync_steam_games(self.steam_id)
         self.missing_info_check()
         self.show_errors()

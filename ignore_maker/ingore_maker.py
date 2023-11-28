@@ -2,7 +2,6 @@ from pathlib import Path
 
 
 class IgnoreMaker:
-
     games = Path("ignore_maker\data.txt").read_text().splitlines()
 
     def prep_for_ignore_list(self):
@@ -16,7 +15,7 @@ class IgnoreMaker:
             else:
                 print(f'"{game}",')
         if unicode_issues:
-            print("The following have unicode issues.")
+            print("The following have unicode issues")
             for game in unicode_issues:
                 print(game)
 
