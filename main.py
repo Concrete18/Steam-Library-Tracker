@@ -582,8 +582,7 @@ class Tracker(Steam, Utils):
                     continue
             if skip_filled:
                 for column in column_list:
-                    # TODO switch to using game_data
-                    cell = self.steam.get_cell(app_id, column)
+                    cell = game_data[column]
                     if cell == None and app_id not in check_list:
                         check_list.append(app_id)
                         continue
@@ -738,7 +737,7 @@ class Tracker(Steam, Utils):
         name_changes = []
         save_every_nth = self.create_save_every_nth()
         # game checking
-        print("")
+        print()
         total_games = len(steam_games)
         for game in track(
             steam_games, description=f"Syncing {total_games:,} Steam Games"
@@ -825,7 +824,7 @@ class Tracker(Steam, Utils):
         if self.excel.changes_made and self.save_to_file:
             self.excel.save()
         else:
-            print("\nNo Steam games were updated or added")
+            print("\nNo Steam games were added or updated")
 
     def sync_steam_games(self, steam_id):
         """
@@ -1083,7 +1082,7 @@ class Tracker(Steam, Utils):
         added_ps_games = []
         updated_ps_games = []
         all_game_names = []
-        print("")
+        print()
         for game in track(games, description="Syncing Playstation Games"):
             game_name = self.unicode_remover(game["name"])
             all_game_names.append(game_name)
@@ -1149,7 +1148,6 @@ class Tracker(Steam, Utils):
         prompt = (
             self.create_and_sentence(list(self.play_status_choices.values())) + "\n:"
         )
-        # TODO switch to rich prompt
         while True:
             response = input(prompt).lower()
             if len(response) == 1:
@@ -1204,8 +1202,7 @@ class Tracker(Steam, Utils):
         gets favorite games from excel file as a list of dicts
         """
         # starts check with progress bar
-        print(f"Minimum Rating set to {min_rating}")
-        print("")
+        print(f"Minimum Rating set to {min_rating}\n")
         games = []
         for app_id in track(
             self.steam.row_idx.keys(), description="Finding Favorite Games"
@@ -1293,7 +1290,7 @@ class Tracker(Steam, Utils):
         # last_num = 50
         # msg = f"\nPress 1 to get all game player counts\nPress 2 for only the {last_num} latest games\nDefaults to 1"
         # response = input(msg)
-        print("")
+        print()
         for app_id in track(
             self.steam.row_idx.keys(), description="Updating Player Counts"
         ):
@@ -1344,7 +1341,7 @@ class Tracker(Steam, Utils):
             # runs if it is not an interactable terminal
             print("\nSkipping Task Picker.\nInput can't be used")
             return
-        print("")
+        print()
         allowed_choices = []
         for count, (choice, action) in enumerate(choices):
             allowed_choices.append(str(count + 1))
