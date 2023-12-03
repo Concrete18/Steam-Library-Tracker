@@ -437,9 +437,10 @@ class Tracker(Steam, Utils):
         price = None
         if "final_formatted" in price_data.keys():
             price_value = price_data["final_formatted"]
-            if "$" in price_value:
-                if price_value.isnumeric():
-                    price = float(price_value.replace("$", ""))
+            try:
+                price = float(price_value.replace("$", ""))
+            except:
+                price = None
         # discount
         discount = None
         if "discount_percent" in price_data.keys():
@@ -643,6 +644,124 @@ class Tracker(Steam, Utils):
             if self.save_to_file:
                 self.excel.save()
 
+    def output_play_status_info(self, df):
+        """
+        Creates a Table with counts and percentage of each play status.
+        """
+        title = "Play Status Statistics"
+        table = Table(
+            title=title, show_lines=True, style="deep_sky_blue1", title_style="bold"
+        )
+        total_games = df["Name"].count()
+        play_statuses = df["Play Status"].value_counts()
+        status_order = [
+            "Played",
+            "Unplayed",
+            "Endless",
+            "Finished",
+            "Waiting",
+            "Must Play",
+            "Replay",
+            "Quit",
+            "Ignore",
+        ]
+        row1, row2 = [], []
+        for status in status_order:
+            table.add_column(status, justify="center")
+            row1.append(str(play_statuses[status]))
+            row2.append(f"{play_statuses[status]/total_games:.1%}")
+        table.add_row(*row1)
+        table.add_row(*row2)
+        self.console.print(table, new_line_start=True)
+
+    def output_playtime_info(self, df):
+        """
+        Creates a Table with counts and percentage of each play status.
+        """
+        title = "Playtime Statistics"
+        table = Table(
+            title=title, show_lines=True, style="deep_sky_blue1", title_style="bold"
+        )
+
+        data = {}
+        total_hours_sum = df["Hours Played"].sum()
+        linux_hours_sum = df["Linux Hours"].sum()
+        data["Total\nHours"] = round(total_hours_sum, 1)
+        data["Total\nDays"] = round(total_hours_sum / 24, 1)
+        data["Total\nLinux Hours"] = round(linux_hours_sum, 1)
+        data["Total\nLinux Days"] = round(linux_hours_sum / 24, 1)
+        data["Linux\nHours %"] = f"{linux_hours_sum / total_hours_sum:.1%}"
+        # averages
+        data["Average\nHours"] = round(df["Hours Played"].mean(), 1)
+        data["Median\nHours"] = round(df["Hours Played"].median(), 1)
+        # min max
+        data["Max\nHours"] = round(df["Hours Played"].max(), 1)
+        data["Min\nHours"] = round(df["Hours Played"].min(), 1)
+
+        row = []
+        for name, stat in data.items():
+            table.add_column(name, justify="center")
+            row.append(str(stat))
+        table.add_row(*row)
+
+        self.console.print(table, new_line_start=True)
+
+    def output_review_info(self, df):
+        """
+        Outputs a table of review stats.
+        """
+        title = "Rating Statistics"
+        table = Table(
+            title=title,
+            show_lines=True,
+            style="deep_sky_blue1",
+            title_style="bold",
+        )
+
+        data = {}
+        # my ratings
+        my_ratings = df["My Rating"]
+        data["My\nTotal"] = my_ratings.count()
+        data["My\nAverage"] = round(my_ratings.mean(), 1)
+        # steam ratings
+        steam_ratings = df["Steam Review Percent"].astype("float")
+        data["Steam\nTotal"] = steam_ratings.count()
+        steam_avg = round(steam_ratings.mean(), 1)
+        data["Steam\nAverage"] = f"{round(steam_avg*100)}%"
+
+        row = []
+        for name, stat in data.items():
+            table.add_column(name, justify="center")
+            row.append(str(stat))
+        table.add_row(*row)
+
+        self.console.print(table, new_line_start=True)
+
+    def output_statistics(self):
+        """
+        Outputs a tables of game library stats.
+        """
+        na_values = [
+            "NaN",
+            "NF - Error",
+            "Invalid Date",
+            "ND - Error",
+            "No Tags",
+            "No Year",
+            "No Score",
+            "Not Found",
+            "No Reviews",
+            "Missing Data",
+            "Not Enough Reviews",
+            "No Publisher",
+            "No Developer",
+        ]
+        df = self.steam.create_dataframe(na_vals=na_values)
+        self.output_play_status_info(df)
+        self.output_playtime_info(df)
+        self.output_review_info(df)
+        return df
+
     @staticmethod
     def decide_play_status(play_status: str, minutes_played: int or float):
         """
@@ -689,16 +808,21 @@ class Tracker(Steam, Utils):
             return
         print("Skipping Name Changes")
 
-    def print_played_games_info(self, played_games):
+    def output_played_games_info(self, played_games):
         """
-        ph
+        Outputs a table of played game stats.
         """
         total_games_played = len(played_games)
         title = f"Games Played: {len(played_games)}"
         if total_games_played > 1:
             title += f"\nLast Session Playtime: {self.total_session_playtime:.1f} Hours"
-        table = Table(title=title, show_lines=True)
-        table.add_column("Name", style="deep_sky_blue1", justify="left")
+        table = Table(
+            title=title,
+            show_lines=True,
+            title_style="bold",
+            style="deep_sky_blue1",
+        )
+        table.add_column("Name", justify="left")
         table.add_column("Time\nPlayed", justify="center")
         table.add_column("Total\nPlaytime", justify="center")
 
@@ -711,12 +835,17 @@ class Tracker(Steam, Utils):
             table.add_row(*row)
         self.console.print(table, new_line_start=True)
 
-    def print_added_games_info(self, added_games):
+    def output_added_games_info(self, added_games):
         """
-        ph
+        Outputs a table of added game stats.
         """
-        table = Table(title=f"Games Added: {len(added_games)}", show_lines=True)
-        table.add_column("Name", style="deep_sky_blue1", justify="left")
+        table = Table(
+            title=f"Games Added: {len(added_games)}",
+            show_lines=True,
+            title_style="bold",
+            style="deep_sky_blue1",
+        )
+        table.add_column("Name", justify="left")
         table.add_column("Total Playtime", justify="center")
 
         for game in added_games:
@@ -799,7 +928,7 @@ class Tracker(Steam, Utils):
             save_every_nth()
         # prints the total games updated and added
         if 0 < len(played_games) < 50:
-            self.print_played_games_info(played_games)
+            self.output_played_games_info(played_games)
         # game names changed
         self.name_change_checker(name_changes)
         # games added
@@ -808,7 +937,7 @@ class Tracker(Steam, Utils):
             if total_added_games > 50:
                 added_games = added_games[:50]
                 print("Showing First 50 Games Added")
-            self.print_added_games_info(added_games)
+            self.output_added_games_info(added_games)
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
@@ -1384,8 +1513,6 @@ class Tracker(Steam, Utils):
             "No Publisher",
             "No Developer",
         ]
-        df = self.steam.create_dataframe(na_vals=na_values)
-        stats = Stat(df)
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
@@ -1393,7 +1520,6 @@ class Tracker(Steam, Utils):
             ("Update Player Counts", self.update_player_counts),
             ("Update Favorite Games Sales", self.sync_favorite_games_sales),
             ("Sync Playstation Games", self.sync_playstation_games),
-            ("Calculate Statistics", stats.get_game_statistics),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
@@ -1438,6 +1564,7 @@ class Tracker(Steam, Utils):
         self.console.print(self.title, style="bold deep_sky_blue1")
         self.sync_steam_games(self.steam_id)
         self.missing_info_check()
+        self.output_statistics()
         self.show_errors()
         self.game_library_actions()
 

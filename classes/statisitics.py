@@ -15,60 +15,6 @@ class Stat:
         self.df["Genre"] = self.df["Genre"].str.replace(" ", "")
         self.df["Genre"] = self.df["Genre"].str.split(",")
 
-    def get_game_statistics(self, print_stats=True):
-        """
-        Prints and returns many differents statistics on the game library
-        given as a dataframe.
-        """
-        data = {}
-        # names
-        data["Name"] = {}
-        names = self.df["Name"]
-        data["Name"]["Total Games"] = len(names.index)
-        # playtime
-        data["Playtime"] = {}
-        hours_played = self.df["Hours Played"]
-        linux_hours = self.df["Linux Hours"]
-        # totals
-        total_hours_sum = hours_played.sum()
-        linux_hours_sum = linux_hours.sum()
-        data["Playtime"]["Total Hours"] = round(total_hours_sum, 1)
-        data["Playtime"]["Total Days"] = round(total_hours_sum / 24, 1)
-        data["Playtime"]["Total Linux Hours"] = round(linux_hours_sum, 1)
-        data["Playtime"]["Total Linux Days"] = round(linux_hours_sum / 24, 1)
-        linux_percent = round((linux_hours_sum / total_hours_sum) * 100, 1)
-        data["Playtime"]["Percent Linux Hours"] = f"%{linux_percent}"
-        # averages
-        data["Playtime"]["Average Hours"] = round(hours_played.mean(), 1)
-        data["Playtime"]["Median Hours"] = round(hours_played.median(), 1)
-        # min max
-        data["Playtime"]["Max Hours"] = round(hours_played.max(), 1)
-        data["Playtime"]["Min Hours"] = round(hours_played.min(), 1)
-        # play status
-        data["Play Status Counts"] = {}
-        play_statuses = self.df["Play Status"].value_counts()
-        for status, count in play_statuses.items():
-            data["Play Status Counts"][status] = count
-        # reviews
-        data["Reviews"] = {}
-        my_ratings = self.df["My Rating"]
-        data["Reviews"]["Total Ratings"] = len(my_ratings.index)
-        data["Reviews"]["My Average Rating"] = round(my_ratings.mean(), 1)
-        steam_ratings = self.df["Steam Review Percent"].astype("float")
-        steam_avg = round(steam_ratings.mean(), 1)
-        data["Reviews"]["Steam Average Rating"] = f"{round(steam_avg*100)}%"
-        # genres
-        # TODO create genre counter
-
-        if print_stats:
-            # print statistics and return stat dict
-            print("Game Library Statistics")
-            for section, dict in data.items():
-                print(f"\n-| {section} |-")
-                for title, stat in dict.items():
-                    print(f"{title}: {stat}")
-        return data
-
     def my_rating_comparison(self):
         y_value = "Steam Review Percent"
         x_value = "My Rating"

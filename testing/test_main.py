@@ -130,12 +130,12 @@ class GetPriceInfo(unittest.TestCase):
     def test_normal_data(self):
         game_info = {
             "price_overview": {
-                "final_formatted": "20.99$",
+                "final_formatted": "19.99$",
                 "discount_percent": 0.50,
             }
         }
         price, discount, on_sale = self.t.get_price_info(game_info)
-        self.assertEqual(price, 20.99)
+        self.assertEqual(price, 19.99)
         self.assertEqual(discount, 0.5)
         self.assertEqual(on_sale, True)
 
@@ -145,7 +145,7 @@ class GetPriceInfo(unittest.TestCase):
         """
         game_info = {
             "price_overview": {
-                "final_formatted": "20.99€",
+                "final_formatted": "19.99€",
                 "discount_percent": 0.50,
             }
         }
@@ -206,7 +206,6 @@ class GetGameInfo(unittest.TestCase):
         Tests `get_game_info` function for percents.
         """
         game_info = self.t.get_game_info(app_id=752590)
-        print(game_info)
         self.assertIsInstance(
             game_info["Steam Review Percent"],
             float,
