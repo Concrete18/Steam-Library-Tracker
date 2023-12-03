@@ -95,7 +95,7 @@ class Stat:
 
     def avg_rating_by_year(self):
         """
-        ph
+        Shows average rating by year on a long graph.
         BUG currently a blank plot
         """
         new_df = self.df[["Steam Review Percent", "Release Year"]].copy()

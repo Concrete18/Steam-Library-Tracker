@@ -121,7 +121,7 @@ class SteamReview(unittest.TestCase):
 
 class GetPriceInfo(unittest.TestCase):
     """
-    ph
+    Tests the get_price_info function to be sure the values are acquired correctly.
     """
 
     def setUp(self):
@@ -587,7 +587,7 @@ class ShowErrors(unittest.TestCase):
 
     def test_show_errors(self, mock_print):
         """
-        ph
+        Tests to be sure errors are printed properly.
         """
         self.t.errors = ["This failed"]
 

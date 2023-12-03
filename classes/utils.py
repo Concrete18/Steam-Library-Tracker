@@ -32,7 +32,7 @@ def keyboard_interrupt(func):
 
 def get_steam_key_and_id():
     """
-    ph
+    Gets the steam key and steam id from the config file.
     """
     config = Path("configs/config.json")
     with open(config) as file:
