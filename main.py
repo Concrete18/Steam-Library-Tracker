@@ -307,6 +307,8 @@ class Tracker(Steam, Utils):
             return "No Reviews", "No Reviews"
         parsed_data = text[2:26].split("% of the ")
         # get percent
+        no_reviews = "No Reviews"
+        too_few_reviews = "Few Reviews"
         review_perc = parsed_data[0]
         if review_perc.isnumeric():
             if review_perc == "100":
@@ -314,13 +316,15 @@ class Tracker(Steam, Utils):
             else:
                 percent = float(f".{review_perc}")
         else:
-            percent = "Not Enough Reviews"
+            percent = too_few_reviews
         # get total
         if len(parsed_data) > 1:
             cleaned_num = parsed_data[1].replace(",", "")
             total = int(re.search(r"\d+", cleaned_num).group())
+        elif percent == too_few_reviews:
+            total = too_few_reviews
         else:
-            total = "No Reviews"
+            total = no_reviews
         return percent, total
 
     def get_steam_user_tags(self, app_id: int, response=None):
@@ -682,21 +686,18 @@ class Tracker(Steam, Utils):
         table = Table(
             title=title, show_lines=True, style="deep_sky_blue1", title_style="bold"
         )
-
         data = {}
         total_hours_sum = df["Hours Played"].sum()
         linux_hours_sum = df["Linux Hours"].sum()
         data["Total\nHours"] = round(total_hours_sum, 1)
         data["Total\nDays"] = round(total_hours_sum / 24, 1)
-        data["Total\nLinux Hours"] = round(linux_hours_sum, 1)
-        data["Total\nLinux Days"] = round(linux_hours_sum / 24, 1)
-        data["Linux\nHours %"] = f"{linux_hours_sum / total_hours_sum:.1%}"
+        data["Linux\nHours"] = round(linux_hours_sum, 1)
+        data["% Linux\nHours"] = f"{linux_hours_sum / total_hours_sum:.1%}"
         # averages
         data["Average\nHours"] = round(df["Hours Played"].mean(), 1)
         data["Median\nHours"] = round(df["Hours Played"].median(), 1)
         # min max
         data["Max\nHours"] = round(df["Hours Played"].max(), 1)
-        data["Min\nHours"] = round(df["Hours Played"].min(), 1)
 
         row = []
         for name, stat in data.items():
@@ -752,6 +753,7 @@ class Tracker(Steam, Utils):
             "Not Found",
             "No Reviews",
             "Missing Data",
+            "Few Reviews",
             "Not Enough Reviews",
             "No Publisher",
             "No Developer",
@@ -1498,21 +1500,6 @@ class Tracker(Steam, Utils):
         """
         Gives a choice of actions for the current game library.
         """
-        na_values = [
-            "NaN",
-            "NF - Error",
-            "Invalid Date",
-            "ND - Error",
-            "No Tags",
-            "No Year",
-            "No Score",
-            "Not Found",
-            "No Reviews",
-            "Missing Data",
-            "Not Enough Reviews",
-            "No Publisher",
-            "No Developer",
-        ]
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),

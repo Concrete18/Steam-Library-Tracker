@@ -142,6 +142,7 @@ if __name__ == "__main__":
         "Not Found",
         "No Reviews",
         "Not Enough Reviews",
+        "Few Reviews",
         "No Publisher",
         "No Developer",
     ]
