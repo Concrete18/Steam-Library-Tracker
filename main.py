@@ -3,17 +3,16 @@ from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
 import datetime as dt
-from rich.console import Console
-from rich.table import Table
-from rich.progress import track
-from rich.prompt import IntPrompt
 
+from rich.console import Console
+from rich.prompt import IntPrompt
+from rich.progress import track
+from rich.table import Table
 
 # classes
-from classes.steam import Steam
 from classes.utils import Utils, keyboard_interrupt
-from classes.statisitics import Stat
 from classes.logger import Logger
+from classes.steam import Steam
 
 # my package
 from easierexcel import Excel, Sheet
@@ -65,6 +64,7 @@ class Tracker(Steam, Utils):
     steam_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
     vanity_url = data["settings"]["vanity_url"]
+    friend_ids = data["friend_ids"]
     playstation_data_link = data["settings"]["excel_filename"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
@@ -126,13 +126,13 @@ class Tracker(Steam, Utils):
     # sets play status choices for multiple functions
     play_status_choices = {
         "1": "Played",
-        "2": "Waiting",
-        "3": "Finished",
-        "4": "Endless",
-        "5": "Replay",
-        "6": "Must Play",
-        "7": "Quit",
-        "8": "Unplayed",
+        "2": "Unplayed",
+        "3": "Endless",
+        "4": "Replay",
+        "5": "Must Play",
+        "6": "Finished",
+        "7": "Waiting",
+        "8": "Quit",
         "9": "Ignore",
     }
     # misc
@@ -223,7 +223,6 @@ class Tracker(Steam, Utils):
 
     @staticmethod
     def get_profile_username(vanity_url):
-        result = False
         if "steamcommunity.com/id" in vanity_url:
             if vanity_url[-1] == "/":
                 vanity_url = vanity_url[:-1]
@@ -248,6 +247,84 @@ class Tracker(Steam, Utils):
                 steam_id = data["steamid"]
                 return int(steam_id)
         return None
+
+    def get_steam_friends(self):
+        """
+        Gets a users Steam friends list.
+        """
+        main_url = "https://api.steampowered.com/"
+        api_action = "ISteamUser/GetFriendList/v0001/"
+        url = main_url + api_action
+        params = {
+            "key": self.steam_key,
+            "steamid": self.steam_id,
+            "relationship": "all",
+        }
+        response = self.request_url(url=url, params=params)
+        friends = []
+        if response:
+            data = response.json()
+            friends = data["friendslist"]["friends"]
+        return friends
+
+    def get_steam_username(self, steam_id: int) -> str:
+        """
+        ph
+        """
+        main_url = "https://api.steampowered.com/"
+        api_action = "ISteamUser/GetPlayerSummaries/v0002/"
+        url = main_url + api_action
+        params = {"key": self.steam_key, "steamids": steam_id}
+        response = self.request_url(url=url, params=params)
+        username = "Unknown"
+        player_data = response.json()["response"]["players"]
+        if player_data:
+            username = player_data[0]["personaname"]
+        return username
+
+    def get_friends_list_changes(self):
+        """
+        ph
+        """
+        # get friends
+        friends = self.get_steam_friends()
+        prev_friends_ids = self.friend_ids
+        cur_friend_ids = [friend["steamid"] for friend in friends]
+        additions = list(set(cur_friend_ids) - set(prev_friends_ids))
+        removals = list(set(prev_friends_ids) - set(cur_friend_ids))
+        if not additions and not removals:
+            print("\nNo Changes to your friends list have occured")
+            return
+        # view changes
+        table = Table(
+            title="Friends List Updates",
+            show_lines=True,
+            title_style="bold",
+            style="deep_sky_blue1",
+        )
+        table.add_column("Type", justify="center")
+        table.add_column("Username", justify="left")
+        table.add_column("Steam ID", justify="left")
+        for steam_id in removals:
+            username = self.get_steam_username(steam_id)
+            row = [
+                "Removed",
+                username,
+                steam_id,
+            ]
+            table.add_row(*row)
+        for steam_id in additions:
+            username = self.get_steam_username(steam_id)
+            row = [
+                "Added",
+                username,
+                steam_id,
+            ]
+            table.add_row(*row)
+        self.console.print(table, new_line_start=True)
+        # update friend data in config
+        self.data["friend_ids"] = cur_friend_ids
+        self.save_json_output(self.data, self.config)
 
     def set_title(self, title=None):
         """
@@ -658,19 +735,8 @@ class Tracker(Steam, Utils):
         )
         total_games = df["Name"].count()
         play_statuses = df["Play Status"].value_counts()
-        status_order = [
-            "Played",
-            "Unplayed",
-            "Endless",
-            "Finished",
-            "Waiting",
-            "Must Play",
-            "Replay",
-            "Quit",
-            "Ignore",
-        ]
         row1, row2 = [], []
-        for status in status_order:
+        for status in self.play_status_choices.values():
             table.add_column(status, justify="center")
             row1.append(str(play_statuses[status]))
             row2.append(f"{play_statuses[status]/total_games:.1%}")
@@ -849,11 +915,13 @@ class Tracker(Steam, Utils):
         )
         table.add_column("Name", justify="left")
         table.add_column("Total Playtime", justify="center")
-
         for game in added_games:
+            playtime = "Unplayed"
+            if game["total_playtime"]:
+                playtime = f"{game['total_playtime']} Hours"
             row = [
                 game["name"],
-                f"{game['total_playtime']} Hours",
+                playtime,
             ]
             table.add_row(*row)
         self.console.print(table, new_line_start=True)
@@ -1320,13 +1388,12 @@ class Tracker(Steam, Utils):
         picked_game_name, choice_list = self.get_random_game_name(play_status)
         self.console.print(f"\nPicked: [bold deep_sky_blue1]{picked_game_name}[/]")
         # allows getting another random pick
-        msg = "\nPress Enter to pick another random game and No to finish:\n"
-        while not input(msg).lower() in ["no", "n"]:
+        while not input().lower() in ["no", "n"]:
             if not choice_list:
                 print(f"All games have already been picked.\n")
                 return
             picked_game_name, choice_list = self.get_random_game_name(play_status)
-            self.console.print(f"\nPicked: [bold deep_sky_blue1]{picked_game_name}[/]")
+            self.console.print(f"Picked: [bold deep_sky_blue1]{picked_game_name}[/]")
 
     def get_favorite_games(self, min_rating=8):
         """
@@ -1507,6 +1574,7 @@ class Tracker(Steam, Utils):
             ("Update Player Counts", self.update_player_counts),
             ("Update Favorite Games Sales", self.sync_favorite_games_sales),
             ("Sync Playstation Games", self.sync_playstation_games),
+            ("Sync Friends List", self.get_friends_list_changes),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
