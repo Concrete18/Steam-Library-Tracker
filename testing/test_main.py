@@ -353,7 +353,7 @@ class GetSteamID(unittest.TestCase):
     Tests `get_steam_id` function.
     """
 
-    steam_key, steam_id = get_steam_key_and_id()
+    steam_key, _ = get_steam_key_and_id()
 
     def setUp(self):
         self.t = Tracker(save=False)
@@ -362,11 +362,36 @@ class GetSteamID(unittest.TestCase):
     def test_get_steam_id(self):
         gabe_steam_id = 76561197960287930
         steam_id = self.t.get_steam_id("gabelogannewell")
-        self.assertEqual(steam_id, gabe_steam_id, "steam_id should be gabelogannewell")
+        self.assertEqual(steam_id, gabe_steam_id, f"steam_id should be {gabe_steam_id}")
 
     def test_False(self):
         steam_id = self.t.get_steam_id("")
         self.assertIsNone(steam_id, "steam_id should be None")
+
+
+class GetSteamUsername(unittest.TestCase):
+    """
+    Tests `get_steam_username` function.
+    """
+
+    steam_key, _ = get_steam_key_and_id()
+
+    def setUp(self):
+        self.t = Tracker(save=False)
+        self.t.steam_key = self.steam_key
+
+    def test_get_steam_username(self):
+        steam_id = 76561197960287930
+        username = self.t.get_steam_username(steam_id)
+        self.assertIsInstance(
+            username,
+            str,
+            "Steam username should be a str",
+        )
+
+    def test_False(self):
+        username = self.t.get_steam_username(123)
+        self.assertEqual(username, "Unknown", "username should be Unknown")
 
 
 class ValidateSteamApiKey(unittest.TestCase):
