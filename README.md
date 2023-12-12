@@ -2,8 +2,7 @@
 
 Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc.. Many different types of information is auto retrieved using API's and Scraping.
 
-Adding PlayStation games is a side feature and is not as feature rich as
-Steam games due to lack of an API compared to Steam.
+Adding PlayStation games is a side feature and is not as feature rich as Steam games due to lack of a Playstation API.
 
 ## Images
 
@@ -15,18 +14,18 @@ Steam games due to lack of an API compared to Steam.
 
 - Python Pandas
 - Matplotlib
-- API Requests with Requests
+- API Requests
 - Web Scraping with Requests and BeautifulSoup
-- Custom Created Class based on OpenPyXL called [EasierExcel](https://github.com/Concrete18/easierexcel)
+- Custom Created Library based on OpenPyXL called [EasierExcel](https://github.com/Concrete18/easierexcel)
 
 ## Features
 
 - [Auto Updating Steam Data](#Auto-Updating-Steam-Data)
 - [Game Status Highlighting](#Game-Status-Highlighting)
 - [PlayStation Library Ownership Tracking](#Adding-PlayStation-Games)
-- [Steam Deck Game Status Checker](#Steam-Deck-Game-Status-Checker)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
+- [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
 
 ## Setup
@@ -43,10 +42,6 @@ Steam games due to lack of an API compared to Steam.
 5. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
 6. Enjoy!
 
-## To Do
-
-None at the moment
-
 ## Documentation
 
 ### Auto Updating Steam Data
@@ -62,10 +57,10 @@ You can label any game with a status (Listed Below) and it will auto highlight.
 This uses Excel's Conditional Formatting so it can mess up sometimes if you change things manually such as reordering columns.
 
 - Played
-- Finished
 - Unplayed
-- Must Play
 - Waiting
+- Finished
+- Must Play
 - Quit
 - Ignore
 
@@ -91,6 +86,11 @@ all the games that are currently on sale with the selected rating or higher.
 ### Random game picker
 
 Picks a random game based on the Play Status you select.
+
+### Friends List Tracking
+
+Get notified when you gain and lose friends from your steam friends list. You normally only know you
+got a friend request but not whensomeone removes you or accepts your request. The check is set to look every week.
 
 ### Library Statistics
 

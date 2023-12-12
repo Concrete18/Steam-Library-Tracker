@@ -64,7 +64,6 @@ class Tracker(Steam, Utils):
     steam_key = data["settings"]["steam_api_key"]
     steam_id = str(data["settings"]["steam_id"])
     vanity_url = data["settings"]["vanity_url"]
-    friend_ids = data["friend_ids"]
     playstation_data_link = data["settings"]["excel_filename"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
@@ -269,7 +268,7 @@ class Tracker(Steam, Utils):
 
     def get_steam_username(self, steam_id: int) -> str:
         """
-        ph
+        Gets a username based on the given `steam_id`.
         """
         main_url = "https://api.steampowered.com/"
         api_action = "ISteamUser/GetPlayerSummaries/v0002/"
@@ -282,18 +281,32 @@ class Tracker(Steam, Utils):
             username = player_data[0]["personaname"]
         return username
 
-    def get_friends_list_changes(self):
+    def sync_friends_list(self):
+        self.get_friends_list_changes(0)
+
+    def get_friends_list_changes(self, check_freq_days=15):
         """
-        ph
+        Checks for changes to your friends list.
+        Shows a table of new and removed friends Steam ID's and usernames.
         """
+        # TODO make the check freq use config values
+        # check last run
+        last_runs = self.data["last_runs"]
+        if "friends_sync" in last_runs.keys():
+            last_run = last_runs["friends_sync"]
+            sec_since = time.time() - last_run
+            check_freq_seconds = check_freq_days * 24 * 60 * 60
+            if sec_since < check_freq_seconds:
+                return
+        self.update_last_run("friends_sync")
         # get friends
-        friends = self.get_steam_friends()
-        prev_friends_ids = self.friend_ids
-        cur_friend_ids = [friend["steamid"] for friend in friends]
+        prev_friends_ids = self.data["friend_ids"]
+        cur_friend_ids = [friend["steamid"] for friend in self.get_steam_friends()]
+        # finds changes
         additions = list(set(cur_friend_ids) - set(prev_friends_ids))
         removals = list(set(prev_friends_ids) - set(cur_friend_ids))
         if not additions and not removals:
-            print("\nNo Changes to your friends list have occured")
+            print("\nNo friends added or removed")
             return
         # view changes
         table = Table(
@@ -313,6 +326,9 @@ class Tracker(Steam, Utils):
                 steam_id,
             ]
             table.add_row(*row)
+            # logging
+            msg = f"Added to Friends List: {username}"
+            self.tracker.info(msg)
         for steam_id in additions:
             username = self.get_steam_username(steam_id)
             row = [
@@ -321,6 +337,9 @@ class Tracker(Steam, Utils):
                 steam_id,
             ]
             table.add_row(*row)
+            # logging
+            msg = f"Removed from Friends List: {username}"
+            self.tracker.info(msg)
         self.console.print(table, new_line_start=True)
         # update friend data in config
         self.data["friend_ids"] = cur_friend_ids
@@ -723,7 +742,7 @@ class Tracker(Steam, Utils):
             print("\nCancelled")
         finally:
             if self.save_to_file:
-                self.excel.save()
+                self.excel.save(use_print=False)
 
     def output_play_status_info(self, df):
         """
@@ -1021,7 +1040,7 @@ class Tracker(Steam, Utils):
                 for app_id in sheet_games:
                     self.steam.delete_row(str(app_id))
         if self.excel.changes_made and self.save_to_file:
-            self.excel.save()
+            self.excel.save(use_print=False)
         else:
             print("\nNo Steam games were added or updated")
 
@@ -1109,8 +1128,7 @@ class Tracker(Steam, Utils):
         """
         Updates json by `name` with the current date.
         """
-        date = dt.datetime.now().strftime("%m/%d/%Y")
-        self.data["last_runs"][name] = date
+        self.data["last_runs"][name] = time.time()
         self.save_json_output(self.data, self.config)
 
     def update_steam_game(
@@ -1216,7 +1234,7 @@ class Tracker(Steam, Utils):
             self.tracker.info(info)
         self.steam.format_row(app_id)
         if save_after_add and self.save_to_file:
-            self.excel.save()
+            self.excel.save(use_print=False)
         return {
             "name": game_name,
             "total_playtime": hours_played or 0,
@@ -1337,7 +1355,7 @@ class Tracker(Steam, Utils):
         # TODO add info on removed ps games
         # saving
         if total_added or total_updated and self.save_to_file:
-            self.excel.save()
+            self.excel.save(use_print=False)
 
     def play_status_picker(self):
         """
@@ -1454,7 +1472,7 @@ class Tracker(Steam, Utils):
             self.sales.add_new_line(game)
         self.sales.format_all_cells()
         if self.save_to_file:
-            self.excel.save()
+            self.excel.save(use_print=False)
 
     def sync_favorite_games_sales(self):
         """
@@ -1467,7 +1485,7 @@ class Tracker(Steam, Utils):
             choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
             default=8,
             show_choices=False,
-            show_default=False,
+            show_default=True,
         )
         # delete old game sales
         cur_rows = [game for game in self.sales.row_idx.keys()].reverse()
@@ -1497,7 +1515,7 @@ class Tracker(Steam, Utils):
             player_count = self.get_steam_game_player_count(app_id, self.steam_key)
             self.steam.update_cell(app_id, self.steam_player_count_col, player_count)
             self.api_sleeper("steam_player_count")
-        self.excel.save()
+        self.excel.save(use_print=False)
 
     def pick_game_to_update(self, games):
         """
@@ -1573,8 +1591,8 @@ class Tracker(Steam, Utils):
             ("Pick Random Game", self.pick_random_game),
             ("Update Player Counts", self.update_player_counts),
             ("Update Favorite Games Sales", self.sync_favorite_games_sales),
+            ("Sync Steam Friends List", self.sync_friends_list),
             ("Sync Playstation Games", self.sync_playstation_games),
-            ("Sync Friends List", self.get_friends_list_changes),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
@@ -1608,7 +1626,7 @@ class Tracker(Steam, Utils):
             else:
                 print(name, app_id, correct_app_id)
                 self.steam.update_cell(app_id, self.app_id_col, "")
-        self.excel.save()
+        self.excel.save(use_print=False)
 
     @keyboard_interrupt
     def run(self):
@@ -1619,6 +1637,7 @@ class Tracker(Steam, Utils):
         self.console.print(self.title, style="bold deep_sky_blue1")
         self.sync_steam_games(self.steam_id)
         self.missing_info_check()
+        self.get_friends_list_changes()
         self.output_statistics()
         self.show_errors()
         self.game_library_actions()
