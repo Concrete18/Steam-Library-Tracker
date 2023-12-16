@@ -61,12 +61,15 @@ class Tracker(Steam, Utils):
     config = setup()
     with open(config) as file:
         data = json.load(file)
-    steam_key = data["settings"]["steam_api_key"]
-    steam_id = str(data["settings"]["steam_id"])
-    vanity_url = data["settings"]["vanity_url"]
+    # steam_data
+    steam_key = data["steam_data"]["api_key"]
+    steam_id = str(data["steam_data"]["steam_id"])
+    vanity_url = data["steam_data"]["vanity_url"]
+    # settings
     playstation_data_link = data["settings"]["excel_filename"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
+    # misc
     name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
     app_id_ignore_list = data["app_id_ignore_list"]
 
@@ -1044,13 +1047,13 @@ class Tracker(Steam, Utils):
         else:
             print("\nNo Steam games were added or updated")
 
-    def sync_steam_games(self, steam_id):
+    def sync_steam_games(self, steam_key: int, steam_id: int):
         """
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
         # TODO auto update game data sometimes
-        steam_games = self.get_owned_steam_games(self.steam_key, steam_id)
+        steam_games = self.get_owned_steam_games(steam_key, steam_id)
         sheet_games = [int(app_id) for app_id in self.steam.row_idx.keys()]
         if not steam_games:
             print("\nFailed to retrieve Steam Games")
@@ -1635,7 +1638,7 @@ class Tracker(Steam, Utils):
         """
         self.config_check()
         self.console.print(self.title, style="bold deep_sky_blue1")
-        self.sync_steam_games(self.steam_id)
+        self.sync_steam_games(self.steam_key, self.steam_id)
         self.missing_info_check()
         self.get_friends_list_changes()
         self.output_statistics()

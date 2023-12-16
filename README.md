@@ -1,6 +1,7 @@
 # Game Library Tracker
 
-Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc.. Many different types of information is auto retrieved using API's and Scraping.
+Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc..
+Many different types of information is auto retrieved using API's and Scraping.
 
 Adding PlayStation games is a side feature and is not as feature rich as Steam games due to lack of a Playstation API.
 
@@ -46,7 +47,8 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 
 ### Auto Updating Steam Data
 
-Anytime you run Game Library Tracker, it will auto update data for all Steam games if they have new hours to add or if any of columns are blank.
+Anytime you run Game Library Tracker, it will auto update data for all Steam games if they have new hours
+to add or if any of columns are blank.
 
 If many games are missing columns above a certain threshold, it will ask if you want to update them.
 
@@ -54,7 +56,8 @@ If many games are missing columns above a certain threshold, it will ask if you 
 
 You can label any game with a status (Listed Below) and it will auto highlight.
 
-This uses Excel's Conditional Formatting so it can mess up sometimes if you change things manually such as reordering columns.
+This uses Excel's Conditional Formatting so it can mess up sometimes if you change things manually such as
+reordering columns.
 
 - Played
 - Unplayed
@@ -71,8 +74,7 @@ Your PlayStation account must be logged in for this to get your data.
 This is the easiest method I have found so far.
 It is faster than adding the games manually but I am unable to automate it yet.
 
-Note:
-Hours are not tracked like Steam due to a lack of an API.
+Note: Hours are not tracked like Steam due to a lack of an API.
 
 ### Steam Deck Game Status Checker
 
