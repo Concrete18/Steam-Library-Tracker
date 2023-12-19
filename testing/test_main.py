@@ -53,7 +53,7 @@ class GetTimeToBeat(unittest.TestCase):
 
     def test_not_found(self):
         result = self.t.get_time_to_beat("6574654 Not a Real Game 564654")
-        self.assertEqual(result, "NF - Error", "No time to beat should be found")
+        self.assertEqual(result, "-", "No time to beat should be found")
 
 
 class GetStoreLink(unittest.TestCase):
@@ -296,21 +296,21 @@ class GetGameInfo(unittest.TestCase):
         Tests for default value when invalid game is given.
         """
         default_dict = {
-            self.t.dev_col: "ND - Error",
-            self.t.pub_col: "ND - Error",
-            self.t.genre_col: "ND - Error",
+            self.t.dev_col: "-",
+            self.t.pub_col: "-",
+            self.t.genre_col: "-",
             self.t.ea_col: "No",
             self.t.steam_rev_per_col: "No Reviews",
             self.t.steam_rev_total_col: "No Reviews",
             self.t.user_tags_col: "No Tags",
             self.t.release_col: "No Year",
-            "game_name": "ND - Error",
-            "price": "ND - Error",
+            "game_name": "-",
+            "price": "-",
             "discount": 0.0,
             "on_sale": False,
-            "drm_notice": "ND - Error",
-            "categories": "ND - Error",
-            "ext_user_account_notice": "ND - Error",
+            "drm_notice": "-",
+            "categories": "-",
+            "ext_user_account_notice": "-",
         }
         self.assertEqual(self.t.get_game_info(None), default_dict)
 

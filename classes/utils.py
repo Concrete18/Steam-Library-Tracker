@@ -30,6 +30,22 @@ def keyboard_interrupt(func):
     return wrapped
 
 
+def benchmark(func):
+    """
+    Prints `func` name and a benchmark for runtime.
+    """
+
+    def wrapped(*args, **kwargs):
+        start = time.perf_counter()
+        value = func(*args, **kwargs)
+        end = time.perf_counter()
+        elapsed = end - start
+        print(f"{func.__name__} Completion Time: {elapsed:.2f}")
+        return value
+
+    return wrapped
+
+
 def get_steam_key_and_id():
     """
     Gets the steam key and steam id from the config file.
@@ -37,30 +53,14 @@ def get_steam_key_and_id():
     config = Path("configs/config.json")
     with open(config) as file:
         data = json.load(file)
-    steam_key = data["settings"]["steam_api_key"]
-    steam_id = str(data["settings"]["steam_id"])
+    steam_key = data["steam_data"]["api_key"]
+    steam_id = str(data["steam_data"]["steam_id"])
     return steam_key, steam_id
 
 
 class Utils:
     Log = Logger()
     error_log = Log.create_log(name="helper", log_path="logs/error.log")
-
-    @staticmethod
-    def benchmark(func):
-        """
-        Prints `func` name and a benchmark for runtime.
-        """
-
-        def wrapped(*args, **kwargs):
-            start = time.perf_counter()
-            value = func(*args, **kwargs)
-            end = time.perf_counter()
-            elapsed = end - start
-            print(f"{func.__name__} Completion Time: {elapsed:.2f}")
-            return value
-
-        return wrapped
 
     def request_url(self, url, params=None, headers=None, second_try=False):
         """
@@ -144,6 +144,7 @@ class Utils:
         else:
             return "Invalid Date"
 
+    # TODO remove one of below
     @staticmethod
     def days_since(past_date, current_date=None):
         """
@@ -155,6 +156,15 @@ class Utils:
             current_date = dt.datetime.now()
         delta = current_date - past_date
         return delta.days
+
+    @staticmethod
+    def days_until_date(target_date: dt.datetime) -> int:
+        """
+        Gets days till or since given `target_date`.
+        It does not work well for what I want when including time with the date.
+        """
+        date_difference = target_date - dt.datetime.now()
+        return date_difference.days + 1
 
     @staticmethod
     def url_sanitize(string, space_replace="-"):

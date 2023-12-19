@@ -133,9 +133,9 @@ if __name__ == "__main__":
     # stat setup
     na_values = [
         "NaN",
-        "NF - Error",
+        "-",
         "Invalid Date",
-        "ND - Error",
+        "-",
         "No Tags",
         "No Year",
         "No Score",

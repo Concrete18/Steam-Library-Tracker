@@ -3,6 +3,7 @@ from howlongtobeatpy import HowLongToBeat
 from bs4 import BeautifulSoup
 from pathlib import Path
 import datetime as dt
+import pandas as pd
 
 from rich.console import Console
 from rich.prompt import IntPrompt
@@ -165,6 +166,21 @@ class Tracker(Steam, Utils):
         store_link_col := "Store Link",
         release_col := "Release Year",
         app_id_col := "App ID",
+    ]
+    # not applicable cell values
+    na_values = [
+        "NaN",
+        "Invalid Date",
+        "No Tags",
+        "No Year",
+        "No Score",
+        "Not Found",
+        "No Reviews",
+        "Missing Data",
+        "Few Reviews",
+        "Not Enough Reviews",
+        "No Publisher",
+        "No Developer",
     ]
 
     errors = []
@@ -376,14 +392,10 @@ class Tracker(Steam, Utils):
                 results = HowLongToBeat().search(game_name.title())
             else:
                 results = HowLongToBeat().search(game_name.upper())
-        time_to_beat = "NF - Error"
+        time_to_beat = "-"
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
-            time_to_beat = best_element.main_extra
-            if time_to_beat == 0.0:
-                time_to_beat = best_element.main_story
-            if time_to_beat == 0.0:
-                return "ND - Error"
+            time_to_beat = best_element.main_extra or best_element.main_story or "-"
         return time_to_beat
 
     def get_steam_review(self, app_id: int, response=None):
@@ -559,21 +571,21 @@ class Tracker(Steam, Utils):
         Gets game info with steam api using a `app_id`.
         """
         info_dict = {
-            "game_name": "ND - Error",
-            self.dev_col: "ND - Error",
-            self.pub_col: "ND - Error",
-            self.genre_col: "ND - Error",
+            "game_name": "-",
+            self.dev_col: "-",
+            self.pub_col: "-",
+            self.genre_col: "-",
             self.ea_col: "No",
             self.steam_rev_per_col: "No Reviews",
             self.steam_rev_total_col: "No Reviews",
             self.user_tags_col: "No Tags",
             self.release_col: "No Year",
-            "price": "ND - Error",
+            "price": "-",
             "discount": 0.0,
             "on_sale": False,
-            "drm_notice": "ND - Error",
-            "categories": "ND - Error",
-            "ext_user_account_notice": "ND - Error",
+            "drm_notice": "-",
+            "categories": "-",
+            "ext_user_account_notice": "-",
         }
 
         def get_json_desc(data):
@@ -650,16 +662,91 @@ class Tracker(Steam, Utils):
             return {k: self.unicode_remover(v) for k, v in info_dict.items()}
         return info_dict
 
-    def missing_info_check(self, skip_filled=True, check_status=False):
+    def find_recent_games(
+        self,
+        df: pd.DataFrame,
+        column: str,
+        n_days: int = 7,
+    ) -> list[dict]:
         """
-        Loops through games in row_idx and gets missing data for
-        time to beat and additional game info from Steam API.
+        Finds recent games by dates in `column` within `n_days`.
+        """
+        df[column] = pd.to_datetime(df[column])
+        filtered_df = df[abs((df[column] - dt.datetime.now()).dt.days) <= n_days]
+        return filtered_df.sort_values(
+            by=self.date_updated_col, ascending=False
+        ).to_dict(orient="records")
+
+    def update_extra_steam_info(self, app_ids):
+        """
+        ph
+        """
+        save_every_nth = self.create_save_every_nth()
+        update_total = len(app_ids)
+        cur_itr = 0
+        print()
+        for app_id in track(app_ids, description="Updating Game Data"):
+            game_data = self.steam.get_row(app_id)
+            game_name = game_data[self.name_col]
+            # How long to beat check
+            cur_ttb = game_data[self.time_to_beat_col]
+            if not cur_ttb:
+                new_ttb = self.get_time_to_beat(game_name)
+                self.set_time_to_beat(app_id, new_ttb, cur_ttb)
+            steam_info = self.get_game_info(app_id)
+            # updates sheet with data found in steam_info
+            special_case_col = [self.release_col]
+            for key, val in steam_info.items():
+                if key in self.excel_columns and steam_info[key]:
+                    if key not in special_case_col:
+                        self.steam.update_cell(app_id, key, val)
+            # release year
+            if steam_info[self.release_col]:
+                year = steam_info[self.release_col]
+                self.set_release_year(app_id, year)
+            if self.save_to_file:
+                save_every_nth()
+            # title progress percentage
+            cur_itr += 1
+            progress = cur_itr / update_total * 100
+            self.set_title(f"{progress:.2f}% - {self.title}")
+        self.set_title()
+
+    def update_all_game_data(self):
+        """
+        ph
+        """
+        app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
+        self.update_extra_steam_info(app_ids)
+
+    def get_recently_played_app_ids(self, df: pd.DataFrame, n_days=30) -> list:
+        """
+        ph
+        """
+        # check last run
+        # TODO change below to a function that returns another function for updating the last run
+        last_runs = self.data["last_runs"]
+        if "updated_recently_played" in last_runs.keys():
+            last_run = last_runs["updated_recently_played"]
+            sec_since = time.time() - last_run
+            check_freq_seconds = n_days * 24 * 60 * 60
+            if sec_since < check_freq_seconds:
+                return []
+        # todo check if it should run
+        recently_played_games = App.find_recent_games(df, self.date_updated_col, n_days)
+        return [game[self.app_id_col] for game in recently_played_games]
+
+    def updated_game_data(self, df, skip_filled=True, skip_by_play_status=False):
+        """
+        Updates game data for games that were played recently and are missing data.
 
         Use `skip_filled` to skip non blank entries.
 
-        Use `check_status` to only check games with a specific play status.
+        Use `skip_by_play_status` to only check games with a specific play status.
         """
-        check_list = []
+        # starts the update list with recently played games
+        update_list = self.get_recently_played_app_ids(df, n_days=30)
+        updated_recent = True if update_list else False
         column_list = [
             self.genre_col,
             self.pub_col,
@@ -671,10 +758,10 @@ class Tracker(Steam, Utils):
             self.release_col,
             self.ea_col,
         ]
-        # creates checklist
+        # adds games with missing data to update_list
         for app_id in self.steam.row_idx:
             game_data = self.steam.get_row(app_id)
-            if check_status:
+            if skip_by_play_status:
                 if game_data[self.play_status_col] not in [
                     "Unplayed",
                     "Played",
@@ -687,13 +774,13 @@ class Tracker(Steam, Utils):
             if skip_filled:
                 for column in column_list:
                     cell = game_data[column]
-                    if cell == None and app_id not in check_list:
-                        check_list.append(app_id)
+                    if cell == None and app_id not in update_list:
+                        update_list.append(app_id)
                         continue
             else:
-                check_list.append(app_id)
+                update_list.append(app_id)
         # checks if data should be updated
-        missing_data_total = len(check_list)
+        missing_data_total = len(update_list)
         auto_run_limit = 50
         if 0 < missing_data_total <= auto_run_limit:
             print(f"\nGames with missing data is within threshold of {auto_run_limit}")
@@ -708,48 +795,68 @@ class Tracker(Steam, Utils):
             return
         try:
             # updates missing column data
-            cur_itr = 0
-            save_every_nth = self.create_save_every_nth()
-            games_with_added_data = []
-            print()
-            for app_id in track(check_list, description="Updating Missing Info"):
-                game_data = self.steam.get_row(app_id)
-                game_name = game_data[self.name_col]
-                games_with_added_data.append(game_data[self.name_col])
-                # How long to beat check
-                cur_ttb = game_data[self.time_to_beat_col]
-                if not cur_ttb:
-                    new_ttb = self.get_time_to_beat(game_name)
-                    self.set_time_to_beat(app_id, new_ttb, cur_ttb)
-                steam_info = self.get_game_info(app_id)
-                # updates sheet with data found in steam_info
-                special_case_col = [self.release_col]
-                for key, val in steam_info.items():
-                    if key in self.excel_columns and steam_info[key]:
-                        if key not in special_case_col:
-                            self.steam.update_cell(app_id, key, val)
-                # release year
-                if steam_info[self.release_col]:
-                    year = steam_info[self.release_col]
-                    self.set_release_year(app_id, year)
-                if self.save_to_file:
-                    save_every_nth()
-                # title progress percentage
-                cur_itr += 1
-                progress = cur_itr / missing_data_total * 100
-                self.set_title(f"{progress:.2f}% - {self.title}")
-            self.set_title()
-            print("\nAdded Data for the following games:")
-            print(self.create_and_sentence(games_with_added_data))
+            self.update_extra_steam_info(update_list)
+            if updated_recent:
+                self.update_last_run("updated_recently_played")
+            print(f"\nUpdated Data for {len(update_list)} games")
         except KeyboardInterrupt:
             print("\nCancelled")
         finally:
             if self.save_to_file:
                 self.excel.save(use_print=False)
 
+    def output_recently_played_games(self, df, n_days=7):
+        """
+        Creates a table with the recently played Gmes.
+        """
+        recently_played_games = App.find_recent_games(df, "Date Updated", n_days)
+        # creates table
+        title = "Recently Played Games"
+        table = Table(
+            title=title,
+            show_lines=True,
+            style="deep_sky_blue1",
+            title_style="bold",
+        )
+        table.add_column("Days\nSince", justify="center")
+        table.add_column("Date Updated", justify="center")
+        table.add_column("Name", justify="left")
+        table.add_column("Play\nStatus", justify="center")
+        table.add_column("Hours\nPlayed", justify="right")
+        table.add_column("Time\nTo Beat", justify="right")
+        table.add_column("Last\nPlay Time", justify="center")
+        # add rows
+        row = []
+        for game in recently_played_games:
+            # days since
+            days_till = self.days_until_date(game[self.date_updated_col])
+            # last play time
+            last_play_time = "-"
+            if type(game[self.last_play_time_col]) is str:
+                last_play_time = game[self.last_play_time_col]
+            # time to beat
+            ttb = (
+                str(game[self.time_to_beat_col])
+                if type(game[self.time_to_beat_col]) is float
+                else "-"
+            )
+            # row setup
+            row = [
+                str(abs(days_till)),
+                game[self.date_updated_col].strftime("%a %b %d, %Y") or "-",
+                game[self.name_col],
+                game[self.play_status_col],
+                str(game[self.hours_played_col]) or "0",
+                ttb,
+                last_play_time,
+            ]
+            table.add_row(*row)
+        # print table
+        self.console.print(table, new_line_start=True)
+
     def output_play_status_info(self, df):
         """
-        Creates a Table with counts and percentage of each play status.
+        Creates a table with counts and percentage of each play status.
         """
         title = "Play Status Statistics"
         table = Table(
@@ -768,7 +875,7 @@ class Tracker(Steam, Utils):
 
     def output_playtime_info(self, df):
         """
-        Creates a Table with counts and percentage of each play status.
+        Creates a table with counts and percentage of each play status.
         """
         title = "Playtime Statistics"
         table = Table(
@@ -826,31 +933,46 @@ class Tracker(Steam, Utils):
 
         self.console.print(table, new_line_start=True)
 
-    def output_statistics(self):
+    def find_tag_rating_avg(self, df):
         """
-        Outputs a tables of game library stats.
+        Finds the average library owner rating for each game tag.
         """
-        na_values = [
-            "NaN",
-            "NF - Error",
-            "Invalid Date",
-            "ND - Error",
-            "No Tags",
-            "No Year",
-            "No Score",
-            "Not Found",
-            "No Reviews",
-            "Missing Data",
-            "Few Reviews",
-            "Not Enough Reviews",
-            "No Publisher",
-            "No Developer",
+        # Split the comma-separated values in the 'Genres' column into separate rows
+        df_exploded = df.assign(Tag=df["User Tags"].str.split(",")).explode("Tag")
+
+        tag_counts = df_exploded["Tag"].value_counts()
+        print("\nTag Counts", tag_counts)
+        min_tags = 2
+        min_total_ratings = 5
+
+        popular_tags = tag_counts[tag_counts >= min_tags].index
+
+        print("\nPopular Tags", popular_tags)
+        df_filtered_tags = df_exploded[df_exploded["Tag"].isin(popular_tags)]
+
+        # Group by the 'Genre' column and calculate the average rating for each genre
+        average_ratings_by_genre = df_filtered_tags.groupby("Tag")["My Rating"].mean()
+
+        filtered_tags = average_ratings_by_genre.index[
+            average_ratings_by_genre.index.isin(
+                tag_counts[tag_counts > min_total_ratings].index
+            )
         ]
-        df = self.steam.create_dataframe(na_vals=na_values)
-        self.output_play_status_info(df)
-        self.output_playtime_info(df)
-        self.output_review_info(df)
-        return df
+
+        # Display the result
+        top_30_ratings = filtered_tags.sort_values(ascending=False)
+        print(top_30_ratings)
+
+        # for ind in top_30_ratings.index:
+        #     print(df["Name"][ind], df["My Rating"][ind])
+
+    def output_statistics(self, dataframe):
+        """
+        Outputs tables of game library statistics.
+        """
+        self.output_play_status_info(dataframe)
+        self.output_playtime_info(dataframe)
+        self.output_review_info(dataframe)
 
     @staticmethod
     def decide_play_status(play_status: str, minutes_played: int or float):
@@ -1584,16 +1706,20 @@ class Tracker(Steam, Utils):
         if repeat:
             self.pick_task(choices, repeat)
 
-    def game_library_actions(self):
+    def game_library_actions(self, df):
         """
         Gives a choice of actions for the current game library.
         """
+        # lamdas
+        display_stats = lambda: self.output_statistics(df)
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
             ("Pick Random Game", self.pick_random_game),
             ("Update Player Counts", self.update_player_counts),
             ("Update Favorite Games Sales", self.sync_favorite_games_sales),
+            ("Update All Game Data", self.update_all_game_data),
+            ("Display Statistics", display_stats),
             ("Sync Steam Friends List", self.sync_friends_list),
             ("Sync Playstation Games", self.sync_playstation_games),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
@@ -1639,13 +1765,21 @@ class Tracker(Steam, Utils):
         self.config_check()
         self.console.print(self.title, style="bold deep_sky_blue1")
         self.sync_steam_games(self.steam_key, self.steam_id)
-        self.missing_info_check()
+
+        df = self.steam.create_dataframe(na_vals=self.na_values)
+        self.output_recently_played_games(df)
+        # extra data updates
+        self.updated_game_data(df)
         self.get_friends_list_changes()
-        self.output_statistics()
+
         self.show_errors()
-        self.game_library_actions()
+        self.game_library_actions(df)
 
 
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
+
+    # df = App.steam.create_dataframe(na_vals=App.na_values)
+    # print("\nTag Averages")
+    # App.find_tag_rating_avg(df)
