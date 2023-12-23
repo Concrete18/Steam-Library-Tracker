@@ -144,9 +144,8 @@ class Utils:
         else:
             return "Invalid Date"
 
-    # TODO remove one of below
     @staticmethod
-    def days_since(past_date, current_date=None):
+    def days_since(past_date: dt.datetime, current_date: dt.datetime = None) -> int:
         """
         Gets the days since a `past_date`.
 
@@ -156,15 +155,6 @@ class Utils:
             current_date = dt.datetime.now()
         delta = current_date - past_date
         return delta.days
-
-    @staticmethod
-    def days_until_date(target_date: dt.datetime) -> int:
-        """
-        Gets days till or since given `target_date`.
-        It does not work well for what I want when including time with the date.
-        """
-        date_difference = target_date - dt.datetime.now()
-        return date_difference.days + 1
 
     @staticmethod
     def url_sanitize(string, space_replace="-"):
@@ -396,6 +386,26 @@ class Utils:
             last_check_data = json.load(file)
             if new_data != last_check_data:
                 raise PermissionError("Data did not save error")
+
+    def update_last_run(self, data, name):
+        """
+        Updates json by `name` with the current date.
+        """
+        data["last_runs"][name] = time.time()
+        self.save_json_output(data, self.config)
+
+    def recently_executed(self, data, name, n_days):
+        """
+        Check if a specific task named `name` was executed within the `n_days`.
+        """
+        last_runs = data["last_runs"]
+        if name in last_runs.keys():
+            last_run = last_runs[name]
+            sec_since = time.time() - last_run
+            check_freq_seconds = n_days * 24 * 60 * 60
+            if sec_since < check_freq_seconds:
+                return True
+        return False
 
     def create_dataframe(self, table):
         """

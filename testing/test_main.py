@@ -357,15 +357,14 @@ class GetSteamID(unittest.TestCase):
 
     def setUp(self):
         self.t = Tracker(save=False)
-        self.t.steam_key = self.steam_key
 
     def test_get_steam_id(self):
         gabe_steam_id = 76561197960287930
-        steam_id = self.t.get_steam_id("gabelogannewell")
+        steam_id = self.t.get_steam_id("gabelogannewell", self.steam_key)
         self.assertEqual(steam_id, gabe_steam_id, f"steam_id should be {gabe_steam_id}")
 
     def test_False(self):
-        steam_id = self.t.get_steam_id("")
+        steam_id = self.t.get_steam_id("", self.steam_key)
         self.assertIsNone(steam_id, "steam_id should be None")
 
 
@@ -378,11 +377,10 @@ class GetSteamUsername(unittest.TestCase):
 
     def setUp(self):
         self.t = Tracker(save=False)
-        self.t.steam_key = self.steam_key
 
     def test_get_steam_username(self):
         steam_id = 76561197960287930
-        username = self.t.get_steam_username(steam_id)
+        username = self.t.get_steam_username(steam_id, self.steam_key)
         self.assertIsInstance(
             username,
             str,
@@ -390,7 +388,7 @@ class GetSteamUsername(unittest.TestCase):
         )
 
     def test_False(self):
-        username = self.t.get_steam_username(123)
+        username = self.t.get_steam_username(123, self.steam_key)
         self.assertEqual(username, "Unknown", "username should be Unknown")
 
 

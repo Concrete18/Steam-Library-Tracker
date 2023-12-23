@@ -1,7 +1,137 @@
 from classes.utils import Utils
+from bs4 import BeautifulSoup
+import re
 
 
 class Steam(Utils):
+    def validate_steam_id(self, steam_id):
+        """
+        Validates a `steam_id`.
+        """
+        steam_id = str(steam_id)
+        pattern = r"^\d{17}$"
+        if re.match(pattern, steam_id):
+            return True
+        else:
+            return False
+
+    def validate_steam_key(self, steam_key: str):
+        """
+        Validates a `steam_key`.
+        """
+        pattern = r"^\w{32}$"
+        if re.match(pattern, steam_key):
+            return True
+        else:
+            return False
+
+    def get_steam_username(self, steam_id: int, steam_key: int) -> str:
+        """
+        Gets a username based on the given `steam_id`.
+        """
+        main_url = "https://api.steampowered.com/"
+        api_action = "ISteamUser/GetPlayerSummaries/v0002/"
+        url = main_url + api_action
+        params = {"key": steam_key, "steamids": steam_id}
+        response = self.request_url(url=url, params=params)
+        username = "Unknown"
+        player_data = response.json()["response"]["players"]
+        if player_data:
+            username = player_data[0]["personaname"]
+        return username
+
+    @staticmethod
+    def get_profile_username(vanity_url):
+        if "steamcommunity.com/id" in vanity_url:
+            if vanity_url[-1] == "/":
+                vanity_url = vanity_url[:-1]
+            return vanity_url.split("/")[-1]
+        return None
+
+    def get_steam_id(self, vanity_url, steam_key):
+        """
+        Gets a users Steam ID via their `vanity_url` or `vanity_username`.
+        """
+        main_url = "https://api.steampowered.com/"
+        api_action = "ISteamUser/ResolveVanityURL/v0001/"
+        url = main_url + api_action
+        query = {
+            "key": steam_key,
+            "vanityurl": vanity_url,
+        }
+        response = self.request_url(url, params=query)
+        if response:
+            data = response.json()["response"]
+            if "steamid" in data.keys():
+                steam_id = data["steamid"]
+                return int(steam_id)
+        return None
+
+    def get_store_link(self, app_id):
+        """
+        Generates a steam store link to the games page using it's `app_id`.
+        """
+        return f"https://store.steampowered.com/app/{app_id}/"
+
+    def get_steam_review(self, app_id: int, response=None):
+        """
+        Scrapes the games review percent and total reviews from
+        the steam store page using `app_id` or `store_link`.
+        """
+        if not response:
+            self.api_sleeper("steam_review_scrape")
+            store_link = self.get_store_link(app_id)
+            response = self.request_url(store_link)
+        soup = BeautifulSoup(response.text, "html.parser")
+        hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
+        results = soup.find_all(class_=hidden_review_class)
+        if len(results) == 1:
+            text = results[0].text.strip()
+        elif len(results) > 1:
+            text = results[1].text.strip()
+        else:
+            return "No Reviews", "No Reviews"
+        parsed_data = text[2:26].split("% of the ")
+        # get percent
+        no_reviews = "No Reviews"
+        too_few_reviews = "Few Reviews"
+        review_perc = parsed_data[0]
+        if review_perc.isnumeric():
+            if review_perc == "100":
+                percent = 1
+            else:
+                percent = float(f".{review_perc}")
+        else:
+            percent = too_few_reviews
+        # get total
+        if len(parsed_data) > 1:
+            cleaned_num = parsed_data[1].replace(",", "")
+            total = int(re.search(r"\d+", cleaned_num).group())
+        elif percent == too_few_reviews:
+            total = too_few_reviews
+        else:
+            total = no_reviews
+        return percent, total
+
+    def get_steam_user_tags(self, app_id: int, response=None):
+        """
+        Gets a games user tags from Steam.
+        """
+        if not response:
+            self.api_sleeper("steam_review_scrape")
+            store_link = self.get_store_link(app_id)
+            response = self.request_url(store_link)
+        soup = BeautifulSoup(response.text, "html.parser")
+        hidden_review_class = "app_tag"
+        results = soup.find_all(class_=hidden_review_class)
+        tags = []
+        ignore_tags = ["+"]
+        for tag in results:
+            string = tag.text.strip()
+            if string not in ignore_tags:
+                tags.append(string)
+        return tags
+
     def get_owned_steam_games(self, steam_key: str, steam_id: int):
         """
         Gets the games owned by the given `steam_id`.
