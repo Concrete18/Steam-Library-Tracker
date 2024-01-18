@@ -5,7 +5,7 @@ import datetime as dt
 import pandas as pd
 
 
-# logging import in case helper.py is main
+# logging import if helper.py is main
 if __name__ != "__main__":
     from classes.logger import Logger
 else:
@@ -62,47 +62,53 @@ class Utils:
     Log = Logger()
     error_log = Log.create_log(name="helper", log_path="logs/error.log")
 
-    def request_url(self, url, params=None, headers=None, second_try=False):
+    @staticmethod
+    def check_internet_connection(url="http://www.google.com"):
         """
-        Quick data request with check for success.
+        Checks if the internet is connected.
         """
         try:
-            response = requests.get(url, params, headers=headers)
-        except requests.exceptions.ConnectionError:
+            requests.head(url, timeout=5)
+            return True
+        except requests.exceptions.RequestException:
+            return False
+
+    def request_url(self, url, params=None, headers=None, second_try=False):
+        try:
+            response = requests.get(url, params=params, headers=headers)
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
             if second_try:
                 return False
-            msg = "Connection Error: Internet can't be accessed"
-            self.error_log.warning(msg)
-            time.sleep(5)
-            self.request_url(url, headers, second_try=True)
-            return False
-        except requests.exceptions.TooManyRedirects:
-            if second_try:
+
+            if isinstance(e, requests.exceptions.ConnectionError):
+                msg = "Connection Error: Internet can't be accessed"
+            elif isinstance(e, requests.exceptions.TooManyRedirects):
+                msg = "Too Many Redirects: Exceeded 30 redirects"
+            elif isinstance(e, requests.exceptions.ReadTimeout):
                 return False
-            msg = "Too Many Redirects: Exceeded 30 redirects"
+            else:
+                msg = f"Unknown Error: {e}"
+
             self.error_log.warning(msg)
             time.sleep(5)
-            self.request_url(url, headers, second_try=True)
-            return False
-        except requests.exceptions.ReadTimeout:
-            return False
+            return self.request_url(
+                url, params=params, headers=headers, second_try=True
+            )
+
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
             msg = "Server Error: make sure your api key and steam id is valid"
-            self.error_log.warning(msg)
         elif response.status_code == 404:
             msg = f"Server Error: 404 Content does not exist. URL: {url}"
-            self.error_log.warning(msg)
         elif response.status_code == 429 or response.status_code == 403:
-            msg = "Server Error: Too Many reqeuests made. Waiting to try again"
-            self.error_log.warning(msg)
+            msg = "Server Error: Too Many requests made. Waiting to try again"
             self.error_log.warning(response)
             time.sleep(5)
-            self.request_url(url, headers)
-        else:
-            msg = f"Unknown Error: {response.status_code}"
-            self.error_log.warning(msg)
+            return self.request_url(url, params=params, headers=headers)
+
+        self.error_log.warning(msg)
         return False
 
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:

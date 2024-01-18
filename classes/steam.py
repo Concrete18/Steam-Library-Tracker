@@ -149,7 +149,9 @@ class Steam(Utils):
             "include_appinfo": 1,
         }
         response = self.request_url(url, params=query)
-        return response.json()["response"]["games"]
+        if response:
+            return response.json()["response"]["games"]
+        return response
 
     def get_recently_played_steam_games(
         self, steam_key: str, steam_id: int, game_count: int = 10

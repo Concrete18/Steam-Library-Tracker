@@ -62,6 +62,9 @@ class Tracker(Steam, Utils):
         {
             "primary": "bold deep_sky_blue1",
             "secondary": "bold pale_turquoise1",
+            "info": "dim cyan",
+            "warning": "bold magenta",
+            "danger": "bold red",
         }
     )
     console = Console(theme=custom_theme)
@@ -1662,13 +1665,20 @@ class Tracker(Steam, Utils):
         date = f"{formatted_date} [dim]|[/] {formatted_time}"
         self.console.print(date)
 
-        self.sync_steam_games(self.steam_key, self.steam_id)
+        # internet checks
+        internet = self.check_internet_connection()
+        if internet:
+            self.sync_steam_games(self.steam_key, self.steam_id)
+        else:
+            self.console.print("\nNo Internet Detected", style="warning")
 
         df = self.steam.create_dataframe(na_vals=self.na_values)
         self.output_recently_played_games(df)
+
         # extra data updates
-        self.updated_game_data(df)
-        self.get_friends_list_changes()
+        if internet:
+            self.updated_game_data(df)
+            self.get_friends_list_changes()
 
         self.show_errors()
         self.game_library_actions(df)
