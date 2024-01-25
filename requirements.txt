@@ -6,3 +6,4 @@ pandas==1.5.2
 matplotlib==3.6.2
 easierexcel
 rich==13.3.2
+pick==2.2.0

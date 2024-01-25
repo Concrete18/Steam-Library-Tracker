@@ -1,6 +1,7 @@
 import random, json, os, re, sys, shutil, time, subprocess, webbrowser, math
 from howlongtobeatpy import HowLongToBeat
 from pathlib import Path
+from pick import pick
 import datetime as dt
 import pandas as pd
 
@@ -487,7 +488,8 @@ class Tracker(Steam, Utils):
         info_dict[self.steam_rev_total_col] = total
         # get user tags
         tags = self.get_steam_user_tags(app_id=app_id, response=response)
-        info_dict[self.user_tags_col] = ", ".join(tags)
+        if tags:
+            info_dict[self.user_tags_col] = ", ".join(tags)
         # info_dict setup
         if "data" in app_details[str(app_id)].keys():
             game_info = app_details[str(app_id)]["data"]
@@ -739,17 +741,19 @@ class Tracker(Steam, Utils):
         """
         Creates a table with counts and percentage of each play status.
         """
-        title = "Play Status Statistics"
+        title = "Play Status Statistics\n(Excludes Ignored)"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
         )
-        total_games = df["Name"].count()
         play_statuses = df["Play Status"].value_counts()
+        total_games = df["Name"].count() - play_statuses["Ignore"]
         row1, row2 = [], []
         for status in self.play_status_choices.values():
+            if status == "Ignore":
+                continue
             table.add_column(status, justify="center")
             row1.append(str(play_statuses[status]))
             row2.append(f"{play_statuses[status]/total_games:.1%}")
@@ -1566,6 +1570,33 @@ class Tracker(Steam, Utils):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
+    @staticmethod
+    def advanced_picker(choices, title):
+        """
+        Choice picker using the advanced and less compatible Pick module.
+        """
+        options = [choice[0] for choice in choices]
+        selected_index = pick(options, title)[1]
+        return choices[selected_index]
+
+    def basic_picker(self, choices, title):
+        """
+        Choice picker using the basic and more compatible IntPrompt function within the Rich module.
+        """
+        allowed_choices = []
+        for count, (choice, action) in enumerate(choices):
+            allowed_choices.append(str(count + 1))
+            msg = f"[b]{count+1}.[/] [underline]{choice}[/]"
+            self.console.print(msg, highlight=False)
+        num = IntPrompt.ask(
+            title,
+            choices=allowed_choices,
+            default=1,
+            show_choices=False,
+            show_default=False,
+        )
+        return choices[num - 1]
+
     def pick_task(self, choices, repeat=True):
         """
         Allows picking a task to do next using a matching number.
@@ -1575,28 +1606,24 @@ class Tracker(Steam, Utils):
             print("\nSkipping Task Picker.\nInput can't be used")
             return
         print()
-        allowed_choices = []
-        for count, (choice, action) in enumerate(choices):
-            allowed_choices.append(str(count + 1))
-            msg = f"[b]{count+1}.[/] [underline]{choice}[/]"
+        term_program = os.environ.get("TERM_PROGRAM", "").lower()
+        selected = None
+        if term_program != "vscode":
+            input("Press Enter to Pick Next Action:")
+            title = "What do you want to do? (press SPACE to mark, ENTER to continue):"
+            selected = self.advanced_picker(choices, title)
+        else:
+            title = "What do you want to do?"
+            selected = self.basic_picker(choices, title)
+        if selected:
+            name, func = selected[0], selected[1]
+            msg = f"\n[b underline]{name}[/] Selected"
             self.console.print(msg, highlight=False)
-        num = IntPrompt.ask(
-            "\nWhat do you want to do?",
-            choices=allowed_choices,
-            default=1,
-            show_choices=False,
-            show_default=False,
-        )
-        selected_action = choices[num - 1][0]
-        msg = f"\n[b underline]{selected_action}[/] Selected"
-        self.console.print(msg, highlight=False)
-        # runs chosen function
-        choices[num - 1][1]()
-        # finish if left blank
-        if num == 1:
-            return
-        if repeat:
-            self.pick_task(choices, repeat)
+            func()  # runs chosen function
+            if "exit" in name.lower():
+                return
+            if repeat:
+                self.pick_task(choices, repeat)
 
     def game_library_actions(self, df):
         """
@@ -1612,7 +1639,7 @@ class Tracker(Steam, Utils):
             ("Player Counts Sync", update_player_counts_func),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
-            ("Display Statistics", output_statistics_func),
+            ("Statistics Display", output_statistics_func),
             ("Steam Friends List Sync", self.sync_friends_list),
             ("Playstation Games Sync", self.sync_playstation_games),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
@@ -1687,7 +1714,3 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
-
-    # df = App.steam.create_dataframe(na_vals=App.na_values)
-    # print("\nTag Averages")
-    # App.find_tag_rating_avg(df)
