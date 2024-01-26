@@ -1,4 +1,4 @@
-import random, json, os, re, sys, shutil, time, subprocess, webbrowser, math
+import random, json, os, re, sys, time, subprocess, webbrowser, math
 from howlongtobeatpy import HowLongToBeat
 from pathlib import Path
 from pick import pick
@@ -12,45 +12,13 @@ from rich.table import Table
 from rich.theme import Theme
 
 # classes
+from classes.setup import Setup
+from classes.steam import Steam
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
-from classes.steam import Steam
 
 # my package
 from easierexcel import Excel, Sheet
-
-
-def setup():
-    """
-    Creates the config and excel file if they do not exist.
-    """
-    all_clear = True
-    # config check
-    config = Path("configs/config.json")
-    if not config.exists():
-        config_template = Path("templates/config_template.json")
-        shutil.copyfile(config_template, config)
-        all_clear = False
-    # excel check
-    excel = Path("Game Library.xlsx")
-    if not excel.exists():
-        excel_template = Path("templates/Game_Library_Template.xlsx")
-        shutil.copyfile(excel_template, excel)
-        all_clear = False
-    # exits out of function early if all clear
-    if all_clear:
-        return config
-    # instructions
-    instructsions = [
-        "Open the config and update the following entries:",
-        "steam_id",
-        "steam_api_key",
-        "\nOnce updated, run again",
-    ]
-    for line in instructsions:
-        print(line)
-    input("Press Enter to Close")
-    exit()
 
 
 class Tracker(Steam, Utils):
@@ -73,9 +41,8 @@ class Tracker(Steam, Utils):
     title = "Game Library Tracker"
 
     # config init
-    config = setup()
-    with open(config) as file:
-        data = json.load(file)
+    app = Setup
+    config, data = app.setup()
 
     # steam_data
     steam_key = data["steam_data"]["api_key"]
@@ -83,7 +50,7 @@ class Tracker(Steam, Utils):
     vanity_url = data["steam_data"]["vanity_url"]
 
     # settings
-    playstation_data_link = data["settings"]["excel_filename"]
+    playstation_data_link = data["settings"]["playstation_data_link"]
     excel_filename = data["settings"]["excel_filename"]
     logging = data["settings"]["logging"]
 
