@@ -1474,35 +1474,60 @@ class Tracker(Steam, Utils):
         print(f"\nFound {total_sales} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
 
-    def update_player_counts(self, df):
+    def bulk_update_player_count(self, app_ids, update_type):
+        print()  # forced new line due to how track() works
+        player_counts = []
+        desc = f"Updating {update_type} Player Count(s)"
+        for app_id in track(app_ids, description=desc):
+            player_count = self.get_steam_game_player_count(app_id, self.steam_key)
+            player_counts.append(player_count)
+            self.steam.update_cell(
+                app_id,
+                self.steam_player_count_col,
+                player_count,
+            )
+            self.api_sleeper("steam_player_count")
+        return player_counts
+
+    def update_player_counts(self, df, last_num=15):
         """
         Updates game player counts using the Steam API.
         """
-        last_num = 15
-        app_ids = []
-        print(f"\n1. Update only the {last_num} latest games\n2. Update all games")
-        msg = "Pick one:\n"
-        response = IntPrompt.ask(
-            msg,
-            choices=["1", "2"],
-            default="1",
-            show_choices=False,
-            show_default=False,
-        )
+        options = [
+            f"Update latest {last_num} games",
+            "Update single game",
+            "Update all games",
+        ]
+        selected_action = pick(options, "What game(s) do you want to update?")[0]
         update_type = ""
-        if response == 1:
+        app_ids = []
+        if selected_action == options[0]:
+            update_type = "Recent"
             recently_played = App.find_recent_games(df, self.date_updated_col, 30)
             app_ids = [game[self.app_id_col] for game in recently_played]
-            update_type = "Recent"
-        elif response == 2:
-            app_ids = self.steam.row_idx.keys()
+        elif selected_action == options[1]:
+            update_type = "Single"
+            msg = "\nWhat is the game name?:\n"
+            search_query = input(msg)
+            possible_games = self.game_finder(search_query)
+            possible_games_length = len(possible_games)
+            if possible_games_length == 1:
+                game_data = possible_games[0]
+                app_ids = [game_data["App ID"]]
+                print(f"\nSelected: {game_data['Name']}")
+            elif possible_games_length > 1:
+                msg = f"{possible_games_length} possible matchs found"
+                games = [(game["Name"], game["App ID"]) for game in possible_games]
+                chosen_game = self.advanced_picker(games, msg)
+                app_ids = [chosen_game[1]]
+                print(f"\nSelected: {chosen_game[0]}")
+            else:
+                print("No game matches found")
+                return
+        elif selected_action == options[2]:
             update_type = "All"
-        print()
-        desc = f"Updating {update_type} Player Counts"
-        for app_id in track(app_ids, description=desc):
-            player_count = self.get_steam_game_player_count(app_id, self.steam_key)
-            self.steam.update_cell(app_id, self.steam_player_count_col, player_count)
-            self.api_sleeper("steam_player_count")
+            app_ids = self.steam.row_idx.keys()
+        self.bulk_update_player_count(app_ids, update_type)
         self.excel.save(use_print=False)
 
     def pick_game_to_update(self, games):
@@ -1563,6 +1588,19 @@ class Tracker(Steam, Utils):
             show_default=False,
         )
         return choices[num - 1]
+
+    def game_finder(self, search_query: str = None) -> list:
+        """
+        Searches for games with the `search_query` and returns a list of games that might match.
+
+        Currently only checks of the `search_query` is in the game name. Case insensitive.
+        """
+        possible_games = []
+        for app_id in self.steam.row_idx.keys():
+            name = self.steam.get_cell(app_id, "Name")
+            if search_query.lower() in name.lower():
+                possible_games.append(self.steam.get_row(app_id))
+        return possible_games
 
     def pick_task(self, choices, repeat=True):
         """
@@ -1681,3 +1719,12 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
+
+    # search = "halo"
+    # possible_games = App.game_finder(search)
+    # if possible_games:
+    #     print(f"{len(possible_games)} Game(s) Found")
+    #     for game in possible_games:
+    #         print(game["Name"])
+    # else:
+    #     print("No Games was not found")

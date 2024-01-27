@@ -34,6 +34,36 @@ class GetOwnedGames(unittest.TestCase):
             self.assertIsInstance(game["name"], str, "Name should be a string")
 
 
+class SteamReview(unittest.TestCase):
+    """
+    Tests `get_steam_review`. Due to changing reviews, it only tests for aquiring
+    floats for percent and integers for total.
+    """
+
+    def setUp(self):
+        self.s = Steam()
+
+    def test_get_steam_review(self):
+        steam_review_tests = [
+            752590,
+            1161580,
+            230410,
+        ]
+        for app_id in steam_review_tests:
+            # TODO mock request at least
+            percent, total = self.s.get_steam_review(app_id=app_id)
+            self.assertIsInstance(
+                percent,
+                float,
+                "Steam review percent should be a float",
+            )
+            self.assertIsInstance(
+                total,
+                int,
+                "Steam review percent should be an int",
+            )
+
+
 class GetRecentlyPlayedGames(unittest.TestCase):
     steam = Steam()
     steam_key, steam_id = get_steam_key_and_id()

@@ -90,35 +90,6 @@ class GetStoreLink(unittest.TestCase):
         )
 
 
-class SteamReview(unittest.TestCase):
-    """
-    Tests `get_steam_review`. Due to changing reviews, it only tests for aquiring
-    floats for percent and integers for total.
-    """
-
-    def setUp(self):
-        self.t = Tracker(save=False)
-
-    def test_get_steam_review(self):
-        steam_review_tests = [
-            752590,
-            1161580,
-            230410,
-        ]
-        for app_id in steam_review_tests:
-            percent, total = self.t.get_steam_review(app_id=app_id)
-            self.assertIsInstance(
-                percent,
-                float,
-                "Steam review percent should be a float",
-            )
-            self.assertIsInstance(
-                total,
-                int,
-                "Steam review percent should be an int",
-            )
-
-
 class GetPriceInfo(unittest.TestCase):
     """
     Tests the get_price_info function to be sure the values are acquired correctly.
