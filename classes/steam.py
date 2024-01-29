@@ -67,6 +67,24 @@ class Steam(Utils):
                 return int(steam_id)
         return None
 
+    def get_steam_friends(self, steam_key, steam_id):
+        """
+        Gets a users Steam friends list.
+        """
+        main_url = "https://api.steampowered.com/"
+        api_action = "ISteamUser/GetFriendList/v0001/"
+        url = main_url + api_action
+        params = {
+            "key": steam_key,
+            "steamid": steam_id,
+            "relationship": "all",
+        }
+        response = self.request_url(url=url, params=params)
+        if response:
+            data = response.json()
+            return data["friendslist"]["friends"]
+        return []
+
     def get_store_link(self, app_id):
         """
         Generates a steam store link to the games page using it's `app_id`.

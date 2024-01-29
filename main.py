@@ -202,28 +202,17 @@ class Tracker(Steam, Utils):
             self.data["settings"]["steam_id"] = steam_id
             self.save_json_output(self.data, self.config)
 
-    def get_steam_friends(self):
+    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
         """
-        Gets a users Steam friends list.
+        Asks for a Yes or No response. Yes returns True and No returns False.
         """
-        main_url = "https://api.steampowered.com/"
-        api_action = "ISteamUser/GetFriendList/v0001/"
-        url = main_url + api_action
-        params = {
-            "key": self.steam_key,
-            "steamid": self.steam_id,
-            "relationship": "all",
-        }
-        response = self.request_url(url=url, params=params)
-        if response:
-            data = response.json()
-            return data["friendslist"]["friends"]
-        return []
+        choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
+        return pick(choices, msg)[0] == "Yes"
 
     def sync_friends_list(self):
         self.get_friends_list_changes(0)
 
-    def get_friends_list_changes(self, check_freq_days=14):
+    def get_friends_list_changes(self, check_freq_days: int = 14):
         """
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
@@ -235,7 +224,8 @@ class Tracker(Steam, Utils):
         # get friends
         print("\nStarting Steam Friends Sync")
         prev_friends_ids = self.data["friend_ids"]
-        cur_friend_ids = [friend["steamid"] for friend in self.get_steam_friends()]
+        friend_data = self.get_steam_friends(self.steam_key, self.steam_id)
+        cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
         additions = list(set(cur_friend_ids) - set(prev_friends_ids))
         removals = list(set(prev_friends_ids) - set(cur_friend_ids))
@@ -629,8 +619,8 @@ class Tracker(Steam, Utils):
                 update_list.append(app_id)
         # checks if data should be updated
         if update_list:
-            msg = f"\nDo you want update data for {len(update_list)} games?\n"
-            if not input(msg) in ["yes", "y"]:
+            msg = f"\nDo you want to update data for {len(update_list)} games?\n"
+            if not self.is_response_yes(msg):
                 return
         else:
             return
@@ -872,7 +862,7 @@ class Tracker(Steam, Utils):
             old_name = names_dict["old_name"]
             print(f'"{old_name}" to "{new_name}"')
         msg = "Do you want to update the above game names?:\n"
-        if input(msg).lower() in ["yes", "y"]:
+        if self.is_response_yes(msg):
             for names_dict in name_changes:
                 app_id = names_dict["app_id"]
                 new_name = names_dict["new_name"]
@@ -1020,8 +1010,7 @@ class Tracker(Steam, Utils):
                 self.steam.get_cell(app_id, self.name_col) for app_id in sheet_games
             ]
             print(self.create_and_sentence(removed_games_names))
-            response = input("\nDo you want to delele all the above games?\n")
-            if response.lower() in ["yes", "y"]:
+            if self.is_response_yes("\nDo you want to delele all the above games?\n"):
                 for app_id in sheet_games:
                     self.steam.delete_row(str(app_id))
         if self.excel.changes_made and self.save_to_file:
@@ -1264,8 +1253,8 @@ class Tracker(Steam, Utils):
         """
         Adds playstation games to excel using the given `games` variable.
         """
-        resonse = input("\nDo you want to get your most recent Playstation data?\n")
-        if resonse.lower() in ["yes", "y"]:
+        msg = "\nDo you want to get your most recent Playstation data?\n"
+        if self.is_response_yes(msg):
             self.update_playstation_data()
         print("\nChecking for new games for Playstation")
         games = self.check_playstation_json()
@@ -1360,8 +1349,10 @@ class Tracker(Steam, Utils):
         play_statuses = list(self.play_status_choices.values())
         play_status = pick(play_statuses, msg)[0]
         picked_game_name, choice_list = self.get_random_game_name(play_status)
+        print("\nType Stop To Finish")
         self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
         # allows getting another random pick
+        # TODO test switching to pick function so it is much simpler
         while not input().lower() in ["no", "n", "cancel", "stop"]:
             if not choice_list:
                 print(f"All games have already been picked.\n")
@@ -1432,7 +1423,7 @@ class Tracker(Steam, Utils):
     def sync_favorite_games_sales(self):
         """
         Gets sale information for games that are at a minimun rating or higher.
-        Rating is set up using an input after running.
+        Rating is set up using an IntPrompt.ask after running.
         """
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         min_rating = IntPrompt.ask(
