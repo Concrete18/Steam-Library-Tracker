@@ -740,6 +740,7 @@ class Tracker(Steam, Utils):
             style="deep_sky_blue1",
         )
         data = {}
+        # TODO remove any games with ignore status
         total_hours_sum = df["Hours Played"].sum()
         linux_hours_sum = df["Linux Hours"].sum()
         data["Total\nHours"] = round(total_hours_sum, 1)
@@ -773,6 +774,7 @@ class Tracker(Steam, Utils):
         )
 
         data = {}
+        # TODO remove any games with ignore status
         # my ratings
         my_ratings = df["My Rating"]
         data["My\nTotal"] = my_ratings.count()
@@ -1333,26 +1335,6 @@ class Tracker(Steam, Utils):
         if total_added or total_updated and self.save_to_file:
             self.excel.save(use_print=False)
 
-    def play_status_picker(self):
-        """
-        Shows a list of Play Status's to choose from.
-        Respond with the playstatus or numerical postion of the status from the list.
-        """
-        prompt = (
-            self.create_and_sentence(list(self.play_status_choices.values())) + "\n:"
-        )
-        while True:
-            response = input(prompt).lower()
-            if len(response) == 1:
-                return self.play_status_choices[response]
-            elif response.title() in self.play_status_choices.values():
-                return response
-            elif response == "":
-                return None
-            else:
-                print("\nInvalid Response")
-                continue
-
     def get_random_game_name(self, play_status, choice_list=[]):
         """
         Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
@@ -1374,11 +1356,9 @@ class Tracker(Steam, Utils):
         """
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         """
-        print("\nWhat play status do you want a random game picked from?")
-        print("Press Enter to skip:")
-        play_status = self.play_status_picker()
-        if play_status == None:
-            return
+        msg = "\nWhat play status do you want a random game picked from?"
+        play_statuses = list(self.play_status_choices.values())
+        play_status = pick(play_statuses, msg)[0]
         picked_game_name, choice_list = self.get_random_game_name(play_status)
         self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
         # allows getting another random pick
@@ -1595,6 +1575,7 @@ class Tracker(Steam, Utils):
 
         Currently only checks of the `search_query` is in the game name. Case insensitive.
         """
+        # TODO switch to using an improved matching system
         possible_games = []
         for app_id in self.steam.row_idx.keys():
             name = self.steam.get_cell(app_id, "Name")
@@ -1610,16 +1591,9 @@ class Tracker(Steam, Utils):
             # runs if it is not an interactable terminal
             print("\nSkipping Task Picker.\nInput can't be used")
             return
-        print()
-        term_program = os.environ.get("TERM_PROGRAM", "").lower()
-        selected = None
-        if term_program != "vscode":
-            input("Press Enter to Pick Next Action:")
-            title = "What do you want to do? (press SPACE to mark, ENTER to continue):"
-            selected = self.advanced_picker(choices, title)
-        else:
-            title = "What do you want to do?"
-            selected = self.basic_picker(choices, title)
+        input("\nPress Enter to Pick Next Action:")
+        title = "What do you want to do? (press SPACE to mark, ENTER to continue):"
+        selected = self.advanced_picker(choices, title)
         if selected:
             name, func = selected[0], selected[1]
             msg = f"\n[b underline]{name}[/] Selected"
