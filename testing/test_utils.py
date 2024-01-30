@@ -2,12 +2,16 @@ import datetime as dt
 import unittest
 
 # classes
-from classes.helper import Helper
+from classes.utils import Utils
 
 
 class HoursPlayed(unittest.TestCase):
+    """
+    Tests `hours_played` function
+    """
+
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_hours_played(self):
         time_hours_played = {
@@ -24,11 +28,11 @@ class HoursPlayed(unittest.TestCase):
 
 class TimePassed(unittest.TestCase):
     """
-    Tests convert_time_passed function
+    Tests `convert_time_passed` function
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_minutes(self):
         """
@@ -135,26 +139,48 @@ class TimePassed(unittest.TestCase):
 
 class DaysSince(unittest.TestCase):
     """
-    Tests days_since function
+    Tests `days_since` function
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
-    def test_days_since(self):
-        date_tests = {
-            2: dt.datetime(2022, 4, 22),
-            10: dt.datetime(2022, 4, 14),
-            365: dt.datetime(2021, 4, 24),
-        }
-        past_date = dt.datetime(2022, 4, 24)
-        for answer, current_date in date_tests.items():
-            self.assertEqual(self.t.days_since(current_date, past_date), answer)
+    def test_set_date(self):
+        past_date = dt.datetime(2022, 4, 22)
+        current_date = dt.datetime(2022, 4, 24)
+        days_since = self.t.days_since(past_date, current_date)
+        self.assertEqual(days_since, 2)
+
+    def test_todays_date(self):
+        past_date = dt.datetime.now() - dt.timedelta(days=7)
+        days_since = self.t.days_since(past_date)
+        self.assertEqual(days_since, 7)
+
+
+class StringToDate(unittest.TestCase):
+    """
+    Tests `string_to_date` function
+    """
+
+    def setUp(self):
+        self.t = Utils()
+
+    def test_valid(self):
+        date = self.t.string_to_date("02/24/2022")
+        self.assertEqual(date, dt.datetime(2022, 2, 24, 0, 0))
+
+    def test_not_valid(self):
+        with self.assertRaises(ValueError):
+            self.t.string_to_date("")
 
 
 class UrlSanitize(unittest.TestCase):
+    """
+    Tests `url_sanitize` function
+    """
+
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_url_sanitize(self):
         url_tests = {
@@ -166,51 +192,80 @@ class UrlSanitize(unittest.TestCase):
             self.assertEqual(self.t.url_sanitize(string), result)
 
 
-class WordAndList(unittest.TestCase):
+class UnicodeRemover(unittest.TestCase):
     """
-    Tests word_and_list function.
+    Tests `unicode_remover` function
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
-    def test_word_and_list(self):
+    def test_trademark(self):
+        new_string = self.t.unicode_remover("Game Name™")
+        self.assertEqual(new_string, "Game Name")
+
+    def test_trim_removal(self):
+        new_string = self.t.unicode_remover("® ® ® ö Test ® ® ®")
+        self.assertEqual(new_string, "o Test")
+
+    def test_trim_removal(self):
+        new_string = self.t.unicode_remover("\u2122 \u2013Test\u2013 \u2122")
+        self.assertEqual(new_string, "-Test-")
+
+    def test_not_string(self):
+        new_string = self.t.unicode_remover(123)
+        self.assertEqual(new_string, 123)
+
+
+class CreateAndSentence(unittest.TestCase):
+    """
+    Tests `create_and_sentence` function.
+    """
+
+    def setUp(self):
+        self.t = Utils()
+
+    def test_create_and_sentence(self):
         list_tests = [
             (["Test1"], "Test1"),
             (["Test1", "Test2"], "Test1 and Test2"),
             (["Test1", "Test2", "Test3"], "Test1, Test2 and Test3"),
+            ([], ""),
         ]
         for list, answer in list_tests:
             with self.subTest(list=list, answer=answer):
-                result = self.t.word_and_list(list)
+                result = self.t.create_and_sentence(list)
                 self.assertEqual(result, answer)
 
 
 class LevenshteinDistance(unittest.TestCase):
     """
-    Tests Similarity Matching Functions.
+    Tests `lev_distance` Function.
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_lev_distance_insert(self):
         """
         Tests Levenshtein Distance insert difference.
         """
         self.assertEqual(self.t.lev_distance("test", "tests"), 1)
+        self.assertEqual(self.t.lev_distance("test", "the tests"), 5)
 
     def test_lev_distance_delete(self):
         """
         Tests Levenshtein Distance delete difference.
         """
         self.assertEqual(self.t.lev_distance("bolt", "bot"), 1)
+        self.assertEqual(self.t.lev_distance("bridges", "bride"), 2)
 
     def test_lev_distance_replace(self):
         """
         Tests Levenshtein Distance replace difference.
         """
         self.assertEqual(self.t.lev_distance("spell", "spelt"), 1)
+        self.assertEqual(self.t.lev_distance("car", "bat"), 2)
 
     def test_lev_distance_all_change(self):
         """
@@ -221,7 +276,7 @@ class LevenshteinDistance(unittest.TestCase):
 
 class SimilarityMatching(unittest.TestCase):
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_lev_dist_matcher(self):
         test_list = [
@@ -257,13 +312,51 @@ class SimilarityMatching(unittest.TestCase):
             self.assertEqual(result, answer)
 
 
+# class SimMatcher(unittest.TestCase):
+#     def setUp(self):
+#         self.t = Utils()
+
+#     def test_lev_dist_matcher(self):
+#         test_list = [
+#             "This is a test, yay",
+#             "this is not it, arg",
+#             "Find the batman!",
+#             "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+#             "The Last of Us",
+#             "Elden Ring",
+#             "The Last of Us Part I",
+#             "The Last of Us Part II",
+#             "Waltz of the Wizard: Natural Magic",
+#             "Life is Strange™",
+#             "The Witcher 3: Wild Hunt",
+#             "Marvel's Spider-Man: Miles Morales",
+#             "Crypt Of The Necrodancer: Nintendo Switch Edition",
+#         ]
+#         string_tests = {
+#             "This is a test": "This is a test, yay",
+#             "find th bamtan": "Find the batman!",
+#             "Eldn Rings": "Elden Ring",
+#             "Shadow Tactics Blades of the Shougn Aikos Choce": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+#             "the last of us": "The Last of Us",
+#             "Walk of the Wizard: Natural Magik": "Waltz of the Wizard: Natural Magic",
+#             "The last of us Part I": "The Last of Us Part I",
+#             "Life is Strange 1": "Life is Strange™",
+#             "Witcher 3: The Wild Hunt": "The Witcher 3: Wild Hunt",
+#             "Spider-Man: Miles Morales": "Marvel's Spider-Man: Miles Morales",
+#             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
+#         }
+#         for string, answer in string_tests.items():
+#             result = self.t.sim_matcher(string, test_list)[0]
+#             self.assertEqual(result, answer)
+
+
 class AnyIsNum(unittest.TestCase):
     """
-    Tests any_is_num function.
+    Tests `any_is_num` function.
     """
 
     def setUp(self):
-        self.t = Helper()
+        self.t = Utils()
 
     def test_true_num(self):
         self.assertTrue(self.t.any_is_num(155))
