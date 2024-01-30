@@ -32,7 +32,7 @@ class Tracker(Steam, Utils):
             "primary": "bold deep_sky_blue1",
             "secondary": "bold pale_turquoise1",
             "info": "dim cyan",
-            "warning": "bold magenta",
+            "warning": "bold light_goldenrod1",
             "danger": "bold red",
         }
     )
@@ -133,6 +133,8 @@ class Tracker(Steam, Utils):
         rating_comp_col := "Rating Comparison",
         steam_rev_per_col := "Steam Review Percent",
         steam_rev_total_col := "Steam Review Total",
+        price_col := "Price",
+        discount_col := "Discount",
         steam_player_count_col := "Player Count",
         name_col := "Name",
         play_status_col := "Play Status",
@@ -1029,7 +1031,7 @@ class Tracker(Steam, Utils):
             print("\nFailed to retrieve Steam Games")
         else:
             if not sheet_app_ids:
-                print(f"Starting First Steam Sync")
+                print(f"\nStarting First Steam Sync")
             self.game_check(steam_games, sheet_app_ids)
             return
         input()
@@ -1336,6 +1338,8 @@ class Tracker(Steam, Utils):
                 if game_play_status.lower() == play_status.lower():
                     choice_list.append(app_id)
         # picks random game then removes it from the choice list so it wont show up again during this session
+        if not choice_list:
+            return None, choice_list
         picked_app_id = random.choice(choice_list)
         choice_list.pop(choice_list.index(picked_app_id))
         picked_game_name = self.steam.get_cell(picked_app_id, self.name_col)
@@ -1349,6 +1353,10 @@ class Tracker(Steam, Utils):
         play_statuses = list(self.play_status_choices.values())
         play_status = pick(play_statuses, msg)[0]
         picked_game_name, choice_list = self.get_random_game_name(play_status)
+        if not picked_game_name:
+            error = f'\n[warning]No game has the[/] [secondary]"{play_status}"[/] [warning]Status[/]'
+            self.console.print(error)
+            return
         print("\nType Stop To Finish")
         self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
         # allows getting another random pick
@@ -1380,8 +1388,8 @@ class Tracker(Steam, Utils):
                 game_dict = {
                     self.date_updated_col: dt.datetime.now(),
                     self.name_col: game_info["game_name"],
-                    "Discount": game_info["discount"] * 0.01,
-                    "Price": game_info["price"],
+                    self.discount_col: game_info["discount"] * 0.01,
+                    self.price_col: game_info["price"],
                     self.my_rating_col: game_data[self.my_rating_col],
                     self.steam_rev_per_col: game_info[self.steam_rev_per_col],
                     self.steam_rev_total_col: game_info[self.steam_rev_total_col],
