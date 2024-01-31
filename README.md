@@ -14,10 +14,11 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 ## Technology Used
 
 - Python Pandas
+- Rich Console
 - Matplotlib
 - API Requests
 - Web Scraping with Requests and BeautifulSoup
-- Custom Created Library based on OpenPyXL called [EasierExcel](https://github.com/Concrete18/easierexcel)
+- [EasierExcel](https://github.com/Concrete18/easierexcel) (my custom library based on OpenPyXL)
 
 ## Features
 
@@ -26,6 +27,7 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 - [PlayStation Library Ownership Tracking](#Adding-PlayStation-Games)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
+- [Player Count Sync](#Player-Count-Sync)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
 
@@ -63,6 +65,7 @@ reordering columns.
 - Unplayed
 - Waiting
 - Finished
+- Endless
 - Must Play
 - Quit
 - Ignore
@@ -76,10 +79,6 @@ It is faster than adding the games manually but I am unable to automate it yet.
 
 Note: Hours are not tracked like Steam due to a lack of an API.
 
-### Steam Deck Game Status Checker
-
-Checks for Steam Deck Status updates. If any are found it will update the column.
-
 ### Favorite Game Sale Checker
 
 Allows choosing your own rating threshold so that a CSV can be made containing
@@ -88,6 +87,10 @@ all the games that are currently on sale with the selected rating or higher.
 ### Random game picker
 
 Picks a random game based on the Play Status you select.
+
+### Player Count Sync
+
+Allows syncing of player counts for all games, recent games or only 1 game.
 
 ### Friends List Tracking
 

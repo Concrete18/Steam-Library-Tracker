@@ -1453,6 +1453,62 @@ class Tracker(Steam, Utils):
         print(f"\nFound {total_sales} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
 
+    @staticmethod
+    def advanced_picker(choices, title):
+        """
+        Choice picker using the advanced and less compatible Pick module.
+        """
+        options = [choice[0] for choice in choices]
+        selected_index = pick(options, title)[1]
+        return choices[selected_index]
+
+    def game_finder(self, search_query=None) -> dict:
+        """
+        Searches for games with the `search_query` and asks which matching game, if any, is the correct one.
+
+        Currently only checks of the `search_query` is in the game name. Case insensitive.
+        """
+        if not search_query:
+            msg = "\nWhat is the game name?:\n"
+            search_query = input(msg)
+
+        # TODO switch to using an improved matching system
+        possible_games = []
+        for app_id in self.steam.row_idx.keys():
+            name = self.steam.get_cell(app_id, "Name")
+            if search_query.lower() in name.lower():
+                possible_games.append(self.steam.get_row(app_id))
+
+        possible_games_length = len(possible_games)
+        # only one game match found
+        if possible_games_length == 1:
+            game_data = possible_games[0]
+            game_name = game_data["Name"]
+            msg = f"\nIs this the game you are looking for?\n{game_name}"
+            if self.is_response_yes(msg):
+                print(f"\nSelected: {game_name}")
+                return game_data
+            else:
+                print("\nNo game matches found")
+                return None
+        # multiple matchs found
+        elif possible_games_length > 1:
+            msg = f"{possible_games_length} possible matchs found"
+            games = [(game["Name"], game["App ID"]) for game in possible_games]
+            no_match = "No Match Found"
+            games.append((no_match, 0))
+            chosen_game = self.advanced_picker(games, msg)
+            if chosen_game[0] == no_match:
+                print(f"\n{no_match}")
+                return None
+            print(f"\nSelected: {chosen_game[0]}")
+            app_id = chosen_game[1]
+            game = self.steam.get_row(app_id)
+            return game
+        else:
+            print("\nNo game matches found")
+            return None
+
     def bulk_update_player_count(self, app_ids, update_type):
         print()  # forced new line due to how track() works
         player_counts = []
@@ -1486,22 +1542,10 @@ class Tracker(Steam, Utils):
             app_ids = [game[self.app_id_col] for game in recently_played]
         elif selected_action == options[1]:
             update_type = "Single"
-            msg = "\nWhat is the game name?:\n"
-            search_query = input(msg)
-            possible_games = self.game_finder(search_query)
-            possible_games_length = len(possible_games)
-            if possible_games_length == 1:
-                game_data = possible_games[0]
-                app_ids = [game_data["App ID"]]
-                print(f"\nSelected: {game_data['Name']}")
-            elif possible_games_length > 1:
-                msg = f"{possible_games_length} possible matchs found"
-                games = [(game["Name"], game["App ID"]) for game in possible_games]
-                chosen_game = self.advanced_picker(games, msg)
-                app_ids = [chosen_game[1]]
-                print(f"\nSelected: {chosen_game[0]}")
+            game = self.game_finder()
+            if game:
+                app_ids = [game["App ID"]]
             else:
-                print("No game matches found")
                 return
         elif selected_action == options[2]:
             update_type = "All"
@@ -1540,47 +1584,6 @@ class Tracker(Steam, Utils):
     def open_log(self):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
-
-    @staticmethod
-    def advanced_picker(choices, title):
-        """
-        Choice picker using the advanced and less compatible Pick module.
-        """
-        options = [choice[0] for choice in choices]
-        selected_index = pick(options, title)[1]
-        return choices[selected_index]
-
-    def basic_picker(self, choices, title):
-        """
-        Choice picker using the basic and more compatible IntPrompt function within the Rich module.
-        """
-        allowed_choices = []
-        for count, (choice, action) in enumerate(choices):
-            allowed_choices.append(str(count + 1))
-            msg = f"[b]{count+1}.[/] [underline]{choice}[/]"
-            self.console.print(msg, highlight=False)
-        num = IntPrompt.ask(
-            title,
-            choices=allowed_choices,
-            default=1,
-            show_choices=False,
-            show_default=False,
-        )
-        return choices[num - 1]
-
-    def game_finder(self, search_query: str = None) -> list:
-        """
-        Searches for games with the `search_query` and returns a list of games that might match.
-
-        Currently only checks of the `search_query` is in the game name. Case insensitive.
-        """
-        # TODO switch to using an improved matching system
-        possible_games = []
-        for app_id in self.steam.row_idx.keys():
-            name = self.steam.get_cell(app_id, "Name")
-            if search_query.lower() in name.lower():
-                possible_games.append(self.steam.get_row(app_id))
-        return possible_games
 
     def pick_task(self, choices, repeat=True):
         """
@@ -1692,12 +1695,3 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
-
-    # search = "halo"
-    # possible_games = App.game_finder(search)
-    # if possible_games:
-    #     print(f"{len(possible_games)} Game(s) Found")
-    #     for game in possible_games:
-    #         print(game["Name"])
-    # else:
-    #     print("No Games was not found")
