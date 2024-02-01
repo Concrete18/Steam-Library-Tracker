@@ -24,7 +24,6 @@ from easierexcel import Excel, Sheet
 class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-    ext_terminal = sys.stdout.isatty()  # is True if terminal is external
 
     # rich console
     custom_theme = Theme(
