@@ -210,10 +210,7 @@ class Tracker(Steam, Utils):
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
         return pick(choices, msg)[0] == "Yes"
 
-    def sync_friends_list(self):
-        self.get_friends_list_changes(0)
-
-    def get_friends_list_changes(self, check_freq_days: int = 14):
+    def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
         """
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
@@ -1303,12 +1300,23 @@ class Tracker(Steam, Utils):
                 added_info = self.add_ps_game(game_name, platform)
                 added_ps_games.append(added_info)
             save_every_nth()
+        # Updates Owned on Steam Row
+        for game in self.playstation.row_idx.keys():
+            games = self.search_games(game, exact=True)
+            if games:
+                self.playstation.update_cell(
+                    game,
+                    "Owned on Steam",
+                    "Yes",
+                )
         # checking for removed games
+
         # print("\nall games\n", all_game_names)
         # for game_row in self.playstation.row_idx.keys():
         #     print(game_row)
         #     if game_row not in all_game_names:
         #         print("removed", game_row)
+
         # added
         if total_added := len(added_ps_games):
             print(f"\nAdded {total_added} PS4/PS5 Games")
@@ -1461,7 +1469,23 @@ class Tracker(Steam, Utils):
         selected_index = pick(options, title)[1]
         return choices[selected_index]
 
-    def game_finder(self, search_query=None) -> dict:
+    def search_games(self, search_query, exact=False) -> list[dict]:
+        """
+        Uses `search_query` to find any games that match within the Steam game library.
+        Set `exact` to True for it to require a perfect game name match instead of just
+        checking of the `search_query` is within the game name.
+        """
+        # TODO switch to using an improved matching system
+        possible_games = []
+        for app_id in self.steam.row_idx.keys():
+            name = self.steam.get_cell(app_id, "Name")
+            if exact and search_query.lower() == name.lower():
+                possible_games.append(self.steam.get_row(app_id))
+            elif not exact and search_query.lower() in name.lower():
+                possible_games.append(self.steam.get_row(app_id))
+        return possible_games
+
+    def game_finder(self, search_query=None) -> dict or None:
         """
         Searches for games with the `search_query` and asks which matching game, if any, is the correct one.
 
@@ -1470,14 +1494,7 @@ class Tracker(Steam, Utils):
         if not search_query:
             msg = "\nWhat is the game name?:\n"
             search_query = input(msg)
-
-        # TODO switch to using an improved matching system
-        possible_games = []
-        for app_id in self.steam.row_idx.keys():
-            name = self.steam.get_cell(app_id, "Name")
-            if search_query.lower() in name.lower():
-                possible_games.append(self.steam.get_row(app_id))
-
+        possible_games = self.search_games(search_query)
         possible_games_length = len(possible_games)
         # only one game match found
         if possible_games_length == 1:
@@ -1612,6 +1629,7 @@ class Tracker(Steam, Utils):
         # lamdas
         output_statistics_func = lambda: self.output_statistics(df)
         update_player_counts_func = lambda: self.update_player_counts(df)
+        sync_friends_list = self.get_friends_list_changes()
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
@@ -1620,7 +1638,7 @@ class Tracker(Steam, Utils):
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
             ("Statistics Display", output_statistics_func),
-            ("Steam Friends List Sync", self.sync_friends_list),
+            ("Steam Friends List Sync", sync_friends_list),
             ("Playstation Games Sync", self.sync_playstation_games),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),

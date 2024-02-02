@@ -409,6 +409,7 @@ class Utils:
             last_run = last_runs[name]
             sec_since = time.time() - last_run
             check_freq_seconds = n_days * 24 * 60 * 60
+            print(check_freq_seconds / 24 / 60 / 60)
             if sec_since < check_freq_seconds:
                 return True
         return False
