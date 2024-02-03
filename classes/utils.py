@@ -1,6 +1,7 @@
 from difflib import SequenceMatcher
 from pathlib import Path
 import time, json, requests, re
+from pick import pick
 import datetime as dt
 import pandas as pd
 
@@ -14,14 +15,15 @@ else:
 
 def keyboard_interrupt(func):
     """
-    Catches all KeyboardInterrupt exceptions.
-    Closes with a message and delayed program exit.
+    Decorator to catch KeyboardInterrupt and EOFError exceptions.
+
+    Provides a delayed exit with an optional user confirmation.
     """
 
     def wrapped(*args, **kwargs):
         try:
             func(*args, **kwargs)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             delay = 0.1
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
@@ -381,6 +383,13 @@ class Utils:
             return True
         return False
 
+    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
+        """
+        Asks for a Yes or No response. Yes returns True and No returns False.
+        """
+        choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
+        return pick(choices, msg)[0] == "Yes"
+
     def save_json_output(self, new_data, filename):
         """
         Saves data into json format with the given filename.
@@ -409,7 +418,6 @@ class Utils:
             last_run = last_runs[name]
             sec_since = time.time() - last_run
             check_freq_seconds = n_days * 24 * 60 * 60
-            print(check_freq_seconds / 24 / 60 / 60)
             if sec_since < check_freq_seconds:
                 return True
         return False

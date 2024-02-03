@@ -203,13 +203,6 @@ class Tracker(Steam, Utils):
             self.data["settings"]["steam_id"] = steam_id
             self.save_json_output(self.data, self.config)
 
-    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
-        """
-        Asks for a Yes or No response. Yes returns True and No returns False.
-        """
-        choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
-        return pick(choices, msg)[0] == "Yes"
-
     def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
         """
         Checks for changes to your friends list.
