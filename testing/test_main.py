@@ -166,7 +166,6 @@ class GetGameInfo(unittest.TestCase):
             "on_sale",
             "drm_notice",
             "categories",
-            "ext_user_account_notice",
         ]
         dict = self.t.get_game_info(1145360)
         for key in keys:
@@ -239,11 +238,6 @@ class GetGameInfo(unittest.TestCase):
             str,
             "Release year should be a string",
         )
-        self.assertIsInstance(
-            game_info["ext_user_account_notice"],
-            str,
-            "ext_user_account_notice should be a string",
-        )
 
     def test_other_types(self):
         """
@@ -281,7 +275,6 @@ class GetGameInfo(unittest.TestCase):
             "on_sale": False,
             "drm_notice": "-",
             "categories": "-",
-            "ext_user_account_notice": "-",
         }
         self.assertEqual(self.t.get_game_info(None), default_dict)
 
@@ -361,123 +354,6 @@ class GetSteamUsername(unittest.TestCase):
     def test_False(self):
         username = self.t.get_steam_username(123, self.steam_key)
         self.assertEqual(username, "Unknown", "username should be Unknown")
-
-
-class ValidateSteamApiKey(unittest.TestCase):
-    """
-    Tests `validate_steam_key` function.
-    Steam ID's must be allnumbers and 17 characters long.
-    """
-
-    def setUp(self):
-        self.t = Tracker(save=False)
-
-    def test_True(self):
-        test_api_key = "15D4C014D419C0642B1E707BED41G7D4"
-        is_steam_key = self.t.validate_steam_key(test_api_key)
-        self.assertTrue(is_steam_key, "Should be a steam key")
-
-    def test_False(self):
-        test_api_key = "15D4C014D419C0642B7D4"
-        is_steam_key = self.t.validate_steam_key(test_api_key)
-        self.assertFalse(is_steam_key, "Should not be a steam key")
-
-
-class ValidateSteamID(unittest.TestCase):
-    """
-    Tests `validate_steam_id` function.
-    Steam ID's must be allnumbers and 17 characters long.
-    """
-
-    def setUp(self):
-        self.t = Tracker(save=False)
-
-    def test_True(self):
-        steam_ids = [
-            76561197960287930,
-            "76561197960287930",
-        ]
-        for id in steam_ids:
-            with self.subTest(msg=type(id), id=id):
-                result = self.t.validate_steam_id(id)
-                self.assertTrue(result)
-
-    def test_False(self):
-        steam_ids = [
-            765611028793,
-            "asjkdhadsjdhjssaj",
-        ]
-        for id in steam_ids:
-            with self.subTest(msg=type(id), id=id):
-                result = self.t.validate_steam_id(id)
-                self.assertFalse(result)
-
-
-class SkipGame(unittest.TestCase):
-    """
-    Tests `skip_game` function.
-    """
-
-    def setUp(self):
-        self.t = Tracker(save=False)
-
-    def test_skip_game(self):
-        """
-        Tests for True returns.
-        """
-        self.t.name_ignore_list = ["Half-Life 2: Lost Coast"]
-        self.t.app_id_ignore_list = [12345, 123458]
-        # app_id return true
-        self.assertTrue(
-            self.t.skip_game(app_id="12345"), "app_id: 12345 should be skipped"
-        )
-        self.assertTrue(
-            self.t.skip_game(app_id=12345), "app_id: 12345 should be skipped"
-        )
-        # name return true
-        self.assertTrue(
-            self.t.skip_game(game_name="Game Beta"), "Game Beta should be skipped"
-        )
-        self.assertTrue(
-            self.t.skip_game(game_name="Squad - Public Testing"),
-            "Squad - Public Testing should be skipped",
-        )
-        self.assertTrue(
-            self.t.skip_game(game_name="Half-Life 2: Lost Coast"),
-            "Half-Life 2: Lost Coast should be skipped",
-        )
-        self.assertTrue(
-            self.t.skip_game(game_name="half-life 2: lost coast"),
-            "half-life 2: lost coast should be skipped",
-        )
-
-    def test_skip_media(self):
-        """
-        Tests for True returns.
-        """
-        self.assertTrue(
-            self.t.skip_game(game_name="Spotify"), "Spotify should be skipped"
-        )
-        self.assertTrue(
-            self.t.skip_game(game_name="youtube"), "Youtube should be skipped"
-        )
-
-    def test_dont_skip(self):
-        """
-        Tests for False returns.
-        """
-        self.t.name_ignore_list = ["Half-Life 2: Lost Coast"]
-        # app_id return false
-        self.assertFalse(self.t.skip_game(app_id=345643))
-        # name return false
-        self.assertFalse(self.t.skip_game(game_name="This is a great game"))
-
-    def test_empty(self):
-        """
-        Empty args return False.
-        """
-        with self.assertRaises(ValueError):
-            self.t.skip_game()
 
 
 class PlayStatus(unittest.TestCase):

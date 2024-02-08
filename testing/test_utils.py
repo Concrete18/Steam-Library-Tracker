@@ -219,13 +219,13 @@ class UnicodeRemover(unittest.TestCase):
 
 class CreateAndSentence(unittest.TestCase):
     """
-    Tests `create_and_sentence` function.
+    Tests `list_to_sentence` function.
     """
 
     def setUp(self):
         self.t = Utils()
 
-    def test_create_and_sentence(self):
+    def test_list_to_sentence(self):
         list_tests = [
             (["Test1"], "Test1"),
             (["Test1", "Test2"], "Test1 and Test2"),
@@ -234,7 +234,7 @@ class CreateAndSentence(unittest.TestCase):
         ]
         for list, answer in list_tests:
             with self.subTest(list=list, answer=answer):
-                result = self.t.create_and_sentence(list)
+                result = self.t.list_to_sentence(list)
                 self.assertEqual(result, answer)
 
 

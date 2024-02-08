@@ -30,6 +30,7 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 - [Player Count Sync](#Player-Count-Sync)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
+- [Omit games by name or App ID](#Omit-games-by-Name-or-App-ID)
 
 ## Setup
 
@@ -104,3 +105,7 @@ Shows many statistics and graphs for your library.
 #### Examples:
 
 - Total Hours Played
+
+### Omit games by Name or App ID
+
+Some games have a name that may be very common so you can use its App ID instead. The name is the best if it is unique enough.

@@ -283,20 +283,19 @@ class Utils:
         return conv_string.strip()
 
     @staticmethod
-    def create_and_sentence(str_list: [str]) -> str:
+    def list_to_sentence(str_list: [str]) -> str:
         """
         Converts a list of strings into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
         """
         str_list_length = len(str_list)
         if str_list_length == 0:
-            result = ""
+            return ""
         elif str_list_length == 1:
-            result = str_list[0]
+            return str_list[0]
         else:
-            result = ", ".join(str_list[:-1])
-            result += " and " + str_list[-1]
-        return result
+            comma_separated = ", ".join(str_list[:-1])
+            return f"{comma_separated} and {str_list[-1]}"
 
     def lev_distance(self, word1: str, word2: str, lower=True) -> int:
         """
@@ -407,7 +406,7 @@ class Utils:
         Updates json by `name` with the current date.
         """
         data["last_runs"][name] = time.time()
-        self.save_json_output(data, self.config)
+        self.save_json_output(data, self.config_path)
 
     def recently_executed(self, data, name, n_days):
         """
