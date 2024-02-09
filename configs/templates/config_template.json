@@ -1,7 +1,7 @@
 {
   "steam_data": {
+    "vanity_url": "Insert Steam Vanity URL (Optional)",
     "steam_id": "Insert Steam ID",
-    "vanity_url": "",
     "api_key": "Insert API Key"
   },
   "settings": {

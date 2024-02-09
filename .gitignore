@@ -134,17 +134,16 @@ dmypy.json
 *.bak
 *.xml
 *.pkl
+
 # custom files
 *.lnk
 config.json
+ignore.json
 playstation_games.json
 favorite_games.json
-output.txt
-testing.py
-scrape.py
-# custom paths
+
+# custom directors
 .vscode/
-configs/*
 logs/*
 outputs/
 commit.py

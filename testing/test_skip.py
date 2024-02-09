@@ -1,7 +1,7 @@
 import unittest
 
 # classes
-from classes.skip import GameSkipper
+from classes.game_skipper import GameSkipper
 
 
 class SkipGame(unittest.TestCase):

@@ -15,7 +15,7 @@ from rich.theme import Theme
 # classes
 from classes.setup import Setup
 from classes.steam import Steam
-from classes.skip import GameSkipper
+from classes.game_skipper import GameSkipper
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
 
@@ -42,7 +42,8 @@ class Tracker(Steam, Utils):
     title = "Game Library Tracker"
 
     # config init
-    config_path, config_data, ignore_data = Setup().setup()
+    setup = Setup()
+    config_path, config_data, ignore_data = setup.run()
 
     # steam_data
     steam_key = config_data["steam_data"]["api_key"]
