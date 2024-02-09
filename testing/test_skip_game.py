@@ -10,23 +10,27 @@ class SkipGame(unittest.TestCase):
     """
 
     def setUp(self):
-        self.game_skipper = GameSkipper()
+        name_ignore_list = ["Half-Life 2: Lost Coast"]
+        app_id_ignore_list = [12345, 123458]
+        self.game_skipper = GameSkipper(name_ignore_list, app_id_ignore_list)
 
-    def test_skip_game(self):
+    def test_skip_game_with_app_ids(self):
         """
-        Tests for True returns.
+        Tests if game should be skipped by app id.
         """
-        self.game_skipper.name_ignore_list = ["Half-Life 2: Lost Coast"]
-        self.game_skipper.app_id_ignore_list = [12345, 123458]
-        # app_id return true
         self.assertTrue(
             self.game_skipper.skip_game(app_id="12345"),
             "app_id: 12345 should be skipped",
         )
         self.assertTrue(
-            self.game_skipper.skip_game(app_id=12345), "app_id: 12345 should be skipped"
+            self.game_skipper.skip_game(app_id=12345),
+            "app_id: 12345 should be skipped",
         )
-        # name return true
+
+    def test_skip_game_with_names(self):
+        """
+        Tests if game should be skipped by names.
+        """
         self.assertTrue(
             self.game_skipper.skip_game(game_name="Game with Online Beta"),
             "Game with Online Beta should be skipped",
