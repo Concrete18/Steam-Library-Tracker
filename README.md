@@ -37,11 +37,30 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 1. Install Python (It is currently tested with Python 11.1 and Python 10)
 2. Install dependencies with the following command.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 3. Run main.py so it can create your config file where you need to enter your steam ID and Steam API Key.
+
+```json
+{
+  "steam_data": {
+    "vanity_url": "Insert Steam Vanity URL (Optional)",
+    "steam_id": "Insert Steam ID",
+    "api_key": "Insert API Key"
+  },
+  "settings": {
+    "excel_filename": "Game Library.xlsx",
+    "friends_list_check_freq": 7,
+    "logging": false,
+    "playstation_data_link": "Playstation Link"
+  },
+  "last_runs": {},
+  "friend_ids": []
+}
+```
+
 4. (Optional) Set up any of the other optional settings within the config.
 5. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
 6. Enjoy!
@@ -108,4 +127,11 @@ Shows many statistics and graphs for your library.
 
 ### Omit games by Name or App ID
 
-Some games have a name that may be very common so you can use its App ID instead. The name is the best if it is unique enough.
+Some games have a name that may be very common so you can use its App ID instead.
+
+```json
+{
+  "app_id_ignore_list": [123456, "123456"],
+  "name_ignore_list": ["Steam Deck Deposit"]
+}
+```
