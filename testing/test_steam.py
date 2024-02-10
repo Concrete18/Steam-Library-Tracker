@@ -135,3 +135,7 @@ class GetSteamGamePlayerCount(unittest.TestCase):
         app_id = 730
         player_count = self.Test.get_steam_game_player_count(app_id, self.steam_key)
         self.assertIsInstance(player_count, int, "Player_count should be an int")
+
+
+if __name__ == "__main__":
+    unittest.main()

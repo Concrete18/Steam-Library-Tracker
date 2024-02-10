@@ -14,10 +14,11 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 ## Technology Used
 
 - Python Pandas
+- Rich Console
 - Matplotlib
 - API Requests
 - Web Scraping with Requests and BeautifulSoup
-- Custom Created Library based on OpenPyXL called [EasierExcel](https://github.com/Concrete18/easierexcel)
+- [EasierExcel](https://github.com/Concrete18/easierexcel) (my custom library based on OpenPyXL)
 
 ## Features
 
@@ -26,19 +27,40 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 - [PlayStation Library Ownership Tracking](#Adding-PlayStation-Games)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
+- [Player Count Sync](#Player-Count-Sync)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
+- [Omit games by name or App ID](#Omit-games-by-Name-or-App-ID)
 
 ## Setup
 
 1. Install Python (It is currently tested with Python 11.1 and Python 10)
 2. Install dependencies with the following command.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
 3. Run main.py so it can create your config file where you need to enter your steam ID and Steam API Key.
+
+```json
+{
+  "steam_data": {
+    "vanity_url": "Insert Steam Vanity URL (Optional)",
+    "steam_id": "Insert Steam ID",
+    "api_key": "Insert API Key"
+  },
+  "settings": {
+    "excel_filename": "Game Library.xlsx",
+    "friends_list_check_freq": 7,
+    "logging": false,
+    "playstation_data_link": "Playstation Link"
+  },
+  "last_runs": {},
+  "friend_ids": []
+}
+```
+
 4. (Optional) Set up any of the other optional settings within the config.
 5. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
 6. Enjoy!
@@ -63,6 +85,7 @@ reordering columns.
 - Unplayed
 - Waiting
 - Finished
+- Endless
 - Must Play
 - Quit
 - Ignore
@@ -76,10 +99,6 @@ It is faster than adding the games manually but I am unable to automate it yet.
 
 Note: Hours are not tracked like Steam due to a lack of an API.
 
-### Steam Deck Game Status Checker
-
-Checks for Steam Deck Status updates. If any are found it will update the column.
-
 ### Favorite Game Sale Checker
 
 Allows choosing your own rating threshold so that a CSV can be made containing
@@ -88,6 +107,10 @@ all the games that are currently on sale with the selected rating or higher.
 ### Random game picker
 
 Picks a random game based on the Play Status you select.
+
+### Player Count Sync
+
+Allows syncing of player counts for all games, recent games or only 1 game.
 
 ### Friends List Tracking
 
@@ -101,3 +124,14 @@ Shows many statistics and graphs for your library.
 #### Examples:
 
 - Total Hours Played
+
+### Omit games by Name or App ID
+
+Some games have a name that may be very common so you can use its App ID instead.
+
+```json
+{
+  "app_id_ignore_list": [123456, "123456"],
+  "name_ignore_list": ["Steam Deck Deposit"]
+}
+```

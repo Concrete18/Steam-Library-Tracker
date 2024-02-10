@@ -4,26 +4,6 @@ import re
 
 
 class Steam(Utils):
-    def validate_steam_id(self, steam_id):
-        """
-        Validates a `steam_id`.
-        """
-        steam_id = str(steam_id)
-        pattern = r"^\d{17}$"
-        if re.match(pattern, steam_id):
-            return True
-        else:
-            return False
-
-    def validate_steam_key(self, steam_key: str):
-        """
-        Validates a `steam_key`.
-        """
-        pattern = r"^\w{32}$"
-        if re.match(pattern, steam_key):
-            return True
-        else:
-            return False
 
     def get_steam_username(self, steam_id: int, steam_key: int) -> str:
         """

@@ -1,5 +1,6 @@
-import random, json, os, re, sys, time, subprocess, webbrowser, math
+import random, json, os, sys, time, subprocess, webbrowser, math
 from howlongtobeatpy import HowLongToBeat
+from difflib import SequenceMatcher
 from pathlib import Path
 from pick import pick
 import datetime as dt
@@ -14,6 +15,7 @@ from rich.theme import Theme
 # classes
 from classes.setup import Setup
 from classes.steam import Steam
+from classes.game_skipper import GameSkipper
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
 
@@ -24,7 +26,6 @@ from easierexcel import Excel, Sheet
 class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-    ext_terminal = sys.stdout.isatty()  # is True if terminal is external
 
     # rich console
     custom_theme = Theme(
@@ -41,22 +42,23 @@ class Tracker(Steam, Utils):
     title = "Game Library Tracker"
 
     # config init
-    app = Setup
-    config, data = app.setup()
+    setup = Setup()
+    config_path, config_data, ignore_data = setup.run()
 
     # steam_data
-    steam_key = data["steam_data"]["api_key"]
-    steam_id = str(data["steam_data"]["steam_id"])
-    vanity_url = data["steam_data"]["vanity_url"]
+    steam_key = config_data["steam_data"]["api_key"]
+    steam_id = str(config_data["steam_data"]["steam_id"])
+    vanity_url = config_data["steam_data"]["vanity_url"]
 
     # settings
-    playstation_data_link = data["settings"]["playstation_data_link"]
-    excel_filename = data["settings"]["excel_filename"]
-    logging = data["settings"]["logging"]
+    playstation_data_link = config_data["settings"]["playstation_data_link"]
+    excel_filename = config_data["settings"]["excel_filename"]
+    logging = config_data["settings"]["logging"]
 
     # misc
-    name_ignore_list = [string.lower() for string in data["name_ignore_list"]]
-    app_id_ignore_list = data["app_id_ignore_list"]
+    name_ignore_list = [string.lower() for string in ignore_data["name_ignore_list"]]
+    app_id_ignore_list = ignore_data["app_id_ignore_list"]
+    game_skipper = GameSkipper(name_ignore_list, app_id_ignore_list)
 
     # logging setup
     if logging:
@@ -179,20 +181,6 @@ class Tracker(Steam, Utils):
         if not self.steam_id:
             self.update_steam_id()
 
-    def config_check(self):
-        """
-        Checks to see if the config data is usable.
-        """
-        errors = []
-        if not self.validate_steam_id(self.steam_id):
-            errors.append("Steam ID is Invalid")
-        if not self.validate_steam_key(self.steam_key):
-            errors.append("Steam API Key is Invalid")
-        if errors:
-            return False, errors
-        else:
-            return True, None
-
     def update_steam_id(self):
         """
         Updates the steam id in the config using the given vanity url if present.
@@ -201,31 +189,21 @@ class Tracker(Steam, Utils):
             raise "Steam ID and Vanity URL is blank. Please enter at one of them"
         steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
         if steam_id:
-            self.data["settings"]["steam_id"] = steam_id
-            self.save_json_output(self.data, self.config)
+            self.config_data["settings"]["steam_id"] = steam_id
+            self.save_json_output(self.config_data, self.config_path)
 
-    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
-        """
-        Asks for a Yes or No response. Yes returns True and No returns False.
-        """
-        choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
-        return pick(choices, msg)[0] == "Yes"
-
-    def sync_friends_list(self):
-        self.get_friends_list_changes(0)
-
-    def get_friends_list_changes(self, check_freq_days: int = 14):
+    def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
         """
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
         """
         # check last run
-        if self.recently_executed(self.data, "friends_sync", check_freq_days):
+        if self.recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
-        self.update_last_run(self.data, "friends_sync")
+        self.update_last_run(self.config_data, "friends_sync")
         # get friends
         print("\nStarting Steam Friends Sync")
-        prev_friends_ids = self.data["friend_ids"]
+        prev_friends_ids = self.config_data["friend_ids"]
         friend_data = self.get_steam_friends(self.steam_key, self.steam_id)
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
@@ -269,8 +247,8 @@ class Tracker(Steam, Utils):
             self.tracker.info(msg)
         self.console.print(table, new_line_start=True)
         # update friend data in config
-        self.data["friend_ids"] = cur_friend_ids
-        self.save_json_output(self.data, self.config)
+        self.config_data["friend_ids"] = cur_friend_ids
+        self.save_json_output(self.config_data, self.config_path)
 
     def set_title(self, title=None):
         """
@@ -428,7 +406,6 @@ class Tracker(Steam, Utils):
             "on_sale": False,
             "drm_notice": "-",
             "categories": "-",
-            "ext_user_account_notice": "-",
         }
 
         def get_json_desc(data):
@@ -458,12 +435,12 @@ class Tracker(Steam, Utils):
                 info_dict["game_name"] = game_info["name"]
             # get developer
             if "developers" in keys:
-                output = self.create_and_sentence(game_info["developers"])
+                output = self.list_to_sentence(game_info["developers"])
                 if output != "":
                     info_dict[self.dev_col] = output
             # get publishers
             if "publishers" in keys:
-                output = self.create_and_sentence(game_info["publishers"])
+                output = self.list_to_sentence(game_info["publishers"])
                 if output != "":
                     info_dict[self.pub_col] = output
             # get genre
@@ -493,15 +470,10 @@ class Tracker(Steam, Utils):
             # categories
             if "categories" in keys:
                 categories = get_json_desc(game_info["categories"])
-                info_dict["categories"] = self.create_and_sentence(categories)
+                info_dict["categories"] = self.list_to_sentence(categories)
             # drm info
             if "drm_notice" in keys:
                 info_dict["drm_notice"] = game_info["drm_notice"]
-            # external account
-            if "ext_user_account_notice" in keys:
-                info_dict["ext_user_account_notice"] = game_info[
-                    "ext_user_account_notice"
-                ]
             # runs unicode remover on all values
             return {k: self.unicode_remover(v) for k, v in info_dict.items()}
         return info_dict
@@ -569,7 +541,7 @@ class Tracker(Steam, Utils):
         ph
         """
         # check last run
-        if self.recently_executed(self.data, "updated_recently_played", n_days):
+        if self.recently_executed(self.config_data, "updated_recently_played", n_days):
             return []
         # get recently played games
         recently_played = App.find_recent_games(df, self.date_updated_col, n_days)
@@ -630,7 +602,7 @@ class Tracker(Steam, Utils):
         try:
             self.update_extra_steam_info(update_list)
             if updated_recent:
-                self.update_last_run(self.data, "updated_recently_played")
+                self.update_last_run(self.config_data, "updated_recently_played")
             print(f"\nUpdated Data for {len(update_list)} games")
         except KeyboardInterrupt:
             print("\nCancelled")
@@ -939,7 +911,7 @@ class Tracker(Steam, Utils):
         for game in track(steam_games, description=desc):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
-            if self.skip_game(game_name, app_id):
+            if self.game_skipper.skip_game(game_name, app_id):
                 continue
             # name change check
             # TODO below fails if game is added at this time.
@@ -1007,12 +979,13 @@ class Tracker(Steam, Utils):
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
-            print("\nGames To Be Removed:", len(sheet_games))
-            removed_games_names = [
+            removed_game_names = [
                 self.steam.get_cell(app_id, self.name_col) for app_id in sheet_games
             ]
-            print(self.create_and_sentence(removed_games_names))
-            if self.is_response_yes("\nDo you want to delele all the above games?\n"):
+            removed_games_names_str = self.list_to_sentence(removed_game_names)
+            if self.is_response_yes(
+                f"\nDo you want to delele all the following games?\n{removed_games_names_str}"
+            ):
                 for app_id in sheet_games:
                     self.steam.delete_row(str(app_id))
         if self.excel.changes_made and self.save_to_file:
@@ -1036,68 +1009,6 @@ class Tracker(Steam, Utils):
             return
         input()
         exit()
-
-    def skip_game(self, game_name: str = None, app_id: int = None) -> bool:
-        """
-        Checks if the item should be ignored based on `name` or `app_id`.
-
-        Returns False if neither are given and
-        priortizes checking `app_id` if both are given.
-
-        `Name` check looks for keywords and if the name is in the name_ignore_list or media list.
-
-        `app_id` check looks for the `app_id` in the app_id_ignore_list.
-        """
-        # return False if name and app_id is not given
-        if not any([game_name, app_id]):
-            raise ValueError("No game_name or app_id was given")
-        # ignore by app id
-        if app_id and int(app_id) in self.app_id_ignore_list:
-            return True
-        # ignore by name
-        if game_name:
-            # creates name ignore list
-            media_list = [
-                "Amazon Prime Video",
-                "HBO GO",
-                "HBO Max",
-                "Max",
-                "Hulu",
-                "Media Player",
-                "Spotify",
-                "Netflix",
-                "PlayStationvue",
-                "Plex",
-                "Pluto",
-                "YouTube VR",
-                "Youtube",
-            ]
-            ignore_list = self.name_ignore_list + media_list
-            # checks if name means it should be skipped
-            cleaned_name = self.unicode_remover(game_name).lower()
-            if cleaned_name and cleaned_name in (name.lower() for name in ignore_list):
-                return True
-            # keyword check
-            keyword_ignore_list = [
-                "demo",
-                "beta",
-                "youtube",
-                "playtest",
-                "preorder",
-                "pre-order",
-                "soundtrack",
-                "test server",
-                "bonus content",
-                "trial edition",
-                "closed test",
-                "public test",
-                "public testing",
-                "directors' commentary",
-            ]
-            for string in keyword_ignore_list:
-                if re.search(rf"\b{string}\b", game_name.lower()):
-                    return True
-        return False
 
     def update_steam_game(
         self,
@@ -1279,7 +1190,7 @@ class Tracker(Steam, Utils):
             if not game["isDownloadable"]:
                 print(game_name, "is not downloadable")
             # ignore check
-            if self.skip_game(game_name):
+            if self.game_skipper.skip_game(game_name):
                 continue
             # updates existing games
             if game_name in self.playstation.row_idx.keys():
@@ -1304,12 +1215,23 @@ class Tracker(Steam, Utils):
                 added_info = self.add_ps_game(game_name, platform)
                 added_ps_games.append(added_info)
             save_every_nth()
+        # Updates Owned on Steam Row
+        for game in self.playstation.row_idx.keys():
+            games = self.search_games(game, exact=True)
+            if games:
+                self.playstation.update_cell(
+                    game,
+                    "Owned on Steam",
+                    "Yes",
+                )
         # checking for removed games
+
         # print("\nall games\n", all_game_names)
         # for game_row in self.playstation.row_idx.keys():
         #     print(game_row)
         #     if game_row not in all_game_names:
         #         print("removed", game_row)
+
         # added
         if total_added := len(added_ps_games):
             print(f"\nAdded {total_added} PS4/PS5 Games")
@@ -1453,6 +1375,79 @@ class Tracker(Steam, Utils):
         print(f"\nFound {total_sales} Favorite Game Sales:\n")
         self.update_sales_sheet(games=games)
 
+    @staticmethod
+    def advanced_picker(choices, title):
+        """
+        Choice picker using the advanced and less compatible Pick module.
+        """
+        options = [choice[0] for choice in choices]
+        selected_index = pick(options, title)[1]
+        return choices[selected_index]
+
+    def search_games(self, search_query, exact=False, min_match=0.6) -> list[dict]:
+        """
+        Uses `search_query` to find any games that match within the Steam game library.
+        Set `exact` to True for it to require a perfect game name match instead of just
+        checking of the `search_query` is within the game name.
+        """
+        possible_games = []
+        for app_id in self.steam.row_idx.keys():
+            name = self.steam.get_cell(app_id, "Name")
+            search_query_lower = search_query.lower()
+            name_lower = name.lower()
+            if exact:
+                if search_query_lower == name_lower:
+                    possible_games.append(self.steam.get_row(app_id))
+            else:
+                match = SequenceMatcher(None, search_query_lower, name_lower)
+                if match.ratio() >= min_match:
+                    possible_games.append(self.steam.get_row(app_id))
+                # TODO decide if this should be used with only the top n results
+                # dist = self.lev_distance(search_query_lower, name_lower)
+                # if dist <= 4:
+                #     possible_games.append(self.steam.get_row(app_id))
+        return possible_games
+
+    def game_finder(self, search_query=None) -> dict or None:
+        """
+        Searches for games with the `search_query` and asks which matching game, if any, is the correct one.
+
+        Currently only checks of the `search_query` is in the game name. Case insensitive.
+        """
+        if not search_query:
+            msg = "\nWhat is the game name?:\n"
+            search_query = input(msg)
+        possible_games = self.search_games(search_query)
+        possible_games_length = len(possible_games)
+        # only one game match found
+        if possible_games_length == 1:
+            game_data = possible_games[0]
+            game_name = game_data["Name"]
+            msg = f"\nIs this the game you are looking for?\n{game_name}"
+            if self.is_response_yes(msg):
+                print(f"\nSelected: {game_name}")
+                return game_data
+            else:
+                print("\nNo game matches found")
+                return None
+        # multiple matchs found
+        elif possible_games_length > 1:
+            msg = f"{possible_games_length} possible matchs found"
+            games = [(game["Name"], game["App ID"]) for game in possible_games]
+            no_match = "No Match Found"
+            games.append((no_match, 0))
+            chosen_game = self.advanced_picker(games, msg)
+            if chosen_game[0] == no_match:
+                print(f"\n{no_match}")
+                return None
+            print(f"\nSelected: {chosen_game[0]}")
+            app_id = chosen_game[1]
+            game = self.steam.get_row(app_id)
+            return game
+        else:
+            print("\nNo game matches found")
+            return None
+
     def bulk_update_player_count(self, app_ids, update_type):
         print()  # forced new line due to how track() works
         player_counts = []
@@ -1486,22 +1481,10 @@ class Tracker(Steam, Utils):
             app_ids = [game[self.app_id_col] for game in recently_played]
         elif selected_action == options[1]:
             update_type = "Single"
-            msg = "\nWhat is the game name?:\n"
-            search_query = input(msg)
-            possible_games = self.game_finder(search_query)
-            possible_games_length = len(possible_games)
-            if possible_games_length == 1:
-                game_data = possible_games[0]
-                app_ids = [game_data["App ID"]]
-                print(f"\nSelected: {game_data['Name']}")
-            elif possible_games_length > 1:
-                msg = f"{possible_games_length} possible matchs found"
-                games = [(game["Name"], game["App ID"]) for game in possible_games]
-                chosen_game = self.advanced_picker(games, msg)
-                app_ids = [chosen_game[1]]
-                print(f"\nSelected: {chosen_game[0]}")
+            game = self.game_finder()
+            if game:
+                app_ids = [game["App ID"]]
             else:
-                print("No game matches found")
                 return
         elif selected_action == options[2]:
             update_type = "All"
@@ -1541,47 +1524,6 @@ class Tracker(Steam, Utils):
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    @staticmethod
-    def advanced_picker(choices, title):
-        """
-        Choice picker using the advanced and less compatible Pick module.
-        """
-        options = [choice[0] for choice in choices]
-        selected_index = pick(options, title)[1]
-        return choices[selected_index]
-
-    def basic_picker(self, choices, title):
-        """
-        Choice picker using the basic and more compatible IntPrompt function within the Rich module.
-        """
-        allowed_choices = []
-        for count, (choice, action) in enumerate(choices):
-            allowed_choices.append(str(count + 1))
-            msg = f"[b]{count+1}.[/] [underline]{choice}[/]"
-            self.console.print(msg, highlight=False)
-        num = IntPrompt.ask(
-            title,
-            choices=allowed_choices,
-            default=1,
-            show_choices=False,
-            show_default=False,
-        )
-        return choices[num - 1]
-
-    def game_finder(self, search_query: str = None) -> list:
-        """
-        Searches for games with the `search_query` and returns a list of games that might match.
-
-        Currently only checks of the `search_query` is in the game name. Case insensitive.
-        """
-        # TODO switch to using an improved matching system
-        possible_games = []
-        for app_id in self.steam.row_idx.keys():
-            name = self.steam.get_cell(app_id, "Name")
-            if search_query.lower() in name.lower():
-                possible_games.append(self.steam.get_row(app_id))
-        return possible_games
-
     def pick_task(self, choices, repeat=True):
         """
         Allows picking a task to do next using a matching number.
@@ -1610,6 +1552,7 @@ class Tracker(Steam, Utils):
         # lamdas
         output_statistics_func = lambda: self.output_statistics(df)
         update_player_counts_func = lambda: self.update_player_counts(df)
+        sync_friends_list = self.get_friends_list_changes()
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
@@ -1618,7 +1561,7 @@ class Tracker(Steam, Utils):
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
             ("Statistics Display", output_statistics_func),
-            ("Steam Friends List Sync", self.sync_friends_list),
+            ("Steam Friends List Sync", sync_friends_list),
             ("Playstation Games Sync", self.sync_playstation_games),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
@@ -1660,7 +1603,6 @@ class Tracker(Steam, Utils):
         """
         Main run function.
         """
-        self.config_check()
         self.console.print(self.title, style="primary")
 
         # prints date
@@ -1692,12 +1634,3 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
-
-    # search = "halo"
-    # possible_games = App.game_finder(search)
-    # if possible_games:
-    #     print(f"{len(possible_games)} Game(s) Found")
-    #     for game in possible_games:
-    #         print(game["Name"])
-    # else:
-    #     print("No Games was not found")

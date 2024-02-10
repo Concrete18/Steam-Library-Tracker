@@ -1,6 +1,7 @@
 from difflib import SequenceMatcher
 from pathlib import Path
 import time, json, requests, re
+from pick import pick
 import datetime as dt
 import pandas as pd
 
@@ -14,14 +15,15 @@ else:
 
 def keyboard_interrupt(func):
     """
-    Catches all KeyboardInterrupt exceptions.
-    Closes with a message and delayed program exit.
+    Decorator to catch KeyboardInterrupt and EOFError exceptions.
+
+    Provides a delayed exit with an optional user confirmation.
     """
 
     def wrapped(*args, **kwargs):
         try:
             func(*args, **kwargs)
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             delay = 0.1
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
@@ -281,20 +283,19 @@ class Utils:
         return conv_string.strip()
 
     @staticmethod
-    def create_and_sentence(str_list: [str]) -> str:
+    def list_to_sentence(str_list: [str]) -> str:
         """
         Converts a list of strings into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
         """
         str_list_length = len(str_list)
         if str_list_length == 0:
-            result = ""
+            return ""
         elif str_list_length == 1:
-            result = str_list[0]
+            return str_list[0]
         else:
-            result = ", ".join(str_list[:-1])
-            result += " and " + str_list[-1]
-        return result
+            comma_separated = ", ".join(str_list[:-1])
+            return f"{comma_separated} and {str_list[-1]}"
 
     def lev_distance(self, word1: str, word2: str, lower=True) -> int:
         """
@@ -381,6 +382,13 @@ class Utils:
             return True
         return False
 
+    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
+        """
+        Asks for a Yes or No response. Yes returns True and No returns False.
+        """
+        choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
+        return pick(choices, msg)[0] == "Yes"
+
     def save_json_output(self, new_data, filename):
         """
         Saves data into json format with the given filename.
@@ -398,7 +406,7 @@ class Utils:
         Updates json by `name` with the current date.
         """
         data["last_runs"][name] = time.time()
-        self.save_json_output(data, self.config)
+        self.save_json_output(data, self.config_path)
 
     def recently_executed(self, data, name, n_days):
         """
