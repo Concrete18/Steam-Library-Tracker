@@ -361,7 +361,7 @@ class Tracker(Steam, Utils):
         return self.steam.update_cell(app_id, self.date_updated_col, cur_date)
 
     @staticmethod
-    def get_price_info(game_info: {}):
+    def get_price_info(game_info: dict):
         """
         Gets price info from `game_info` and returns None if anything is set up
         wrong for any or all return values.
@@ -799,7 +799,7 @@ class Tracker(Steam, Utils):
         self.output_review_info(dataframe)
 
     @staticmethod
-    def decide_play_status(play_status: str, minutes_played: int or float):
+    def decide_play_status(play_status: str, minutes_played: float):
         """
         Using time_played and play_status,
         determines what the play_status should change to.
@@ -1408,7 +1408,7 @@ class Tracker(Steam, Utils):
                 #     possible_games.append(self.steam.get_row(app_id))
         return possible_games
 
-    def game_finder(self, search_query=None) -> dict or None:
+    def game_finder(self, search_query=None) -> dict:
         """
         Searches for games with the `search_query` and asks which matching game, if any, is the correct one.
 
@@ -1429,7 +1429,7 @@ class Tracker(Steam, Utils):
                 return game_data
             else:
                 print("\nNo game matches found")
-                return None
+                return {}
         # multiple matchs found
         elif possible_games_length > 1:
             msg = f"{possible_games_length} possible matchs found"
@@ -1446,7 +1446,7 @@ class Tracker(Steam, Utils):
             return game
         else:
             print("\nNo game matches found")
-            return None
+            return {}
 
     def bulk_update_player_count(self, app_ids, update_type):
         print()  # forced new line due to how track() works
@@ -1468,9 +1468,9 @@ class Tracker(Steam, Utils):
         Updates game player counts using the Steam API.
         """
         options = [
-            f"Update latest {last_num} games",
-            "Update single game",
-            "Update all games",
+            f"Update {last_num} Recently Played Games",
+            "Update All Games",
+            "Update One Game",
         ]
         selected_action = pick(options, "What game(s) do you want to update?")[0]
         update_type = ""
@@ -1480,15 +1480,15 @@ class Tracker(Steam, Utils):
             recently_played = App.find_recent_games(df, self.date_updated_col, 30)
             app_ids = [game[self.app_id_col] for game in recently_played]
         elif selected_action == options[1]:
+            update_type = "All"
+            app_ids = self.steam.row_idx.keys()
+        elif selected_action == options[2]:
             update_type = "Single"
             game = self.game_finder()
             if game:
                 app_ids = [game["App ID"]]
             else:
                 return
-        elif selected_action == options[2]:
-            update_type = "All"
-            app_ids = self.steam.row_idx.keys()
         self.bulk_update_player_count(app_ids, update_type)
         self.excel.save(use_print=False)
 
