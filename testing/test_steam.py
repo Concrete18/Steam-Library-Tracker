@@ -2,12 +2,12 @@ import unittest
 
 # classes
 from classes.steam import Steam
-from classes.utils import get_steam_key_and_id
+from classes.utils import get_steam_api_key_and_id
 
 
 class GetOwnedGames(unittest.TestCase):
     steam = Steam()
-    steam_key, steam_id = get_steam_key_and_id()
+    steam_key, steam_id = get_steam_api_key_and_id()
 
     def test_get_owned_steam_games(self):
         """
@@ -66,7 +66,7 @@ class SteamReview(unittest.TestCase):
 
 class GetRecentlyPlayedGames(unittest.TestCase):
     steam = Steam()
-    steam_key, steam_id = get_steam_key_and_id()
+    steam_key, steam_id = get_steam_api_key_and_id()
     owned_games = steam.get_recently_played_steam_games(
         steam_key,
         steam_id,
@@ -108,10 +108,7 @@ class GetAppId(unittest.TestCase):
     app_list = [{"appid": 12345, "name": "Hades"}]
 
     def test_get_app_id(self):
-        app_id = self.steam.get_app_id(
-            "Hades",
-            self.app_list,
-        )
+        app_id = self.steam.get_app_id("Hades", self.app_list)
         self.assertEqual(app_id, 12345, "Appid should be 12345 for Hades")
 
     def test_app_id_not_found(self):
@@ -123,7 +120,7 @@ class GetAppId(unittest.TestCase):
 
 
 class GetSteamGamePlayerCount(unittest.TestCase):
-    steam_key, _ = get_steam_key_and_id()
+    steam_key, _ = get_steam_api_key_and_id()
 
     def setUp(self):
         self.Test = Steam()

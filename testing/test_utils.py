@@ -52,7 +52,7 @@ class TimePassed(unittest.TestCase):
         }
         for minutes, answer in minutes_tests.items():
             with self.subTest(minutes=minutes, answer=answer):
-                output = self.t.convert_time_passed(min=minutes)
+                output = self.t.convert_time_passed(minutes=minutes)
                 self.assertEqual(output, answer)
 
     def test_hours(self):
@@ -68,7 +68,7 @@ class TimePassed(unittest.TestCase):
         }
         for hours, answer in hours_tests.items():
             with self.subTest(hours=hours, answer=answer):
-                output = self.t.convert_time_passed(hr=hours)
+                output = self.t.convert_time_passed(hours=hours)
                 self.assertEqual(output, answer)
 
     def test_days(self):
@@ -83,7 +83,7 @@ class TimePassed(unittest.TestCase):
         }
         for days, answer in days_tests.items():
             with self.subTest(days=days, answer=answer):
-                output = self.t.convert_time_passed(day=days)
+                output = self.t.convert_time_passed(days=days)
                 self.assertEqual(output, answer)
 
     def test_weeks(self):
@@ -97,7 +97,7 @@ class TimePassed(unittest.TestCase):
         }
         for weeks, answer in weeks_tests.items():
             with self.subTest(weeks=weeks, answer=answer):
-                output = self.t.convert_time_passed(wk=weeks)
+                output = self.t.convert_time_passed(weeks=weeks)
                 self.assertEqual(output, answer)
 
     def test_months(self):
@@ -111,7 +111,7 @@ class TimePassed(unittest.TestCase):
         }
         for months, answer in months_tests.items():
             with self.subTest(months=months, answer=answer):
-                output = self.t.convert_time_passed(mnth=months)
+                output = self.t.convert_time_passed(months=months)
                 self.assertEqual(output, answer)
 
     def test_years(self):
@@ -124,7 +124,7 @@ class TimePassed(unittest.TestCase):
         }
         for years, answer in days_tests.items():
             with self.subTest(years=years, answer=answer):
-                output = self.t.convert_time_passed(yr=years)
+                output = self.t.convert_time_passed(years=years)
                 self.assertEqual(output, answer)
 
     def test_all_at_once(self):
@@ -133,7 +133,13 @@ class TimePassed(unittest.TestCase):
         Years at the same time.
         """
         # tests all args at once
-        output = self.t.convert_time_passed(min=60, hr=23, day=30, mnth=11, yr=1)
+        output = self.t.convert_time_passed(
+            minutes=60,
+            hours=23,
+            days=30,
+            months=11,
+            years=1,
+        )
         self.assertEqual(output, "2.0 Years")
 
 
@@ -172,6 +178,32 @@ class StringToDate(unittest.TestCase):
     def test_not_valid(self):
         with self.assertRaises(ValueError):
             self.t.string_to_date("")
+
+
+class GetYear(unittest.TestCase):
+    """
+    Tests `get_year` function.
+    """
+
+    def setUp(self):
+        self.t = Utils()
+
+    def test_valid(self):
+        date_tests = {
+            "Sep 14, 2016": "2016",
+            "25 Apr, 1991": "1991",
+            "16 Nov, 2009": "2009",
+            "Mai 25, 1991": "1991",
+            "Apr , 2015": "2015",
+        }
+        for date, answer in date_tests.items():
+            with self.subTest(date=date):
+                year = self.t.get_year(date)
+                self.assertEqual(year, answer, "The year was not correctly found")
+
+    def test_invalid(self):
+        year = self.t.get_year("this is not a date")
+        self.assertIsNone(year)
 
 
 class UrlSanitize(unittest.TestCase):

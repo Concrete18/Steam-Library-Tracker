@@ -3,33 +3,7 @@ import unittest
 
 # classes
 from main import Tracker
-from classes.utils import get_steam_key_and_id
-
-
-class GetYear(unittest.TestCase):
-    """
-    Tests `get_year` function.
-    """
-
-    def setUp(self):
-        self.t = Tracker(save=False)
-
-    def test_valid(self):
-        date_tests = {
-            "Sep 14, 2016": "2016",
-            "25 Apr, 1991": "1991",
-            "16 Nov, 2009": "2009",
-            "Mai 25, 1991": "1991",
-            "Apr , 2015": "2015",
-        }
-        for date, answer in date_tests.items():
-            with self.subTest(date=date):
-                year = self.t.get_year(date)
-                self.assertEqual(year, answer, "The year was not correctly found")
-
-    def test_invalid(self):
-        result = self.t.get_year("this is not a date")
-        self.assertEqual(result, "Invalid Date", f"{result} should not be a year")
+from classes.utils import get_steam_api_key_and_id
 
 
 class GetTimeToBeat(unittest.TestCase):
@@ -265,10 +239,10 @@ class GetGameInfo(unittest.TestCase):
             self.t.pub_col: "-",
             self.t.genre_col: "-",
             self.t.ea_col: "No",
-            self.t.steam_rev_per_col: "No Reviews",
-            self.t.steam_rev_total_col: "No Reviews",
-            self.t.user_tags_col: "No Tags",
-            self.t.release_col: "No Year",
+            self.t.steam_rev_per_col: "-",
+            self.t.steam_rev_total_col: "-",
+            self.t.user_tags_col: "-",
+            self.t.release_col: "-",
             "game_name": "-",
             "price": "-",
             "discount": 0.0,
@@ -317,7 +291,7 @@ class GetSteamID(unittest.TestCase):
     Tests `get_steam_id` function.
     """
 
-    steam_key, _ = get_steam_key_and_id()
+    steam_key, _ = get_steam_api_key_and_id()
 
     def setUp(self):
         self.t = Tracker(save=False)
@@ -337,7 +311,7 @@ class GetSteamUsername(unittest.TestCase):
     Tests `get_steam_username` function.
     """
 
-    steam_key, _ = get_steam_key_and_id()
+    steam_key, _ = get_steam_api_key_and_id()
 
     def setUp(self):
         self.t = Tracker(save=False)

@@ -131,23 +131,8 @@ if __name__ == "__main__":
     excel = Excel(excel_filename, log_file="logs/excel.log")
 
     # stat setup
-    na_values = [
-        "NaN",
-        "-",
-        "Invalid Date",
-        "-",
-        "No Tags",
-        "No Year",
-        "No Score",
-        "Not Found",
-        "No Reviews",
-        "Not Enough Reviews",
-        "Few Reviews",
-        "No Publisher",
-        "No Developer",
-    ]
     steam = Sheet(excel, sheet_name="Steam", column_name="App ID")
-    df = steam.create_dataframe(na_vals=na_values)
+    df = steam.create_dataframe(na_vals=["-", "NaN"])
 
     # run
     stats = Stat(df)

@@ -45,6 +45,7 @@ class Tracker(Steam, Utils):
     setup = Setup()
     config_path, config_data, ignore_data = setup.run()
 
+    # TODO possibly move below to setup
     # steam_data
     steam_key = config_data["steam_data"]["api_key"]
     steam_id = str(config_data["steam_data"]["steam_id"])
@@ -155,22 +156,6 @@ class Tracker(Steam, Utils):
         release_col := "Release Year",
         app_id_col := "App ID",
     ]
-    # not applicable cell values
-    na_values = [
-        "NaN",
-        "Invalid Date",
-        "No Tags",
-        "No Year",
-        "No Score",
-        "Not Found",
-        "No Reviews",
-        "Missing Data",
-        "Few Reviews",
-        "Not Enough Reviews",
-        "No Publisher",
-        "No Developer",
-    ]
-
     errors = []
 
     def __init__(self, save) -> None:
@@ -180,6 +165,7 @@ class Tracker(Steam, Utils):
         self.save_to_file = save
         if not self.steam_id:
             self.update_steam_id()
+        self.internet_connected = self.check_internet_connection()
 
     def update_steam_id(self):
         """
@@ -197,6 +183,8 @@ class Tracker(Steam, Utils):
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
         """
+        if not self.internet_connected:
+            return
         # check last run
         if self.recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
@@ -271,7 +259,7 @@ class Tracker(Steam, Utils):
             for _ in range(3):
                 time.sleep(10)
                 results = HowLongToBeat().search(game_name)
-            return ""
+            return "-"
         if not results:
             self.api_sleeper("time_to_beat")
             if game_name.isupper():
@@ -397,10 +385,10 @@ class Tracker(Steam, Utils):
             self.pub_col: "-",
             self.genre_col: "-",
             self.ea_col: "No",
-            self.steam_rev_per_col: "No Reviews",
-            self.steam_rev_total_col: "No Reviews",
-            self.user_tags_col: "No Tags",
-            self.release_col: "No Year",
+            self.steam_rev_per_col: "-",
+            self.steam_rev_total_col: "-",
+            self.user_tags_col: "-",
+            self.release_col: "-",
             "price": "-",
             "discount": 0.0,
             "on_sale": False,
@@ -454,7 +442,7 @@ class Tracker(Steam, Utils):
             if "release_date" in keys:
                 release_date = game_info["release_date"]["date"]
                 release_date = self.get_year(release_date)
-                info_dict[self.release_col] = release_date
+                info_dict[self.release_col] = release_date or "-"
             # get price_info
             if "price_overview" in keys:
                 price, discount, on_sale = self.get_price_info(game_info)
@@ -556,6 +544,8 @@ class Tracker(Steam, Utils):
 
         Use `skip_by_play_status` to only check games with a specific play status.
         """
+        if not self.internet_connected:
+            return
         # starts the update list with recently played games
         update_list = self.get_recently_played_app_ids(df, n_days=30)
         updated_recent = True if update_list else False
@@ -649,11 +639,11 @@ class Tracker(Steam, Utils):
                 else "0"
             )
             # time to beat
-            ttb = (
-                str(game[self.time_to_beat_col])
-                if type(game[self.time_to_beat_col]) is float
-                else "-"
-            )
+            ttb = game[self.time_to_beat_col]
+            if ttb > 0:
+                ttb = str(float(ttb))
+            else:
+                ttb = "-"
             # row setup
             row = [
                 days_since,
@@ -930,7 +920,7 @@ class Tracker(Steam, Utils):
                 name_changes.append(name_change_dict)
             # sets play time earlier so it only needs to be set up once
             minutes_played = game["playtime_forever"]
-            time_played = self.convert_time_passed(min=minutes_played)
+            time_played = self.convert_time_passed(minutes=minutes_played)
             linux_minutes_played = ""
             if "playtime_linux_forever" in game.keys():
                 linux_minutes_played = game["playtime_linux_forever"]
@@ -998,6 +988,8 @@ class Tracker(Steam, Utils):
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
         """
+        if not self.internet_connected:
+            return
         steam_games = self.get_owned_steam_games(steam_key, steam_id)
         sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
         if not steam_games:
@@ -1036,7 +1028,7 @@ class Tracker(Steam, Utils):
             return
         if current_hours_played > previous_hours_played:
             hours_played = current_hours_played - previous_hours_played
-            added_time_played = self.convert_time_passed(hr=hours_played)
+            added_time_played = self.convert_time_passed(hours=hours_played)
             self.set_hours_played(app_id, current_hours_played)
             self.set_linux_hours_played(app_id, current_linux_hours_played)
             self.set_last_playtime(app_id, added_time_played)
@@ -1612,20 +1604,17 @@ class Tracker(Steam, Utils):
         date = f"{formatted_date} [dim]|[/] {formatted_time}"
         self.console.print(date)
 
-        # internet checks
-        internet = self.check_internet_connection()
-        if internet:
-            self.sync_steam_games(self.steam_key, self.steam_id)
-        else:
+        self.sync_steam_games(self.steam_key, self.steam_id)
+
+        if not self.internet_connected:
             self.console.print("\nNo Internet Detected", style="warning")
 
-        df = self.steam.create_dataframe(na_vals=self.na_values)
+        df = self.steam.create_dataframe(na_vals=["-", "NaN"])
         self.output_recently_played_games(df)
 
         # extra data updates
-        if internet:
-            self.updated_game_data(df)
-            self.get_friends_list_changes()
+        self.updated_game_data(df)
+        self.get_friends_list_changes()
 
         self.show_errors()
         self.game_library_actions(df)

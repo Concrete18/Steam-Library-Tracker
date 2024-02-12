@@ -1,5 +1,6 @@
 from classes.utils import Utils
 from bs4 import BeautifulSoup
+from typing import Optional
 import re
 
 
@@ -71,7 +72,7 @@ class Steam(Utils):
         """
         return f"https://store.steampowered.com/app/{app_id}/"
 
-    def get_steam_review(self, app_id: int, response=None):
+    def get_steam_review(self, app_id: int, response=None) -> tuple[Optional[int]]:
         """
         Scrapes the games review percent and total reviews from
         the steam store page using `app_id` or `store_link`.
@@ -88,11 +89,9 @@ class Steam(Utils):
         elif len(results) > 1:
             text = results[1].text.strip()
         else:
-            return "No Reviews", "No Reviews"
+            return "-", "-"
         parsed_data = text[2:26].split("% of the ")
         # get percent
-        no_reviews = "No Reviews"
-        too_few_reviews = "Few Reviews"
         review_perc = parsed_data[0]
         if review_perc.isnumeric():
             if review_perc == "100":
@@ -100,15 +99,13 @@ class Steam(Utils):
             else:
                 percent = float(f".{review_perc}")
         else:
-            percent = too_few_reviews
+            percent = "-"
         # get total
         if len(parsed_data) > 1:
             cleaned_num = parsed_data[1].replace(",", "")
             total = int(re.search(r"\d+", cleaned_num).group())
-        elif percent == too_few_reviews:
-            total = too_few_reviews
         else:
-            total = no_reviews
+            total = "-"
         return percent, total
 
     def get_steam_user_tags(self, app_id: int, response=None):
@@ -169,7 +166,7 @@ class Steam(Utils):
         response = self.request_url(url, params=query)
         return response.json()["response"]["games"]
 
-    def get_app_details(self, app_id) -> [{}]:
+    def get_app_details(self, app_id) -> list[dict]:
         """
         Gets game details.
         """
@@ -181,7 +178,7 @@ class Steam(Utils):
             return response.json()
         return None
 
-    def get_app_list(self) -> [{}]:
+    def get_app_list(self) -> list[dict]:
         """
         Gets the full Steam app list as a dict.
         """
@@ -196,7 +193,7 @@ class Steam(Utils):
         return app_list
 
     @staticmethod
-    def get_app_id(game: str, app_list: [{}]) -> int | None:
+    def get_app_id(game: str, app_list: list[dict]) -> Optional[int]:
         """
         Gets the games app ID from the `app_list`.
         """
@@ -207,7 +204,7 @@ class Steam(Utils):
 
     def get_steam_game_player_count(
         self, app_id: int, steam_api_key: int
-    ) -> int | None:
+    ) -> Optional[int]:
         """
         Gets a games current player count by `app_id` using the Steam API via the `steam_api_key`.
         """

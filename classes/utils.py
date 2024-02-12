@@ -4,7 +4,8 @@ import time, json, requests, re
 from pick import pick
 import datetime as dt
 import pandas as pd
-
+from typing import Optional, Callable, Any
+from functools import wraps
 
 # logging import if helper.py is main
 if __name__ != "__main__":
@@ -32,32 +33,37 @@ def keyboard_interrupt(func):
     return wrapped
 
 
-def benchmark(func):
+def benchmark(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     Prints `func` name and a benchmark for runtime.
     """
 
+    @wraps(func)
     def wrapped(*args, **kwargs):
-        start = time.perf_counter()
-        value = func(*args, **kwargs)
-        end = time.perf_counter()
-        elapsed = end - start
-        print(f"{func.__name__} Completion Time: {elapsed:.2f}")
-        return value
+        try:
+            start = time.perf_counter()
+            value = func(*args, **kwargs)
+            end = time.perf_counter()
+            elapsed = end - start
+            print(f"{func.__name__} Completion Time: {elapsed:.2f}")
+            return value
+        except Exception as e:
+            print(f"Exception occurred in {func.__name__}: {e}")
+            raise
 
     return wrapped
 
 
-def get_steam_key_and_id():
+def get_steam_api_key_and_id() -> tuple[str, int]:
     """
     Gets the steam key and steam id from the config file.
     """
     config = Path("configs/config.json")
     with open(config) as file:
         data = json.load(file)
-    steam_key = data["steam_data"]["api_key"]
+    api_ley = data["steam_data"]["api_key"]
     steam_id = str(data["steam_data"]["steam_id"])
-    return steam_key, steam_id
+    return api_ley, steam_id
 
 
 class Utils:
@@ -125,7 +131,7 @@ class Utils:
         api_calls[api] = cur_datetime
 
     @staticmethod
-    def hours_played(minutes_played):
+    def hours_played(minutes_played: float) -> float:
         """
         Converts `minutes_played` to a hours played in decimal form.
         """
@@ -135,14 +141,14 @@ class Utils:
         return round(minutes_played / 60, 1)
 
     @staticmethod
-    def string_to_date(date: str):
+    def string_to_date(date: str) -> dt.datetime:
         """
         Converts String `date` in MM/DD/YYYY format to datetime object.
         """
         return dt.datetime.strptime(date, "%m/%d/%Y")
 
     @staticmethod
-    def get_year(date_string):
+    def get_year(date_string: str) -> Optional[int]:
         """
         Gets the year from `date_string`.
         """
@@ -150,7 +156,7 @@ class Utils:
         if year:
             return year.group(0)
         else:
-            return "Invalid Date"
+            return None
 
     @staticmethod
     def days_since(past_date: dt.datetime, current_date: dt.datetime = None) -> int:
@@ -165,39 +171,47 @@ class Utils:
         return delta.days
 
     @staticmethod
-    def url_sanitize(string, space_replace="-"):
+    def url_sanitize(string: str, space_replace: str = "-") -> str:
         """
         Removes all illegal URL characters from the given `string`.
 
         Turns spaces into dashes if `space_to_dash` is true.
         """
+        # Replace spaces with the specified character
         string = string.replace(" ", space_replace)
-        # Allowed characters (0-9, A-Z, a-z, "-", "_", "~")
-        string = re.sub(r"[^a-z0-9-_~]+", "", string.lower()).strip()
-        while "--" in string:
-            string = string.replace("--", "-")
+        # Remove illegal characters using regex
+        string = re.sub(r"[^a-zA-Z0-9-_~./]+", "", string.lower()).strip()
+        # Remove consecutive dashes
+        string = re.sub(r"-{2,}", "-", string)
         return string
 
     @staticmethod
-    def convert_time_passed(min=0, hr=0, day=0, wk=0, mnth=0, yr=0):
+    def convert_time_passed(
+        minutes: int = 0,
+        hours: int = 0,
+        days: int = 0,
+        weeks: int = 0,
+        months: int = 0,
+        years: int = 0,
+    ) -> str:
         """
-        Outputs a string for when the time passed.
-        Takes minutes:`min`, hours:`hr`, days:`day`, weeks:`wk`
-        months:`mnth` and years:`yr`.
+        Outputs a string for the time passed.
+
+        Parameters:
+        - minutes (int): Number of minutes.
+        - hours (int): Number of hours.
+        - days (int): Number of days.
+        - weeks (int): Number of weeks.
+        - months (int): Number of months.
+        - years (int): Number of years.
 
         Return format examples:
-
-        1.0 Minute(s)
-
-        2.3 Hour(s)
-
-        4.5 Day(s)
-
-        6.7 Week(s)
-
-        8.9 Month(s)
-
-        2.1 Years(s)
+        - "1.0 Minute"
+        - "2.3 Hours"
+        - "4.5 Days"
+        - "6.7 Weeks"
+        - "8.9 Months"
+        - "2.1 Years"
         """
         # converts all into hours
         hours_in_day = 24
@@ -205,12 +219,12 @@ class Utils:
         hours_in_month = 730
         hours_in_year = 8760
         hours = (
-            (min / 60)
-            + hr
-            + (day * hours_in_day)
-            + (wk * hours_in_week)
-            + (mnth * hours_in_month)
-            + (yr * hours_in_year)
+            (minutes / 60)
+            + hours
+            + (days * hours_in_day)
+            + (weeks * hours_in_week)
+            + (months * hours_in_month)
+            + (years * hours_in_year)
         )
         rounded_hours = round(hours)
         # gets format
@@ -283,7 +297,7 @@ class Utils:
         return conv_string.strip()
 
     @staticmethod
-    def list_to_sentence(str_list: [str]) -> str:
+    def list_to_sentence(str_list: list[str]) -> str:
         """
         Converts a list of strings into a comma seperated string of words
         with "and" instead of a comma between the last two entries.
