@@ -45,7 +45,6 @@ class Tracker(Steam, Utils):
     setup = Setup()
     config_path, config_data, ignore_data = setup.run()
 
-    # TODO possibly move below to setup
     # steam_data
     steam_key = config_data["steam_data"]["api_key"]
     steam_id = str(config_data["steam_data"]["steam_id"])
@@ -252,6 +251,7 @@ class Tracker(Steam, Utils):
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
+        game_name = self.unicode_remover(game_name)
         self.api_sleeper("time_to_beat")
         try:
             results = HowLongToBeat().search(game_name)
@@ -514,7 +514,7 @@ class Tracker(Steam, Utils):
             # title progress percentage
             cur_itr += 1
             progress = cur_itr / update_total * 100
-            self.set_title(f"{progress:.2f}% - {self.title}")
+            self.set_title(f"{progress:.1f}% - {self.title}")
         self.set_title()
 
     def update_all_game_data(self):
@@ -904,7 +904,6 @@ class Tracker(Steam, Utils):
             if self.game_skipper.skip_game(game_name, app_id):
                 continue
             # name change check
-            # TODO below fails if game is added at this time.
             cur_game_data = self.steam.get_row(app_id)
             if (
                 cur_game_data[self.name_col]

@@ -25,6 +25,10 @@ class GetTimeToBeat(unittest.TestCase):
                 ttb = self.t.get_time_to_beat(name)
                 self.assertIsInstance(ttb, float, "The time to beat is not a float")
 
+    def test_works_on_fancy_sting(self):
+        ttb = self.t.get_time_to_beat("ARMORED CORE™ VI FIRES OF RUBICON™")
+        self.assertIsInstance(ttb, float, "The time to beat is not a float")
+
     def test_not_found(self):
         result = self.t.get_time_to_beat("6574654 Not a Real Game 564654")
         self.assertEqual(result, "-", "No time to beat should be found")

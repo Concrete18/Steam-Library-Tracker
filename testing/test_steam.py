@@ -13,22 +13,21 @@ class GetOwnedGames(unittest.TestCase):
         """
         Tests `get_owned_steam_games` function.
         """
-        owned_games = self.steam.get_owned_steam_games(
-            self.steam_key,
-            self.steam_id,
-        )
-        # TODO improve this
+        # Find the game "Dishonored 2" in owned games
+        owned_games = self.steam.get_owned_steam_games(self.steam_key, self.steam_id)
         found_game = next(
             (game for game in owned_games if game["name"] == "Dishonored2"), None
         )
-        # specific test if dishohored is owned
+        # Test if Dishonored 2 is owned
         if found_game:
-            name = found_game["name"]
-            app_id = found_game["appid"]
-            self.assertEqual(app_id, 205100, "Incorrect appid for Dishonored2")
-            self.assertIsInstance(name, str, "Name for Dishonored12 is not a string")
-        # test if dishonored is not owned
+            msg = "Incorrect appid for Dishonored 2"
+            self.assertEqual(found_game["appid"], 205100, msg)
+            msg = "Name for Dishonored 2 is not a string"
+            self.assertIsInstance(found_game["name"], str, msg)
+        # Test if Dishonored 2 is not owned
         else:
+            msg = "Owned games list should not be empty"
+            self.assertGreater(len(owned_games), 0, msg)
             game = owned_games[0]
             self.assertIsInstance(game["appid"], int, "Appid should be an integer")
             self.assertIsInstance(game["name"], str, "Name should be a string")
