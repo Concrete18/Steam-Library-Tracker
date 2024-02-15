@@ -1,6 +1,7 @@
 import random, json, os, sys, time, subprocess, webbrowser, math
 from howlongtobeatpy import HowLongToBeat
 from difflib import SequenceMatcher
+from typing import Optional
 from pathlib import Path
 from pick import pick
 import datetime as dt
@@ -26,20 +27,6 @@ from easierexcel import Excel, Sheet
 class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
-
-    # rich console
-    custom_theme = Theme(
-        {
-            "primary": "bold deep_sky_blue1",
-            "secondary": "bold pale_turquoise1",
-            "info": "dim cyan",
-            "warning": "bold light_goldenrod1",
-            "danger": "bold red",
-        }
-    )
-    console = Console(theme=custom_theme)
-
-    title = "Game Library Tracker"
 
     # config init
     setup = Setup()
@@ -67,7 +54,19 @@ class Tracker(Steam, Utils):
         tracker = Log.create_log(name="tracker", log_path=tracker_log_path)
         error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
-    # class init
+    # rich console
+    custom_theme = Theme(
+        {
+            "primary": "bold deep_sky_blue1",
+            "secondary": "bold pale_turquoise1",
+            "info": "dim cyan",
+            "warning": "bold light_goldenrod1",
+            "danger": "bold red",
+        }
+    )
+    console = Console(theme=custom_theme)
+
+    # excel setup
     options = {
         "shrink_to_fit_cell": True,
         "header": {"bold": True, "font_size": 16},
@@ -92,7 +91,6 @@ class Tracker(Steam, Utils):
         "date": ["Last Updated", "Date"],
         "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
     }
-    # excel setup
     excel = Excel(excel_filename, use_logging=logging)
     steam = Sheet(
         excel_object=excel,
@@ -155,6 +153,7 @@ class Tracker(Steam, Utils):
         release_col := "Release Year",
         app_id_col := "App ID",
     ]
+    title = "Game Library Tracker"
     errors = []
 
     def __init__(self, save) -> None:
@@ -247,7 +246,7 @@ class Tracker(Steam, Utils):
             set_title = self.title
         os.system("title " + set_title)
 
-    def get_time_to_beat(self, game_name):
+    def get_time_to_beat(self, game_name: str) -> float | str:
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
@@ -349,7 +348,7 @@ class Tracker(Steam, Utils):
         return self.steam.update_cell(app_id, self.date_updated_col, cur_date)
 
     @staticmethod
-    def get_price_info(game_info: dict):
+    def get_price_info(game_info: dict) -> tuple[float, float, bool]:
         """
         Gets price info from `game_info` and returns None if anything is set up
         wrong for any or all return values.
@@ -524,7 +523,7 @@ class Tracker(Steam, Utils):
         app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
         self.update_extra_steam_info(app_ids)
 
-    def get_recently_played_app_ids(self, df: pd.DataFrame, n_days=30) -> list:
+    def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
         ph
         """
@@ -536,7 +535,12 @@ class Tracker(Steam, Utils):
         recently_played_app_ids = [game[self.app_id_col] for game in recently_played]
         return recently_played_app_ids
 
-    def updated_game_data(self, df, skip_filled=True, skip_by_play_status=False):
+    def updated_game_data(
+        self,
+        df: pd.DataFrame,
+        skip_filled: bool = True,
+        skip_by_play_status: bool = False,
+    ):
         """
         Updates game data for games that were played recently and are missing data.
 
@@ -600,7 +604,7 @@ class Tracker(Steam, Utils):
             if self.save_to_file:
                 self.excel.save(use_print=False)
 
-    def output_recently_played_games(self, df, n_days=7):
+    def output_recently_played_games(self, df: pd.DataFrame, n_days: int = 7) -> None:
         """
         Creates a table with the recently played Gmes.
         """
@@ -655,10 +659,10 @@ class Tracker(Steam, Utils):
                 last_play_time,
             ]
             table.add_row(*row)
-        # print table
+        # print tabl
         self.console.print(table, new_line_start=True)
 
-    def output_play_status_info(self, df):
+    def output_play_status_info(self, df: pd.DataFrame) -> None:
         """
         Creates a table with counts and percentage of each play status.
         """
@@ -682,7 +686,7 @@ class Tracker(Steam, Utils):
         table.add_row(*row2)
         self.console.print(table, new_line_start=True)
 
-    def output_playtime_info(self, df):
+    def output_playtime_info(self, df: pd.DataFrame) -> None:
         """
         Creates a table with counts and percentage of each play status.
         """
@@ -715,7 +719,7 @@ class Tracker(Steam, Utils):
 
         self.console.print(table, new_line_start=True)
 
-    def output_review_info(self, df):
+    def output_review_info(self, df: pd.DataFrame) -> None:
         """
         Outputs a table of review stats.
         """
@@ -747,7 +751,7 @@ class Tracker(Steam, Utils):
 
         self.console.print(table, new_line_start=True)
 
-    def find_tag_rating_avg(self, df):
+    def find_tag_rating_avg(self, df: pd.DataFrame):
         """
         Finds the average library owner rating for each game tag.
         """
@@ -780,7 +784,7 @@ class Tracker(Steam, Utils):
         # for ind in top_30_ratings.index:
         #     print(df["Name"][ind], df["My Rating"][ind])
 
-    def output_statistics(self, dataframe):
+    def output_statistics(self, dataframe) -> None:
         """
         Outputs tables of game library statistics.
         """
@@ -789,7 +793,7 @@ class Tracker(Steam, Utils):
         self.output_review_info(dataframe)
 
     @staticmethod
-    def decide_play_status(play_status: str, minutes_played: float):
+    def decide_play_status(play_status: str, minutes_played: float) -> str:
         """
         Using time_played and play_status,
         determines what the play_status should change to.
@@ -807,7 +811,7 @@ class Tracker(Steam, Utils):
                 play_status = "Unplayed"
         return play_status
 
-    def name_change_checker(self, name_changes):
+    def name_change_checker(self, name_changes) -> None:
         """
         Checks the `name_changes` to see if they contain any
         name changes to possibly fufill.
@@ -834,7 +838,7 @@ class Tracker(Steam, Utils):
             return
         print("Skipping Name Changes")
 
-    def output_played_games_info(self, played_games):
+    def output_played_games_info(self, played_games) -> None:
         """
         Outputs a table of played game stats.
         """
@@ -861,7 +865,7 @@ class Tracker(Steam, Utils):
             table.add_row(*row)
         self.console.print(table, new_line_start=True)
 
-    def output_added_games_info(self, added_games):
+    def output_added_games_info(self, added_games) -> None:
         """
         Outputs a table of added game stats.
         """
@@ -982,7 +986,7 @@ class Tracker(Steam, Utils):
         else:
             print("\nNo Steam games were added or updated")
 
-    def sync_steam_games(self, steam_key: int, steam_id: int):
+    def sync_steam_games(self, steam_key: int, steam_id: int) -> None:
         """
         Gets games owned by the entered `steam_id`
         and runs excel update/add functions.
@@ -1010,7 +1014,7 @@ class Tracker(Steam, Utils):
         new_status,
         cur_status,
         time_played=None,
-    ):
+    ) -> Optional[dict]:
         """
         Updates the games playtime and play status if they changed.
         """
@@ -1045,7 +1049,6 @@ class Tracker(Steam, Utils):
                 "added_time_played": added_time_played,
                 "total_playtime": current_hours_played,
             }
-        return None
 
     def add_steam_game(
         self,
@@ -1056,7 +1059,7 @@ class Tracker(Steam, Utils):
         time_played=None,
         play_status=None,
         save_after_add=False,
-    ):
+    ) -> dict:
         """
         Adds a game with the game_name, hours played using `minutes_played` and `play_status`.
 
@@ -1110,9 +1113,9 @@ class Tracker(Steam, Utils):
             "total_playtime": hours_played or 0,
         }
 
-    def add_ps_game(self, game_name, platform):
+    def add_ps_game(self, game_name, platform) -> str:
         """
-        Adds a playstation games.
+        Adds a playstation games with `game_name` and `platform` info.
         """
         # sets excel column values
         column_info = {
@@ -1131,7 +1134,7 @@ class Tracker(Steam, Utils):
         self.playstation.format_row(game_name)
         return f"\n > {game_name} added"
 
-    def check_playstation_json(self):
+    def check_playstation_json(self) -> dict:
         """
         Checks `playstation_games.json` to find out if it is newly updated so
         it can add the new games to the sheet.
@@ -1153,7 +1156,7 @@ class Tracker(Steam, Utils):
         webbrowser.open("https://store.playstation.com/")
         input("\nPress Enter when done.\n")
 
-    def sync_playstation_games(self):
+    def sync_playstation_games(self) -> None:
         """
         Adds playstation games to excel using the given `games` variable.
         """
@@ -1239,7 +1242,7 @@ class Tracker(Steam, Utils):
         if total_added or total_updated and self.save_to_file:
             self.excel.save(use_print=False)
 
-    def get_random_game_name(self, play_status, choice_list=[]):
+    def get_random_game_name(self, play_status, choice_list=[]) -> tuple[str, list]:
         """
         Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
         """
@@ -1258,7 +1261,7 @@ class Tracker(Steam, Utils):
         picked_game_name = self.steam.get_cell(picked_app_id, self.name_col)
         return picked_game_name, choice_list
 
-    def pick_random_game(self):
+    def pick_random_game(self) -> None:
         """
         Allows you to pick a play_status to have a random game chosen from. It allows retrying.
         """
@@ -1281,7 +1284,7 @@ class Tracker(Steam, Utils):
             picked_game_name, choice_list = self.get_random_game_name(play_status)
             self.console.print(f"Picked: [secondary]{picked_game_name}[/]")
 
-    def get_favorite_games(self, min_rating=8):
+    def get_favorite_games(self, min_rating=8) -> list:
         """
         gets favorite games from excel file as a list of dicts
         """
@@ -1318,7 +1321,7 @@ class Tracker(Steam, Utils):
                 games.append(game_dict)
         return games
 
-    def update_sales_sheet(self, games):
+    def update_sales_sheet(self, games) -> None:
         """
         Updates the sales sheet with each games info from `games`.
         """
@@ -1367,7 +1370,7 @@ class Tracker(Steam, Utils):
         self.update_sales_sheet(games=games)
 
     @staticmethod
-    def advanced_picker(choices, title):
+    def advanced_picker(choices: list[tuple], title: str) -> list:
         """
         Choice picker using the advanced and less compatible Pick module.
         """
@@ -1439,7 +1442,7 @@ class Tracker(Steam, Utils):
             print("\nNo game matches found")
             return {}
 
-    def bulk_update_player_count(self, app_ids, update_type):
+    def bulk_update_player_count(self, app_ids, update_type) -> list:
         print()  # forced new line due to how track() works
         player_counts = []
         desc = f"Updating {update_type} Player Count(s)"
@@ -1454,7 +1457,7 @@ class Tracker(Steam, Utils):
             self.api_sleeper("steam_player_count")
         return player_counts
 
-    def update_player_counts(self, df, last_num=15):
+    def update_player_counts(self, df: pd.DataFrame, last_num: int = 15) -> None:
         """
         Updates game player counts using the Steam API.
         """
@@ -1483,11 +1486,10 @@ class Tracker(Steam, Utils):
         self.bulk_update_player_count(app_ids, update_type)
         self.excel.save(use_print=False)
 
-    def pick_game_to_update(self, games):
+    def pick_game_to_update(self, games) -> None:
         """
         Allows picking game to update playtime and last_updated.
         """
-        #
         print("What game did you play last?")
         for count, game in enumerate(games):
             print(f"{count+1}. {game}")
@@ -1498,7 +1500,7 @@ class Tracker(Steam, Utils):
             allow_blank=True,
         )
         if num == "":
-            return False
+            return
         # runs chosen function
         chosen_game = games[num - 1]
         game_idx = self.steam.row_idx[chosen_game]
@@ -1511,11 +1513,11 @@ class Tracker(Steam, Utils):
             print(f"\nUpdated to {new_hours} Hours")
         self.set_date_updated(game_idx)
 
-    def open_log(self):
+    def open_log(self) -> None:
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices, repeat=True):
+    def pick_task(self, choices: list[tuple], repeat: bool = True) -> None:
         """
         Allows picking a task to do next using a matching number.
         """
@@ -1536,7 +1538,7 @@ class Tracker(Steam, Utils):
             if repeat:
                 self.pick_task(choices, repeat)
 
-    def game_library_actions(self, df):
+    def game_library_actions(self, df: pd.DataFrame) -> None:
         """
         Gives a choice of actions for the current game library.
         """
@@ -1560,7 +1562,7 @@ class Tracker(Steam, Utils):
         self.pick_task(choices)
         exit()
 
-    def show_errors(self):
+    def show_errors(self) -> None:
         """
         Shows errors that occurred if they were added to the errors list.
         """
@@ -1571,7 +1573,7 @@ class Tracker(Steam, Utils):
         for error in self.errors:
             print(error)
 
-    def fix_app_ids(self):
+    def fix_app_ids(self) -> None:
         """
         Created to fix steam ID's in case they get messed up.
         """
@@ -1590,7 +1592,7 @@ class Tracker(Steam, Utils):
         self.excel.save(use_print=False)
 
     @keyboard_interrupt
-    def run(self):
+    def run(self) -> None:
         """
         Main run function.
         """

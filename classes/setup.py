@@ -1,10 +1,11 @@
+from typing import Optional, Tuple
 from pathlib import Path
 import shutil, json, re
 
 
 class Setup:
 
-    def validate_steam_id(self, steam_id):
+    def validate_steam_id(self, steam_id: int) -> bool:
         """
         Validates a `steam_id`.
         """
@@ -15,7 +16,7 @@ class Setup:
         else:
             return False
 
-    def validate_steam_key(self, steam_key: str):
+    def validate_steam_key(self, steam_key: str) -> bool:
         """
         Validates a `steam_key`.
         """
@@ -25,7 +26,7 @@ class Setup:
         else:
             return False
 
-    def validate_config(self, config_data):
+    def validate_config(self, config_data) -> list:
         """
         Checks to see if the config data is usable.
         """
@@ -42,7 +43,7 @@ class Setup:
         return errors
 
     @staticmethod
-    def create_file(file, temp_path):
+    def create_file(file, temp_path) -> bool:
         """
         Creates the `file` by copying the template from `temp_path` if it does not exist.
         """
@@ -52,9 +53,11 @@ class Setup:
             return True
         return False
 
-    def run(self):
+    def run(self) -> Optional[Tuple[str, dict, dict]]:
         """
         Creates all missing config files if they do not exist.
+
+        Once they exist, the data is returned.
         """
         newly_created_files = []
 
