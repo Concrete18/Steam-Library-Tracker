@@ -14,12 +14,25 @@ class Steam(Utils):
         api_action = "ISteamUser/GetPlayerSummaries/v0002/"
         url = main_url + api_action
         params = {"key": steam_key, "steamids": steam_id}
-        response = self.request_url(url=url, params=params)
-        username = "Unknown"
-        player_data = response.json()["response"]["players"]
-        if player_data:
-            username = player_data[0]["personaname"]
-        return username
+        try:
+            response = requests.get(url, params)
+            if response.ok:
+                data = response.json()
+                print(data)
+                if (
+                    "response" in data
+                    and "players" in data["response"]
+                    and "personaname" in data["response"]["players"][0]
+                ):
+                    return data["response"]["players"][0]["personaname"]
+                else:
+                    return None  # handle missing keys in the JSON response
+            else:
+                return None  # handle unsuccessful response
+        except requests.RequestException as e:
+            msg = f"Error occurred: {e}"
+            self.error_log.warning(msg)
+            return None  # handle request exceptions
 
     @staticmethod
     def get_profile_username(vanity_url):
@@ -60,11 +73,20 @@ class Steam(Utils):
             "steamid": steam_id,
             "relationship": "all",
         }
-        response = self.request_url(url=url, params=params)
-        if response:
-            data = response.json()
-            return data["friendslist"]["friends"]
-        return []
+        try:
+            response = requests.get(url, params)
+            if response.ok:
+                data = response.json()
+                if "friendslist" in data and "friends" in data["friendslist"]:
+                    return data["friendslist"]["friends"]
+                else:
+                    return None  # handle missing keys in the JSON response
+            else:
+                return None  # handle unsuccessful response
+        except requests.RequestException as e:
+            msg = f"Error occurred: {e}"
+            self.error_log.warning(msg)
+            return None  # handle request exceptions
 
     def get_store_link(self, app_id):
         """
