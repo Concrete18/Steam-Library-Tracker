@@ -1,11 +1,12 @@
 from difflib import SequenceMatcher
 from pathlib import Path
-import time, json, requests, re
+import time, json, requests, re, heapq
 from pick import pick
 import datetime as dt
 import pandas as pd
 from typing import Optional, Callable, Any
 from functools import wraps
+
 
 # logging import if helper.py is main
 if __name__ != "__main__":
@@ -88,7 +89,7 @@ class Utils:
         except requests.exceptions.RequestException as e:
             if second_try:
                 return False
-
+            msg = None
             if isinstance(e, requests.exceptions.ConnectionError):
                 msg = "Connection Error: Internet can't be accessed"
             elif isinstance(e, requests.exceptions.TooManyRedirects):
@@ -101,9 +102,13 @@ class Utils:
             self.error_log.warning(msg)
             time.sleep(5)
             return self.request_url(
-                url, params=params, headers=headers, second_try=True
+                url,
+                params=params,
+                headers=headers,
+                second_try=True,
             )
 
+        msg = "Unknown Error"
         if response.status_code == requests.codes.ok:
             return response
         elif response.status_code == 500:
@@ -311,7 +316,7 @@ class Utils:
             comma_separated = ", ".join(str_list[:-1])
             return f"{comma_separated} and {str_list[-1]}"
 
-    def lev_distance(self, word1: str, word2: str, lower=True) -> int:
+    def levenshtein_distance(self, word1: str, word2: str, lower: bool = True) -> int:
         """
         Returns the Levenshtein distance of `word1` and `word2`.
         """
@@ -333,58 +338,73 @@ class Utils:
                     cache[i][j] = 1 + min_change
         return cache[0][0]
 
-    def sim_matcher(self, target_str, string_list, max_similarity=0.8, debug=False):
+    def sim_matcher(
+        self,
+        base_string: str,
+        string_list: list[str],
+        max_similarity: float = 0.8,
+    ):
         """
-        Finds a match for target_str in string_list using sequence matching.
+        Finds a match for `base_string` in `string_list` using sequence matching.
         """
         match = None
         for string in string_list:
-            if string.lower() == target_str.lower():
+            if string.lower() == base_string.lower():
                 return string
             match_perc = SequenceMatcher(
-                None, target_str.lower(), string.lower()
+                None, base_string.lower(), string.lower()
             ).ratio()
             if match_perc > max_similarity:
                 max_similarity = match_perc
                 match = string
-        if debug:
-            print(
-                f"\nTarget: {target_str}\nMatch: {match}\nMatch Perc: {max_similarity:.2f}"
-            )
         return match
 
     def lev_dist_matcher(
         self,
-        target_str: str,
+        base_string: str,
         string_list: list,
-        max_distance=None,
+        max_distance: int = 0,
         limit: int = 5,
-        debug=False,
     ):
         """
-        Finds a match for target_str in string_list using sequence matching.
+        Finds a match for `base_string` in `string_list` using sequence matching.
         """
-        if max_distance == None:
-            max_distance = round(len(target_str) * 0.5)
-            # max_distance = float("inf")
-        starting_max = max_distance
+        if max_distance < 1:
+            max_distance = round(len(base_string) * 0.5)
         matches = {}
-        match = None
         for string in string_list:
-            distance = self.lev_distance(target_str, string)
+            distance = self.levenshtein_distance(base_string, string)
             if distance < max_distance:
                 max_distance = distance
-                match = string
                 matches[string] = distance
-        if debug:
-            print(f"\nTarget: {target_str}\nMatch: {match}")
-            print(f"Distance: {max_distance}\nStarting Max:{starting_max}")
         sorted_keys = sorted(matches, key=matches.get)
         if len(sorted_keys) > limit:
             sorted_keys = sorted_keys[0:limit]
         return sorted_keys
 
-    def any_is_num(self, value):
+    def create_levenshtein_matcher(
+        self,
+        base_string: str,
+        n: int = 5,
+    ):
+        """
+        Creates a closure function for running multiple levenshtein distance checks and keeping the top n results.
+        """
+        best_matches = []
+
+        def matcher(new_string):
+            nonlocal best_matches
+            # Calculate Levenshtein distance
+            distance = self.levenshtein_distance(base_string, new_string)
+            # Add the distance and string to the list
+            heapq.heappush(best_matches, (distance, new_string))
+            # Keep only the top n best matches
+            best_matches = heapq.nsmallest(n, best_matches)
+            return [match[1] for match in best_matches]  # return only the strings
+
+        return matcher
+
+    def any_is_num(self, value: any):
         """
         Returns True if the `value` is an int, float or numeric string.
         """
@@ -403,7 +423,7 @@ class Utils:
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
         return pick(choices, msg)[0] == "Yes"
 
-    def save_json_output(self, new_data, filename):
+    def save_json_output(self, new_data: dict, filename: str):
         """
         Saves data into json format with the given filename.
         """
@@ -415,14 +435,14 @@ class Utils:
             if new_data != last_check_data:
                 raise PermissionError("Data did not save error")
 
-    def update_last_run(self, data, name):
+    def update_last_run(self, data: dict, name: str):
         """
         Updates json by `name` with the current date.
         """
         data["last_runs"][name] = time.time()
         self.save_json_output(data, self.config_path)
 
-    def recently_executed(self, data, name, n_days):
+    def recently_executed(self, data: dict, name: str, n_days: int):
         """
         Check if a specific task named `name` was executed within the `n_days`.
         """
@@ -435,7 +455,7 @@ class Utils:
                 return True
         return False
 
-    def create_dataframe(self, table):
+    def create_dataframe(self, table: str):
         """
         Creates a dataframe from a `table` found using requests and
         BeautifulSoup.

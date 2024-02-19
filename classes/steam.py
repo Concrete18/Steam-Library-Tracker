@@ -1,7 +1,7 @@
 from classes.utils import Utils
 from bs4 import BeautifulSoup
 from typing import Optional
-import re
+import re, requests
 
 
 class Steam(Utils):
@@ -135,7 +135,7 @@ class Steam(Utils):
         api_action = "IPlayerService/GetOwnedGames/v0001/"
         url = base_url + api_action
         self.api_sleeper("steam_owned_games")
-        query = {
+        params = {
             "key": steam_key,
             "steamid": steam_id,
             "l": "english",
@@ -143,10 +143,20 @@ class Steam(Utils):
             "format": "json",
             "include_appinfo": 1,
         }
-        response = self.request_url(url, params=query)
-        if response:
-            return response.json()["response"]["games"]
-        return response
+        try:
+            response = requests.get(url, params)
+            if response.ok:
+                data = response.json()
+                if "response" in data and "games" in data["response"]:
+                    return data["response"]["games"]
+                else:
+                    return None  # handle missing keys in the JSON response
+            else:
+                return None  # handle unsuccessful response
+        except requests.RequestException as e:
+            msg = f"Error occurred: {e}"
+            self.error_log.warning(msg)
+            return None  # handle request exceptions
 
     def get_recently_played_steam_games(
         self, steam_key: str, steam_id: int, game_count: int = 10
@@ -158,13 +168,25 @@ class Steam(Utils):
         api_action = "IPlayerService/GetRecentlyPlayedGames/v1/"
         url = base_url + api_action
         self.api_sleeper("steam_owned_games")
-        query = {
+        params = {
             "key": steam_key,
             "steamid": steam_id,
             "count": game_count,
         }
-        response = self.request_url(url, params=query)
-        return response.json()["response"]["games"]
+        try:
+            response = requests.get(url, params)
+            if response.ok:
+                data = response.json()
+                if "response" in data and "games" in data["response"]:
+                    return data["response"]["games"]
+                else:
+                    return None  # handle missing keys in the JSON response
+            else:
+                return None  # handle unsuccessful response
+        except requests.RequestException as e:
+            msg = f"Error occurred: {e}"
+            self.error_log.warning(msg)
+            return None  # handle request exceptions
 
     def get_app_details(self, app_id) -> list[dict]:
         """

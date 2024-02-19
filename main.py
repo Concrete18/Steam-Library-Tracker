@@ -154,7 +154,6 @@ class Tracker(Steam, Utils):
         app_id_col := "App ID",
     ]
     title = "Game Library Tracker"
-    errors = []
 
     def __init__(self, save) -> None:
         """
@@ -204,11 +203,12 @@ class Tracker(Steam, Utils):
             title=title,
             show_lines=True,
             title_style="bold",
-            style="deep_sky_blue1",
+            style="green3",
         )
         table.add_column("Type", justify="center")
         table.add_column("Username", justify="left")
         table.add_column("Steam ID", justify="left")
+        # removals
         for steam_id in removals:
             username = self.get_steam_username(steam_id, self.steam_key)
             row = [
@@ -218,8 +218,9 @@ class Tracker(Steam, Utils):
             ]
             table.add_row(*row)
             # logging
-            msg = f"Added to Friends List: {username}"
+            msg = f"Friends List Removal: {username}"
             self.tracker.info(msg)
+        # additions
         for steam_id in additions:
             username = self.get_steam_username(steam_id, self.steam_key)
             row = [
@@ -229,7 +230,7 @@ class Tracker(Steam, Utils):
             ]
             table.add_row(*row)
             # logging
-            msg = f"Removed from Friends List: {username}"
+            msg = f"Friends List Addition: {username}"
             self.tracker.info(msg)
         self.console.print(table, new_line_start=True)
         # update friend data in config
@@ -610,7 +611,7 @@ class Tracker(Steam, Utils):
         """
         recently_played_games = App.find_recent_games(df, "Date Updated", n_days)
         # creates table
-        title = "Recently Played Games"
+        title = f"Recently Played Games\nWithin {n_days} Days"
         table = Table(
             title=title,
             show_lines=True,
@@ -675,6 +676,7 @@ class Tracker(Steam, Utils):
         )
         play_statuses = df["Play Status"].value_counts()
         total_games = df["Name"].count() - play_statuses["Ignore"]
+        # row creation
         row1, row2 = [], []
         for status in self.play_status_choices.values():
             if status == "Ignore":
@@ -697,20 +699,19 @@ class Tracker(Steam, Utils):
             title_style="bold",
             style="deep_sky_blue1",
         )
-        data = {}
         # TODO remove any games with ignore status
         total_hours_sum = df["Hours Played"].sum()
         linux_hours_sum = df["Linux Hours"].sum()
-        data["Total\nHours"] = round(total_hours_sum, 1)
-        data["Total\nDays"] = round(total_hours_sum / 24, 1)
-        data["Linux\nHours"] = round(linux_hours_sum, 1)
-        data["% Linux\nHours"] = f"{linux_hours_sum / total_hours_sum:.1%}"
-        # averages
-        data["Average\nHours"] = round(df["Hours Played"].mean(), 1)
-        data["Median\nHours"] = round(df["Hours Played"].median(), 1)
-        # min max
-        data["Max\nHours"] = round(df["Hours Played"].max(), 1)
-
+        data = {
+            "Total\nHours": round(total_hours_sum, 1),
+            "Total\nDays": round(total_hours_sum / 24, 1),
+            "Linux\nHours": round(linux_hours_sum, 1),
+            "% Linux\nHours": f"{linux_hours_sum / total_hours_sum:.1%}",
+            "Average\nHours": round(df["Hours Played"].mean(), 1),
+            "Median\nHours": round(df["Hours Played"].median(), 1),
+            "Max\nHours": round(df["Hours Played"].max(), 1),
+        }
+        # row creation
         row = []
         for name, stat in data.items():
             table.add_column(name, justify="center")
@@ -742,7 +743,7 @@ class Tracker(Steam, Utils):
         data["Steam\nTotal"] = steam_ratings.count()
         steam_avg = round(steam_ratings.mean(), 1)
         data["Steam\nAverage"] = f"{round(steam_avg*100)}%"
-
+        # row creation
         row = []
         for name, stat in data.items():
             table.add_column(name, justify="center")
@@ -874,7 +875,7 @@ class Tracker(Steam, Utils):
             title=title,
             show_lines=True,
             title_style="bold",
-            style="deep_sky_blue1",
+            style="green3",
         )
         table.add_column("Name", justify="left")
         table.add_column("Total Playtime", justify="center")
@@ -1396,10 +1397,6 @@ class Tracker(Steam, Utils):
                 match = SequenceMatcher(None, search_query_lower, name_lower)
                 if match.ratio() >= min_match:
                     possible_games.append(self.steam.get_row(app_id))
-                # TODO decide if this should be used with only the top n results
-                # dist = self.lev_distance(search_query_lower, name_lower)
-                # if dist <= 4:
-                #     possible_games.append(self.steam.get_row(app_id))
         return possible_games
 
     def game_finder(self, search_query=None) -> dict:
@@ -1542,36 +1539,21 @@ class Tracker(Steam, Utils):
         """
         Gives a choice of actions for the current game library.
         """
-        # lamdas
-        output_statistics_func = lambda: self.output_statistics(df)
-        update_player_counts_func = lambda: self.update_player_counts(df)
-        sync_friends_list = self.get_friends_list_changes()
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
             ("Random Game Explorer", self.pick_random_game),
-            ("Player Counts Sync", update_player_counts_func),
+            ("Player Counts Sync", lambda: self.update_player_counts(df)),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
-            ("Statistics Display", output_statistics_func),
-            ("Steam Friends List Sync", sync_friends_list),
+            ("Statistics Display", lambda: self.output_statistics(df)),
+            ("Steam Friends List Sync", lambda: self.get_friends_list_changes(0)),
             ("Playstation Games Sync", self.sync_playstation_games),
             # ("Update All Cell Formatting", self.steam.format_all_cells),
             ("Open Log", self.open_log),
         ]
         self.pick_task(choices)
         exit()
-
-    def show_errors(self) -> None:
-        """
-        Shows errors that occurred if they were added to the errors list.
-        """
-        error_total = len(self.errors)
-        if not error_total:
-            return
-        print(f"\n{error_total} Errors Occurred:")
-        for error in self.errors:
-            print(error)
 
     def fix_app_ids(self) -> None:
         """
@@ -1617,7 +1599,6 @@ class Tracker(Steam, Utils):
         self.updated_game_data(df)
         self.get_friends_list_changes()
 
-        self.show_errors()
         self.game_library_actions(df)
 
 

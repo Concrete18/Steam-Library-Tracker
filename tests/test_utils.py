@@ -1,17 +1,16 @@
 import datetime as dt
-import unittest
+import pytest
 
 # classes
 from classes.utils import Utils
 
 
-class HoursPlayed(unittest.TestCase):
+class TestHoursPlayed:
     """
     Tests `hours_played` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_hours_played(self):
         time_hours_played = {
@@ -21,18 +20,16 @@ class HoursPlayed(unittest.TestCase):
             0: None,
         }
         for minutes_played, answer in time_hours_played.items():
-            with self.subTest(minutes_played=minutes_played, answer=answer):
-                result = self.t.hours_played(minutes_played)
-                self.assertEqual(result, answer)
+            result = self.utils.hours_played(minutes_played)
+            assert result == answer
 
 
-class TimePassed(unittest.TestCase):
+class TestTimePassed:
     """
     Tests `convert_time_passed` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_minutes(self):
         """
@@ -51,9 +48,8 @@ class TimePassed(unittest.TestCase):
             525600: "1.0 Year",
         }
         for minutes, answer in minutes_tests.items():
-            with self.subTest(minutes=minutes, answer=answer):
-                output = self.t.convert_time_passed(minutes=minutes)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(minutes=minutes)
+            assert output == answer
 
     def test_hours(self):
         """
@@ -67,9 +63,8 @@ class TimePassed(unittest.TestCase):
             48: "2.0 Days",
         }
         for hours, answer in hours_tests.items():
-            with self.subTest(hours=hours, answer=answer):
-                output = self.t.convert_time_passed(hours=hours)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(hours=hours)
+            assert output == answer
 
     def test_days(self):
         """
@@ -82,9 +77,8 @@ class TimePassed(unittest.TestCase):
             365: "1.0 Year",
         }
         for days, answer in days_tests.items():
-            with self.subTest(days=days, answer=answer):
-                output = self.t.convert_time_passed(days=days)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(days=days)
+            assert output == answer
 
     def test_weeks(self):
         """
@@ -96,9 +90,8 @@ class TimePassed(unittest.TestCase):
             52: "1.0 Year",
         }
         for weeks, answer in weeks_tests.items():
-            with self.subTest(weeks=weeks, answer=answer):
-                output = self.t.convert_time_passed(weeks=weeks)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(weeks=weeks)
+            assert output == answer
 
     def test_months(self):
         """
@@ -110,9 +103,8 @@ class TimePassed(unittest.TestCase):
             12: "1.0 Year",
         }
         for months, answer in months_tests.items():
-            with self.subTest(months=months, answer=answer):
-                output = self.t.convert_time_passed(months=months)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(months=months)
+            assert output == answer
 
     def test_years(self):
         """
@@ -123,9 +115,8 @@ class TimePassed(unittest.TestCase):
             5: "5.0 Years",
         }
         for years, answer in days_tests.items():
-            with self.subTest(years=years, answer=answer):
-                output = self.t.convert_time_passed(years=years)
-                self.assertEqual(output, answer)
+            output = self.utils.convert_time_passed(years=years)
+            assert output == answer
 
     def test_all_at_once(self):
         """
@@ -133,60 +124,57 @@ class TimePassed(unittest.TestCase):
         Years at the same time.
         """
         # tests all args at once
-        output = self.t.convert_time_passed(
+        output = self.utils.convert_time_passed(
             minutes=60,
             hours=23,
             days=30,
             months=11,
             years=1,
         )
-        self.assertEqual(output, "2.0 Years")
+        assert output == "2.0 Years"
 
 
-class DaysSince(unittest.TestCase):
+class TestDaysSince:
     """
     Tests `days_since` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_set_date(self):
         past_date = dt.datetime(2022, 4, 22)
         current_date = dt.datetime(2022, 4, 24)
-        days_since = self.t.days_since(past_date, current_date)
-        self.assertEqual(days_since, 2)
+        days_since = self.utils.days_since(past_date, current_date)
+        assert days_since == 2
 
     def test_todays_date(self):
         past_date = dt.datetime.now() - dt.timedelta(days=7)
-        days_since = self.t.days_since(past_date)
-        self.assertEqual(days_since, 7)
+        days_since = self.utils.days_since(past_date)
+        assert days_since == 7
 
 
-class StringToDate(unittest.TestCase):
+class TestStringToDate:
     """
     Tests `string_to_date` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_valid(self):
-        date = self.t.string_to_date("02/24/2022")
-        self.assertEqual(date, dt.datetime(2022, 2, 24, 0, 0))
+        date = self.utils.string_to_date("02/24/2022")
+        assert date == dt.datetime(2022, 2, 24, 0, 0)
 
     def test_not_valid(self):
-        with self.assertRaises(ValueError):
-            self.t.string_to_date("")
+        with pytest.raises(ValueError):
+            self.utils.string_to_date("")
 
 
-class GetYear(unittest.TestCase):
+class TestGetYear:
     """
     Tests `get_year` function.
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_valid(self):
         date_tests = {
@@ -197,22 +185,20 @@ class GetYear(unittest.TestCase):
             "Apr , 2015": "2015",
         }
         for date, answer in date_tests.items():
-            with self.subTest(date=date):
-                year = self.t.get_year(date)
-                self.assertEqual(year, answer, "The year was not correctly found")
+            year = self.utils.get_year(date)
+            assert year == answer
 
     def test_invalid(self):
-        year = self.t.get_year("this is not a date")
-        self.assertIsNone(year)
+        year = self.utils.get_year("this is not a date")
+        assert year is None
 
 
-class UrlSanitize(unittest.TestCase):
+class TestUrlSanitize:
     """
     Tests `url_sanitize` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_url_sanitize(self):
         url_tests = {
@@ -221,41 +207,39 @@ class UrlSanitize(unittest.TestCase):
             "Blade & Sorcery": "blade-sorcery",
         }
         for string, result in url_tests.items():
-            self.assertEqual(self.t.url_sanitize(string), result)
+            assert self.utils.url_sanitize(string) == result
 
 
-class UnicodeRemover(unittest.TestCase):
+class TestUnicodeRemover:
     """
     Tests `unicode_remover` function
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_trademark(self):
-        new_string = self.t.unicode_remover("Game Name™")
-        self.assertEqual(new_string, "Game Name")
+        new_string = self.utils.unicode_remover("Game Name™")
+        assert new_string == "Game Name"
 
     def test_trim_removal(self):
-        new_string = self.t.unicode_remover("® ® ® ö Test ® ® ®")
-        self.assertEqual(new_string, "o Test")
+        new_string = self.utils.unicode_remover("® ® ® ö Test ® ® ®")
+        assert new_string == "o Test"
 
     def test_trim_removal(self):
-        new_string = self.t.unicode_remover("\u2122 \u2013Test\u2013 \u2122")
-        self.assertEqual(new_string, "-Test-")
+        new_string = self.utils.unicode_remover("\u2122 \u2013Test\u2013 \u2122")
+        assert new_string == "-Test-"
 
     def test_not_string(self):
-        new_string = self.t.unicode_remover(123)
-        self.assertEqual(new_string, 123)
+        new_string = self.utils.unicode_remover(123)
+        assert new_string == 123
 
 
-class CreateAndSentence(unittest.TestCase):
+class TestCreateAndSentence:
     """
     Tests `list_to_sentence` function.
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_list_to_sentence(self):
         list_tests = [
@@ -265,50 +249,47 @@ class CreateAndSentence(unittest.TestCase):
             ([], ""),
         ]
         for list, answer in list_tests:
-            with self.subTest(list=list, answer=answer):
-                result = self.t.list_to_sentence(list)
-                self.assertEqual(result, answer)
+            result = self.utils.list_to_sentence(list)
+            assert result == answer
 
 
-class LevenshteinDistance(unittest.TestCase):
+class TestLevenshteinDistance:
     """
     Tests `lev_distance` Function.
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
-    def test_lev_distance_insert(self):
+    def test_levenshtein_distance_insert(self):
         """
         Tests Levenshtein Distance insert difference.
         """
-        self.assertEqual(self.t.lev_distance("test", "tests"), 1)
-        self.assertEqual(self.t.lev_distance("test", "the tests"), 5)
+        assert self.utils.levenshtein_distance("test", "tests") == 1
+        assert self.utils.levenshtein_distance("test", "the tests") == 5
 
-    def test_lev_distance_delete(self):
+    def test_levenshtein_distance_delete(self):
         """
         Tests Levenshtein Distance delete difference.
         """
-        self.assertEqual(self.t.lev_distance("bolt", "bot"), 1)
-        self.assertEqual(self.t.lev_distance("bridges", "bride"), 2)
+        assert self.utils.levenshtein_distance("bolt", "bot") == 1
+        assert self.utils.levenshtein_distance("bridges", "bride") == 2
 
-    def test_lev_distance_replace(self):
+    def test_levenshtein_distance_replace(self):
         """
         Tests Levenshtein Distance replace difference.
         """
-        self.assertEqual(self.t.lev_distance("spell", "spelt"), 1)
-        self.assertEqual(self.t.lev_distance("car", "bat"), 2)
+        assert self.utils.levenshtein_distance("spell", "spelt") == 1
+        assert self.utils.levenshtein_distance("car", "bat") == 2
 
-    def test_lev_distance_all_change(self):
+    def test_levenshtein_distance_all_change(self):
         """
         Tests Levenshtein Distance insert, delete and replace all at once.
         """
-        self.assertEqual(self.t.lev_distance("Thinking", "Thoughts"), 6)
+        assert self.utils.levenshtein_distance("Thinking", "Thoughts") == 6
 
 
-class SimilarityMatching(unittest.TestCase):
-    def setUp(self):
-        self.t = Utils()
+class TestSimilarityMatching:
+    utils = Utils()
 
     def test_lev_dist_matcher(self):
         test_list = [
@@ -340,13 +321,12 @@ class SimilarityMatching(unittest.TestCase):
             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
         }
         for string, answer in string_tests.items():
-            result = self.t.lev_dist_matcher(string, test_list)[0]
-            self.assertEqual(result, answer)
+            result = self.utils.lev_dist_matcher(string, test_list)[0]
+            assert result == answer
 
 
-# class SimMatcher(unittest.TestCase):
-#     def setUp(self):
-#         self.t = Utils()
+# class TestSimMatcher():
+#     utils = Utils()
 
 #     def test_lev_dist_matcher(self):
 #         test_list = [
@@ -378,29 +358,51 @@ class SimilarityMatching(unittest.TestCase):
 #             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
 #         }
 #         for string, answer in string_tests.items():
-#             result = self.t.sim_matcher(string, test_list)[0]
-#             self.assertEqual(result, answer)
+#             result = self.utils.sim_matcher(string, test_list)[0]
+#             assert result, answer)
 
 
-class AnyIsNum(unittest.TestCase):
+class TestCreateLevenshteinMatcher:
+    utils = Utils()
+
+    def test_create_levenshtein_matcher(self):
+        # Example usage:
+        matcher = self.utils.create_levenshtein_matcher("base_string", n=3)
+
+        # Check multiple strings
+        strings_to_check = [
+            "new_string1",
+            "new_string2",
+            "new_string3",
+            "other_string",
+            "example_string",
+        ]
+        best_matches = []
+        for string in strings_to_check:
+            best_matches = matcher(string)
+
+        answer = ["other_string", "example_string", "new_string1"]
+        assert best_matches == answer
+
+
+class TestAnyIsNum:
     """
     Tests `any_is_num` function.
     """
 
-    def setUp(self):
-        self.t = Utils()
+    utils = Utils()
 
     def test_true_num(self):
-        self.assertTrue(self.t.any_is_num(155))
-        self.assertTrue(self.t.any_is_num(45.15))
+        assert self.utils.any_is_num(155) is True
+        assert self.utils.any_is_num(45.15) is True
 
     def test_true_string(self):
-        self.assertTrue(self.t.any_is_num("1232"))
-        self.assertTrue(self.t.any_is_num("123.2"))
+        assert self.utils.any_is_num("1232") is True
+        assert self.utils.any_is_num("123.2") is True
 
     def test_false(self):
-        self.assertFalse(self.t.any_is_num("not a num"))
+        assert self.utils.any_is_num("not a num") is False
 
 
 if __name__ == "__main__":
-    unittest.main()
+    pytest.main([__file__])
