@@ -1,6 +1,5 @@
 from classes.utils import Utils
 from bs4 import BeautifulSoup
-from typing import Optional
 import re, requests
 
 
@@ -94,7 +93,7 @@ class Steam(Utils):
         """
         return f"https://store.steampowered.com/app/{app_id}/"
 
-    def get_steam_review(self, app_id: int, response=None) -> tuple[Optional[int]]:
+    def get_steam_review(self, app_id: int, response=None) -> tuple[int] | None:
         """
         Scrapes the games review percent and total reviews from
         the steam store page using `app_id` or `store_link`.
@@ -149,7 +148,7 @@ class Steam(Utils):
                 tags.append(string)
         return tags
 
-    def get_owned_steam_games(self, steam_key: str, steam_id: int):
+    def get_owned_steam_games(self, steam_key: str, steam_id: int) -> list | None:
         """
         Gets the games owned by the given `steam_id`.
         """
@@ -237,7 +236,7 @@ class Steam(Utils):
         return app_list
 
     @staticmethod
-    def get_app_id(game: str, app_list: list[dict]) -> Optional[int]:
+    def get_app_id(game: str, app_list: list[dict]) -> int | None:
         """
         Gets the games app ID from the `app_list`.
         """
@@ -248,7 +247,7 @@ class Steam(Utils):
 
     def get_steam_game_player_count(
         self, app_id: int, steam_api_key: int
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Gets a games current player count by `app_id` using the Steam API via the `steam_api_key`.
         """

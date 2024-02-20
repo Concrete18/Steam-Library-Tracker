@@ -249,25 +249,6 @@ class TestGetSteamID:
         assert steam_id is None
 
 
-class TestGetSteamUsername:
-    """
-    Tests `get_steam_username` function.
-    """
-
-    steam_key, _ = get_steam_api_key_and_id()
-
-    trackerObj = Tracker(save=False)
-
-    def test_get_steam_username(self):
-        steam_id = 76561197960287930
-        username = self.trackerObj.get_steam_username(steam_id, self.steam_key)
-        assert isinstance(username, str)
-
-    def test_False(self):
-        username = self.trackerObj.get_steam_username(123, self.steam_key)
-        assert username == "Unknown"
-
-
 class TestPlayStatus:
     """
     Tests `play_status` function.

@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Tuple
 from pathlib import Path
 import shutil, json, re
 
@@ -53,7 +53,7 @@ class Setup:
             return True
         return False
 
-    def run(self) -> Optional[Tuple[str, dict, dict]]:
+    def run(self) -> tuple[str, dict, dict] | None:
         """
         Creates all missing config files if they do not exist.
 

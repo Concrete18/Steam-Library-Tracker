@@ -1,7 +1,6 @@
 import random, json, os, sys, time, subprocess, webbrowser, math
 from howlongtobeatpy import HowLongToBeat
 from difflib import SequenceMatcher
-from typing import Optional
 from pathlib import Path
 from pick import pick
 import datetime as dt
@@ -163,6 +162,8 @@ class Tracker(Steam, Utils):
         if not self.steam_id:
             self.update_steam_id()
         self.internet_connected = self.check_internet_connection()
+        if not self.internet_connected:
+            self.console.print("\nNo Internet Detected", style="warning")
 
     def update_steam_id(self):
         """
@@ -483,7 +484,7 @@ class Tracker(Steam, Utils):
 
     def update_extra_steam_info(self, app_ids):
         """
-        ph
+        Updates info that changes often enough that it needs to be updated manually.
         """
         save_every_nth = self.create_save_every_nth()
         update_total = len(app_ids)
@@ -519,14 +520,14 @@ class Tracker(Steam, Utils):
 
     def update_all_game_data(self):
         """
-        ph
+        Gets app_ids and updates games using update_extra_steam_info func.
         """
         app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
         self.update_extra_steam_info(app_ids)
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
-        ph
+        Gets the app_ids of the recently played games via a dataframe.
         """
         # check last run
         if self.recently_executed(self.config_data, "updated_recently_played", n_days):
@@ -890,7 +891,7 @@ class Tracker(Steam, Utils):
             table.add_row(*row)
         self.console.print(table, new_line_start=True)
 
-    def game_check(self, steam_games, sheet_games):
+    def sync_steam_games_with_sheet(self, steam_games, sheet_games):
         """
         Checks for new games or game updates from `steam_games` based on `sheet_games`.
         """
@@ -910,18 +911,18 @@ class Tracker(Steam, Utils):
                 continue
             # name change check
             cur_game_data = self.steam.get_row(app_id)
-            if (
-                cur_game_data[self.name_col]
-                and cur_game_data[self.name_col] != game_name
-            ):
-                msg = f'Name Change: "{cur_game_data[self.name_col]}" to "{game_name}"'
+            old_name = cur_game_data[self.name_col]
+            new_name = game_name
+            if old_name and old_name != new_name:
+                msg = f'Name Change: "{old_name}" to "{new_name}"'
                 self.tracker.info(msg)
-                name_change_dict = {
-                    "new_name": game_name,
-                    "old_name": cur_game_data[self.name_col],
-                    "app_id": app_id,
-                }
-                name_changes.append(name_change_dict)
+                name_changes.append(
+                    {
+                        "new_name": new_name,
+                        "old_name": old_name,
+                        "app_id": app_id,
+                    }
+                )
             # sets play time earlier so it only needs to be set up once
             minutes_played = game["playtime_forever"]
             time_played = self.convert_time_passed(minutes=minutes_played)
@@ -994,15 +995,14 @@ class Tracker(Steam, Utils):
         """
         if not self.internet_connected:
             return
-        steam_games = self.get_owned_steam_games(steam_key, steam_id)
-        sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
-        if not steam_games:
-            print("\nFailed to retrieve Steam Games")
-        else:
+        owned_games = self.get_owned_steam_games(steam_key, steam_id)
+        if owned_games:
+            sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
             if not sheet_app_ids:
                 print(f"\nStarting First Steam Sync")
-            self.game_check(steam_games, sheet_app_ids)
+            self.sync_steam_games_with_sheet(owned_games, sheet_app_ids)
             return
+        print("\nFailed to retrieve Steam Games\nSteam Servers may be down")
         input()
         exit()
 
@@ -1015,7 +1015,7 @@ class Tracker(Steam, Utils):
         new_status,
         cur_status,
         time_played=None,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Updates the games playtime and play status if they changed.
         """
@@ -1070,7 +1070,6 @@ class Tracker(Steam, Utils):
         hours_played = ""
         if minutes_played:
             hours_played = self.hours_played(minutes_played)
-            # sets play status
             play_status = self.decide_play_status(play_status, minutes_played)
         linux_hours_played = ""
         if linux_minutes_played:
@@ -1274,8 +1273,11 @@ class Tracker(Steam, Utils):
             error = f'\n[warning]No game has the[/] [secondary]"{play_status}"[/] [warning]Status[/]'
             self.console.print(error)
             return
-        print("\nType Stop To Finish")
-        self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
+        self.console.print(
+            f"\nPicking games set as [secondary]{play_status}[/]"
+            "\nType Stop To Finish"
+            f"\nPicked: [secondary]{picked_game_name}[/]"
+        )
         # allows getting another random pick
         # TODO test switching to pick function so it is much simpler
         while not input().lower() in ["no", "n", "cancel", "stop"]:
@@ -1510,6 +1512,16 @@ class Tracker(Steam, Utils):
             print(f"\nUpdated to {new_hours} Hours")
         self.set_date_updated(game_idx)
 
+    def print_date_and_time(self) -> None:
+        """
+        Prints date and time with Rich Console.
+        """
+        now = dt.datetime.now()
+        formatted_date = f"[secondary]{now.strftime('%A, %B %d, %Y')}[/]"
+        formatted_time = f"[secondary]{now.strftime('%I:%M %p')}[/]"
+        date = f"{formatted_date} [dim]|[/] {formatted_time}"
+        self.console.print(date)
+
     def open_log(self) -> None:
         osCommandString = f"notepad.exe {self.tracker_log_path}"
         os.system(osCommandString)
@@ -1580,17 +1592,9 @@ class Tracker(Steam, Utils):
         """
         self.console.print(self.title, style="primary")
 
-        # prints date
-        now = dt.datetime.now()
-        formatted_date = f"[secondary]{now.strftime('%A, %B %d, %Y')}[/]"
-        formatted_time = f"[secondary]{now.strftime('%I:%M %p')}[/]"
-        date = f"{formatted_date} [dim]|[/] {formatted_time}"
-        self.console.print(date)
+        self.print_date_and_time()
 
         self.sync_steam_games(self.steam_key, self.steam_id)
-
-        if not self.internet_connected:
-            self.console.print("\nNo Internet Detected", style="warning")
 
         df = self.steam.create_dataframe(na_vals=["-", "NaN"])
         self.output_recently_played_games(df)
@@ -1605,3 +1609,6 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.run()
+
+    # import cProfile
+    # cProfile.run("App.run()", sort="cumtime")

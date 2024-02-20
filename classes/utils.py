@@ -4,7 +4,7 @@ import time, json, requests, re, heapq
 from pick import pick
 import datetime as dt
 import pandas as pd
-from typing import Optional, Callable, Any
+from typing import Callable, Any
 from functools import wraps
 
 
@@ -153,7 +153,7 @@ class Utils:
         return dt.datetime.strptime(date, "%m/%d/%Y")
 
     @staticmethod
-    def get_year(date_string: str) -> Optional[int]:
+    def get_year(date_string: str) -> int | None:
         """
         Gets the year from `date_string`.
         """
