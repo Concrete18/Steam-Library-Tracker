@@ -1,5 +1,7 @@
 import datetime as dt
-import pytest
+from pathlib import Path
+import pytest, time, json, os
+
 
 # classes
 from classes.utils import Utils
@@ -325,43 +327,6 @@ class TestSimilarityMatching:
             assert result == answer
 
 
-# class TestSimMatcher():
-#     utils = Utils()
-
-#     def test_lev_dist_matcher(self):
-#         test_list = [
-#             "This is a test, yay",
-#             "this is not it, arg",
-#             "Find the batman!",
-#             "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
-#             "The Last of Us",
-#             "Elden Ring",
-#             "The Last of Us Part I",
-#             "The Last of Us Part II",
-#             "Waltz of the Wizard: Natural Magic",
-#             "Life is Strange™",
-#             "The Witcher 3: Wild Hunt",
-#             "Marvel's Spider-Man: Miles Morales",
-#             "Crypt Of The Necrodancer: Nintendo Switch Edition",
-#         ]
-#         string_tests = {
-#             "This is a test": "This is a test, yay",
-#             "find th bamtan": "Find the batman!",
-#             "Eldn Rings": "Elden Ring",
-#             "Shadow Tactics Blades of the Shougn Aikos Choce": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
-#             "the last of us": "The Last of Us",
-#             "Walk of the Wizard: Natural Magik": "Waltz of the Wizard: Natural Magic",
-#             "The last of us Part I": "The Last of Us Part I",
-#             "Life is Strange 1": "Life is Strange™",
-#             "Witcher 3: The Wild Hunt": "The Witcher 3: Wild Hunt",
-#             "Spider-Man: Miles Morales": "Marvel's Spider-Man: Miles Morales",
-#             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
-#         }
-#         for string, answer in string_tests.items():
-#             result = self.utils.sim_matcher(string, test_list)[0]
-#             assert result, answer)
-
-
 class TestCreateLevenshteinMatcher:
     utils = Utils()
 
@@ -402,6 +367,86 @@ class TestAnyIsNum:
 
     def test_false(self):
         assert self.utils.any_is_num("not a num") is False
+
+
+class TestSaveJson:
+    """
+    Tests `save_json` function.
+    """
+
+    @classmethod
+    def setup_class(cls):
+        print("\nSetup Class")
+        cls.path = Path("tests/test.json")
+        cls.utils = Utils()
+
+    @classmethod
+    def teardown_class(cls):
+        print("\nTeardown Class")
+
+    @pytest.fixture(autouse=True)
+    def setup_and_teardown(self):
+        print("\nSetup Method")
+        if self.path.exists():
+            os.remove(self.path)
+        with open(self.path, "w") as file:
+            file.write("{}")
+        yield
+        print("\nTeardown Method")
+        if self.path.exists():
+            os.remove(self.path)
+
+    @staticmethod
+    def read_json(path):
+        with open(path) as file:
+            return json.load(file)
+
+    def test_creates_file(self):
+        # verify empty
+        with open(self.path) as file:
+            empty_data = json.load(file)
+        assert empty_data == {}
+        # create data
+        test_data = {}
+        self.utils.save_json(test_data, self.path)
+        # verify data
+        with open(self.path) as file:
+            empty_data = json.load(file)
+        created_data = self.read_json(self.path)
+        assert created_data == test_data
+
+
+class TestRecentlyExecuted:
+    """
+    Tests `recently_executed` function.
+    """
+
+    utils = Utils()
+    secs_in_day = 86400
+
+    def test_true(self):
+        past_time = time.time() - (self.secs_in_day * 3)
+        data = {
+            "last_runs": {
+                "test_run": past_time,
+            },
+        }
+        name = "test_run"
+        n_days = 5
+        test = self.utils.recently_executed(data, name, n_days)
+        assert test is True
+
+    def test_false(self):
+        past_time = time.time() - (self.secs_in_day * 7)
+        data = {
+            "last_runs": {
+                "test_run": past_time,
+            },
+        }
+        name = "test_run"
+        n_days = 5
+        test = self.utils.recently_executed(data, name, n_days)
+        assert test is False
 
 
 if __name__ == "__main__":

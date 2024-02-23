@@ -49,8 +49,9 @@ class Tracker(Steam, Utils):
     # logging setup
     if logging:
         Log = Logger()
-        tracker_log_path = "logs/tracker.log"
-        tracker = Log.create_log(name="tracker", log_path=tracker_log_path)
+        main_log_path = "logs/main.log"
+        main_log = Log.create_log(name="main", log_path=main_log_path)
+        friend_log = Log.create_log(name="friend", log_path="logs/friend.log")
         error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
     # rich console
@@ -174,7 +175,7 @@ class Tracker(Steam, Utils):
         steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
         if steam_id:
             self.config_data["settings"]["steam_id"] = steam_id
-            self.save_json_output(self.config_data, self.config_path)
+            self.save_json(self.config_data, self.config_path)
 
     def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
         """
@@ -186,7 +187,7 @@ class Tracker(Steam, Utils):
         # check last run
         if self.recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
-        self.update_last_run(self.config_data, "friends_sync")
+        self.update_last_run(self.config_data, self.config_path, "friends_sync")
         # get friends
         print("\nStarting Steam Friends Sync")
         prev_friends_ids = self.config_data["friend_ids"]
@@ -220,7 +221,7 @@ class Tracker(Steam, Utils):
             table.add_row(*row)
             # logging
             msg = f"Friends List Removal: {username}"
-            self.tracker.info(msg)
+            self.friend_log.info(msg)
         # additions
         for steam_id in additions:
             username = self.get_steam_username(steam_id, self.steam_key)
@@ -232,11 +233,11 @@ class Tracker(Steam, Utils):
             table.add_row(*row)
             # logging
             msg = f"Friends List Addition: {username}"
-            self.tracker.info(msg)
+            self.friend_log.info(msg)
         self.console.print(table, new_line_start=True)
         # update friend data in config
         self.config_data["friend_ids"] = cur_friend_ids
-        self.save_json_output(self.config_data, self.config_path)
+        self.save_json(self.config_data, self.config_path)
 
     def set_title(self, title=None):
         """
@@ -530,7 +531,7 @@ class Tracker(Steam, Utils):
         Gets the app_ids of the recently played games via a dataframe.
         """
         # check last run
-        if self.recently_executed(self.config_data, "updated_recently_played", n_days):
+        if self.recently_executed(self.config_data, "recently_played", n_days):
             return []
         # get recently played games
         recently_played = App.find_recent_games(df, self.date_updated_col, n_days)
@@ -598,7 +599,9 @@ class Tracker(Steam, Utils):
         try:
             self.update_extra_steam_info(update_list)
             if updated_recent:
-                self.update_last_run(self.config_data, "updated_recently_played")
+                self.update_last_run(
+                    self.config_data, self.config_path, "recently_played"
+                )
             print(f"\nUpdated Data for {len(update_list)} games")
         except KeyboardInterrupt:
             print("\nCancelled")
@@ -668,12 +671,13 @@ class Tracker(Steam, Utils):
         """
         Creates a table with counts and percentage of each play status.
         """
-        title = "Play Status Statistics\n(Excludes Ignored)"
+        title = "Play Status Stats"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
+            caption="Excludes Ignored",
         )
         # filters out games with "Ignore" play status
         df_filtered = df[df["Play Status"] != "Ignore"]
@@ -697,12 +701,13 @@ class Tracker(Steam, Utils):
         """
         Creates a table with counts and percentage of each play status.
         """
-        title = "Playtime Statistics\n(Excludes Ignored)"
+        title = "Playtime Stats"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
+            caption="Excludes Ignored",
         )
         # filters out games with "Ignore" play status
         df_filtered = df[df["Play Status"] != "Ignore"]
@@ -734,12 +739,13 @@ class Tracker(Steam, Utils):
         """
         Outputs a table of review stats.
         """
-        title = "Rating Statistics\n(Excludes Ignored)"
+        title = "Rating Stats"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
+            caption="Excludes Ignored",
         )
         # filters out games with "Ignore" play status
         df_filtered = df[df["Play Status"] != "Ignore"]
@@ -925,7 +931,7 @@ class Tracker(Steam, Utils):
             new_name = game_name
             if old_name and old_name != new_name:
                 msg = f'Name Change: "{old_name}" to "{new_name}"'
-                self.tracker.info(msg)
+                self.main_log.info(msg)
                 name_changes.append(
                     {
                         "new_name": new_name,
@@ -1054,7 +1060,7 @@ class Tracker(Steam, Utils):
             # updated game logging
             msg = f"Playtime: {game_name} played for {added_time_played}"
             if self.logging:
-                self.tracker.info(msg)
+                self.main_log.info(msg)
             return {
                 "name": game_name,
                 "added_time_played": added_time_played,
@@ -1114,7 +1120,7 @@ class Tracker(Steam, Utils):
             time_played = "no time"
         if self.logging:
             info = f"New Game: Added {game_name} with {time_played} played"
-            self.tracker.info(info)
+            self.main_log.info(info)
         self.steam.format_row(app_id)
         if save_after_add and self.save_to_file:
             self.excel.save(use_print=False)
@@ -1140,7 +1146,7 @@ class Tracker(Steam, Utils):
         # logging
         if self.logging:
             info = f"New PS Game: Added {game_name} for {platform}"
-            self.tracker.info(info)
+            self.main_log.info(info)
         self.playstation.format_row(game_name)
         return f"\n > {game_name} added"
 
@@ -1533,7 +1539,7 @@ class Tracker(Steam, Utils):
         self.console.print(date)
 
     def open_log(self) -> None:
-        osCommandString = f"notepad.exe {self.tracker_log_path}"
+        osCommandString = f"notepad.exe {self.main_log_path}"
         os.system(osCommandString)
 
     def pick_task(self, choices: list[tuple], repeat: bool = True) -> None:
@@ -1571,9 +1577,9 @@ class Tracker(Steam, Utils):
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.get_friends_list_changes(0)),
             ("Playstation Games Sync", self.sync_playstation_games),
-            # ("Update All Cell Formatting", self.steam.format_all_cells),
-            ("Open Log", self.open_log),
         ]
+        if self.logging:
+            choices.append(("Open Log", self.open_log))
         self.pick_task(choices)
         exit()
 

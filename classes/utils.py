@@ -1,9 +1,7 @@
-from difflib import SequenceMatcher
 from pathlib import Path
 import time, json, requests, re, heapq
 from pick import pick
 import datetime as dt
-import pandas as pd
 from typing import Callable, Any
 from functools import wraps
 
@@ -15,7 +13,7 @@ else:
     from logger import Logger
 
 
-def keyboard_interrupt(func):
+def keyboard_interrupt(func):  # pragma: no cover
     """
     Decorator to catch KeyboardInterrupt and EOFError exceptions.
 
@@ -34,25 +32,28 @@ def keyboard_interrupt(func):
     return wrapped
 
 
-def benchmark(func: Callable[..., Any]) -> Callable[..., Any]:
+def benchmark(round_digits: int = 2) -> Callable[..., Any]:  # pragma: no cover
     """
     Prints `func` name and a benchmark for runtime.
     """
 
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        try:
-            start = time.perf_counter()
-            value = func(*args, **kwargs)
-            end = time.perf_counter()
-            elapsed = end - start
-            print(f"{func.__name__} Completion Time: {elapsed:.2f}")
-            return value
-        except Exception as e:
-            print(f"Exception occurred in {func.__name__}: {e}")
-            raise
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                start = time.perf_counter()
+                value = func(*args, **kwargs)
+                end = time.perf_counter()
+                elapsed = end - start
+                print(f"{func.__name__} Completion Time: {elapsed:.{round_digits}f}")
+                return value
+            except Exception as e:
+                print(f"Exception occurred in {func.__name__}: {e}")
+                raise
 
-    return wrapped
+        return wrapped
+
+    return decorator
 
 
 def get_steam_api_key_and_id() -> tuple[str, int]:
@@ -338,27 +339,6 @@ class Utils:
                     cache[i][j] = 1 + min_change
         return cache[0][0]
 
-    def sim_matcher(
-        self,
-        base_string: str,
-        string_list: list[str],
-        max_similarity: float = 0.8,
-    ):
-        """
-        Finds a match for `base_string` in `string_list` using sequence matching.
-        """
-        match = None
-        for string in string_list:
-            if string.lower() == base_string.lower():
-                return string
-            match_perc = SequenceMatcher(
-                None, base_string.lower(), string.lower()
-            ).ratio()
-            if match_perc > max_similarity:
-                max_similarity = match_perc
-                match = string
-        return match
-
     def lev_dist_matcher(
         self,
         base_string: str,
@@ -416,14 +396,16 @@ class Utils:
             return True
         return False
 
-    def is_response_yes(self, msg: str, default_to_yes: bool = True) -> bool:
+    def is_response_yes(
+        self, msg: str, default_to_yes: bool = True
+    ) -> bool:  # pragma: no cover
         """
         Asks for a Yes or No response. Yes returns True and No returns False.
         """
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
         return pick(choices, msg)[0] == "Yes"
 
-    def save_json_output(self, new_data: dict, filename: str):
+    def save_json(self, new_data: dict, filename: str):
         """
         Saves data into json format with the given filename.
         """
@@ -435,12 +417,14 @@ class Utils:
             if new_data != last_check_data:
                 raise PermissionError("Data did not save error")
 
-    def update_last_run(self, data: dict, name: str):
+    def update_last_run(
+        self, data: dict, config_path: str, name: str
+    ):  # pragma: no cover
         """
         Updates json by `name` with the current date.
         """
         data["last_runs"][name] = time.time()
-        self.save_json_output(data, self.config_path)
+        self.save_json(data, config_path)
 
     def recently_executed(self, data: dict, name: str, n_days: int):
         """
@@ -455,25 +439,6 @@ class Utils:
                 return True
         return False
 
-    def create_dataframe(self, table: str):
-        """
-        Creates a dataframe from a `table` found using requests and
-        BeautifulSoup.
-        """
-        # find all headers
-        headers = []
-        for i in table.find_all("th"):
-            title = i.text
-            headers.append(title)
-        # creates and fills dataframe
-        df = pd.DataFrame(columns=headers)
-        for j in table.find_all("tr")[1:]:
-            row_data = j.find_all("td")
-            row = [i.text for i in row_data]
-            length = len(df)
-            df.loc[length] = row
-        return df
 
-
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     App = Utils()
