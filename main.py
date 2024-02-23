@@ -675,16 +675,20 @@ class Tracker(Steam, Utils):
             title_style="bold",
             style="deep_sky_blue1",
         )
-        play_statuses = df["Play Status"].value_counts()
-        total_games = df["Name"].count() - play_statuses["Ignore"]
-        # row creation
+        # filters out games with "Ignore" play status
+        df_filtered = df[df["Play Status"] != "Ignore"]
+        play_statuses = df_filtered["Play Status"].value_counts()
+        total_games_excluding_ignore = len(df_filtered)
+
+        # TODO set order of play_statuses so it determines the order of columns
+        # TODO confirm calculations are correct
+
+        # Row creation
         row1, row2 = [], []
-        for status in self.play_status_choices.values():
-            if status == "Ignore":
-                continue
+        for status, count in play_statuses.items():
             table.add_column(status, justify="center")
-            row1.append(str(play_statuses[status]))
-            row2.append(f"{play_statuses[status]/total_games:.1%}")
+            row1.append(str(count))
+            row2.append(f"{count / total_games_excluding_ignore:.1%}")
         table.add_row(*row1)
         table.add_row(*row2)
         self.console.print(table, new_line_start=True)
@@ -693,24 +697,29 @@ class Tracker(Steam, Utils):
         """
         Creates a table with counts and percentage of each play status.
         """
-        title = "Playtime Statistics"
+        title = "Playtime Statistics\n(Excludes Ignored)"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
         )
-        # TODO remove any games with ignore status
-        total_hours_sum = df["Hours Played"].sum()
-        linux_hours_sum = df["Linux Hours"].sum()
+        # filters out games with "Ignore" play status
+        df_filtered = df[df["Play Status"] != "Ignore"]
+
+        total_hours_sum = df_filtered["Hours Played"].sum()
+        linux_hours_sum = df_filtered["Linux Hours"].sum()
+        average_hours = df_filtered["Hours Played"].mean()
+        median_hours = df_filtered["Hours Played"].median()
+        max_hours = df_filtered["Hours Played"].max()
         data = {
             "Total\nHours": round(total_hours_sum, 1),
             "Total\nDays": round(total_hours_sum / 24, 1),
             "Linux\nHours": round(linux_hours_sum, 1),
             "% Linux\nHours": f"{linux_hours_sum / total_hours_sum:.1%}",
-            "Average\nHours": round(df["Hours Played"].mean(), 1),
-            "Median\nHours": round(df["Hours Played"].median(), 1),
-            "Max\nHours": round(df["Hours Played"].max(), 1),
+            "Average\nHours": round(average_hours, 1),
+            "Median\nHours": round(median_hours, 1),
+            "Max\nHours": round(max_hours, 1),
         }
         # row creation
         row = []
@@ -725,22 +734,23 @@ class Tracker(Steam, Utils):
         """
         Outputs a table of review stats.
         """
-        title = "Rating Statistics"
+        title = "Rating Statistics\n(Excludes Ignored)"
         table = Table(
             title=title,
             show_lines=True,
             title_style="bold",
             style="deep_sky_blue1",
         )
+        # filters out games with "Ignore" play status
+        df_filtered = df[df["Play Status"] != "Ignore"]
 
         data = {}
-        # TODO remove any games with ignore status
         # my ratings
-        my_ratings = df["My Rating"]
+        my_ratings = df_filtered["My Rating"]
         data["My\nTotal"] = my_ratings.count()
         data["My\nAverage"] = round(my_ratings.mean(), 1)
         # steam ratings
-        steam_ratings = df["Steam Review Percent"].astype("float")
+        steam_ratings = df_filtered["Steam Review Percent"].astype("float")
         data["Steam\nTotal"] = steam_ratings.count()
         steam_avg = round(steam_ratings.mean(), 1)
         data["Steam\nAverage"] = f"{round(steam_avg*100)}%"
@@ -1586,16 +1596,14 @@ class Tracker(Steam, Utils):
         self.excel.save(use_print=False)
 
     @keyboard_interrupt
-    def run(self) -> None:
-        """
-        Main run function.
-        """
+    def main(self) -> None:
         self.console.print(self.title, style="primary")
 
         self.print_date_and_time()
 
         self.sync_steam_games(self.steam_key, self.steam_id)
 
+        # table data
         df = self.steam.create_dataframe(na_vals=["-", "NaN"])
         self.output_recently_played_games(df)
 
@@ -1608,7 +1616,7 @@ class Tracker(Steam, Utils):
 
 if __name__ == "__main__":
     App = Tracker(save=True)
-    App.run()
+    App.main()
 
     # import cProfile
-    # cProfile.run("App.run()", sort="cumtime")
+    # cProfile.run("App.main()", sort="cumtime")

@@ -30,7 +30,8 @@ class Steam(Utils):
                 return None  # handle unsuccessful response
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            self.error_log.warning(msg)
+            if "Test error" not in str(e):
+                self.error_log.warning(msg)
             return None  # handle request exceptions
 
     @staticmethod
@@ -84,7 +85,8 @@ class Steam(Utils):
                 return None  # handle unsuccessful response
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            self.error_log.warning(msg)
+            if "Test error" not in str(e):
+                self.error_log.warning(msg)
             return None  # handle request exceptions
 
     def get_store_link(self, app_id):
@@ -176,7 +178,8 @@ class Steam(Utils):
                 return None  # handle unsuccessful response
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            self.error_log.warning(msg)
+            if "Test error" not in str(e):
+                self.error_log.warning(msg)
             return None  # handle request exceptions
 
     def get_recently_played_steam_games(
@@ -206,7 +209,8 @@ class Steam(Utils):
                 return None  # handle unsuccessful response
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            self.error_log.warning(msg)
+            if "Test error" not in str(e):
+                self.error_log.warning(msg)
             return None  # handle request exceptions
 
     def get_app_details(self, app_id) -> list[dict]:
