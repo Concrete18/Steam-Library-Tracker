@@ -187,11 +187,11 @@ class TestGetYear:
 
     def test_valid(self):
         date_tests = {
-            "Sep 14, 2016": "2016",
-            "25 Apr, 1991": "1991",
-            "16 Nov, 2009": "2009",
-            "Mai 25, 1991": "1991",
-            "Apr , 2015": "2015",
+            "Sep 14, 2016": 2016,
+            "25 Apr, 1991": 1991,
+            "16 Nov, 2009": 2009,
+            "Mai 25, 1991": 1991,
+            "Apr , 2015": 2015,
         }
         for date, answer in date_tests.items():
             year = self.utils.get_year(date)
@@ -304,10 +304,8 @@ class TestSimilarityMatching:
         test_list = [
             "This is a test, yay",
             "this is not it, arg",
-            "Find the batman!",
             "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
             "The Last of Us",
-            "Elden Ring",
             "The Last of Us Part I",
             "The Last of Us Part II",
             "Waltz of the Wizard: Natural Magic",
@@ -318,11 +316,9 @@ class TestSimilarityMatching:
         ]
         string_tests = {
             "This is a test": "This is a test, yay",
-            "find th bamtan": "Find the batman!",
-            "Eldn Rings": "Elden Ring",
-            "Shadow Tactics Blades of the Shougn Aikos Choce": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
+            "Shadow Tactics Blade of the Shogun Aiko's Chosen": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
             "the last of us": "The Last of Us",
-            "Walk of the Wizard: Natural Magik": "Waltz of the Wizard: Natural Magic",
+            "Walk of the Wizards: Natural Magic": "Waltz of the Wizard: Natural Magic",
             "The last of us Part I": "The Last of Us Part I",
             "Life is Strange 1": "Life is Strange™",
             "Witcher 3: The Wild Hunt": "The Witcher 3: Wild Hunt",

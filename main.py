@@ -615,7 +615,7 @@ class Tracker(Steam, Utils):
 
     def output_recently_played_games(self, df: pd.DataFrame, n_days: int = 7) -> None:
         """
-        Creates a table with the recently played Gmes.
+        Creates a table with the recently played Games.
         """
         recently_played_games = App.find_recent_games(df, "Date Updated", n_days)
         # creates table
@@ -668,7 +668,7 @@ class Tracker(Steam, Utils):
                 last_play_time,
             ]
             table.add_row(*row)
-        # print tabl
+        # print table
         self.console.print(table, new_line_start=True)
 
     def output_play_status_info(self, df: pd.DataFrame) -> None:
@@ -836,7 +836,7 @@ class Tracker(Steam, Utils):
     def name_change_checker(self, name_changes) -> None:
         """
         Checks the `name_changes` to see if they contain any
-        name changes to possibly fufill.
+        name changes to possibly fulfill.
         """
         for names_dict in name_changes:
             new_name = names_dict["new_name"]
@@ -985,7 +985,7 @@ class Tracker(Steam, Utils):
             ]
             removed_games_names_str = self.list_to_sentence(removed_game_names)
             if self.is_response_yes(
-                f"\nDo you want to delele all the following games?\n{removed_games_names_str}"
+                f"\nDo you want to delete all the following games?\n{removed_games_names_str}"
             ):
                 for app_id in sheet_games:
                     self.steam.delete_row(str(app_id))

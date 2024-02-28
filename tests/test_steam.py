@@ -70,9 +70,7 @@ class TestSteamReview:
 class TestGetRecentlyPlayedGames:
     @pytest.fixture
     def mock_response(self, mocker):
-        # Create a mock response object
         mock_response = mocker.Mock()
-        # Set the JSON data for the response
         mock_response.json.return_value = {
             "response": {
                 "games": [
@@ -81,7 +79,6 @@ class TestGetRecentlyPlayedGames:
                 ]
             }
         }
-        # Set the status code and whether the request was successful
         mock_response.ok = True
         return mock_response
 
@@ -104,22 +101,18 @@ class TestGetRecentlyPlayedGames:
         # Create an instance of YourClass
         steam = Steam()
         steam_key, _ = get_steam_api_key_and_id()
-        # Mock requests.get to raise an exception
-        mocker.patch(
-            "requests.get", side_effect=requests.RequestException("Test error")
-        )
-        # Call the function you want to test
+
+        test_exception = requests.RequestException("Test error")
+        mocker.patch("requests.get", side_effect=test_exception)
+
         result = steam.get_recently_played_steam_games(steam_key, 123456, game_count=1)
-        # Assert that the function returns None
         assert result is None
 
 
 class TestGetSteamUsername:
     @pytest.fixture
     def mock_response(self, mocker):
-        # Create a mock response object
         mock_response = mocker.Mock()
-        # Set the JSON data for the response
         mock_response.json.return_value = {
             "response": {
                 "players": [
@@ -130,7 +123,6 @@ class TestGetSteamUsername:
                 ]
             }
         }
-        # Set the status code and whether the request was successful
         mock_response.ok = True
         return mock_response
 
@@ -145,16 +137,13 @@ class TestGetSteamUsername:
         assert result == "test_user"
 
     def test_request_error(self, mocker):
-        # Create an instance of YourClass
         steam = Steam()
         steam_key, _ = get_steam_api_key_and_id()
-        # Mock requests.get to raise an exception
-        mocker.patch(
-            "requests.get", side_effect=requests.RequestException("Test error")
-        )
-        # Call the function you want to test
+
+        test_exception = requests.RequestException("Test error")
+        mocker.patch("requests.get", side_effect=test_exception)
+
         result = steam.get_steam_username(steam_key, 123456)
-        # Assert that the function returns None
         assert result is None
 
 

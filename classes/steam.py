@@ -52,7 +52,6 @@ class Steam(Utils):
             response = requests.get(url, query)
             if response.ok:
                 data = response.json()
-                print(data)
                 if "response" in data and "steamid" in data["response"]:
                     return int(data["response"]["steamid"])
                 else:
@@ -120,12 +119,12 @@ class Steam(Utils):
             return "-", "-"
         parsed_data = text[2:26].split("% of the ")
         # get percent
-        review_perc = parsed_data[0]
-        if review_perc.isnumeric():
-            if review_perc == "100":
+        review_percent = parsed_data[0]
+        if review_percent.isnumeric():
+            if review_percent == "100":
                 percent = 1
             else:
-                percent = float(f".{review_perc}")
+                percent = float(f".{review_percent}")
         else:
             percent = "-"
         # get total

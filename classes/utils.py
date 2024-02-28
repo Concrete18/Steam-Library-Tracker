@@ -152,9 +152,8 @@ class Utils:
         """
         Gets the year from `date_string`.
         """
-        year = re.search(r"[0-9]{4}", date_string)
-        if year:
-            return year.group(0)
+        if year := re.search(r"[0-9]{4}", date_string):
+            return int(year.group(0))
         else:
             return None
 
@@ -249,7 +248,7 @@ class Utils:
         # makes string plural if needed
         if total > 1:
             time_passed += "s"
-        # fixs values that end up slightly off
+        # fixes values that end up slightly off
         fix_dict = {
             "60.0 Minutes": "1.0 Hour",
             "24.0 Hours": "1.0 Day",
