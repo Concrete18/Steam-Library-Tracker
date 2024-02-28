@@ -1,4 +1,4 @@
-import random, json, os, sys, time, subprocess, webbrowser, math
+import random, json, os, sys, time, subprocess, webbrowser, math, requests
 from howlongtobeatpy import HowLongToBeat
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -397,6 +397,8 @@ class Tracker(Steam, Utils):
             "drm_notice": "-",
             "categories": "-",
         }
+        if not app_id:
+            return info_dict
 
         def get_json_desc(data):
             return [item["description"] for item in data]
@@ -407,7 +409,9 @@ class Tracker(Steam, Utils):
         # gets games store data
         store_link = self.get_store_link(app_id)
         self.api_sleeper("store_data")
-        response = self.request_url(store_link)
+        response = requests.get(store_link)
+        if not response.ok:
+            return info_dict
         # steam review data
         percent, total = self.get_steam_review(app_id=app_id, response=response)
         info_dict[self.steam_rev_per_col] = percent
@@ -834,27 +838,13 @@ class Tracker(Steam, Utils):
         Checks the `name_changes` to see if they contain any
         name changes to possibly fufill.
         """
-        name_change_warning_num = 5
-        name_changes_total = len(name_changes)
-        if name_changes_total == 0:
-            return
-        elif name_changes_total > name_change_warning_num:
-            print(f"\nName Change Total {name_changes_total}")
-            print(f"Over Warning Threshold of {name_change_warning_num}")
-            return
-        print("\nName Changes:")
         for names_dict in name_changes:
             new_name = names_dict["new_name"]
             old_name = names_dict["old_name"]
-            print(f'"{old_name}" to "{new_name}"')
-        msg = "Do you want to update the above game names?:\n"
-        if self.is_response_yes(msg):
-            for names_dict in name_changes:
+            msg = f'Do you want to update "{old_name}"\'s name to {new_name}?:\n'
+            if self.is_response_yes(msg):
                 app_id = names_dict["app_id"]
-                new_name = names_dict["new_name"]
                 self.steam.update_cell(app_id, self.name_col, new_name)
-            return
-        print("Skipping Name Changes")
 
     def output_played_games_info(self, played_games) -> None:
         """

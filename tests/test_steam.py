@@ -158,6 +158,66 @@ class TestGetSteamUsername:
         assert result is None
 
 
+class TestGetProfileUsername:
+    """
+    Tests `get_profile_username` function.
+    """
+
+    steam = Steam()
+
+    def test_get_profile_username(self):
+        gabe_username = "gabelogannewell"
+        # ends with no /
+        no_slash = "http://steamcommunity.com/id/gabelogannewell"
+        username = self.steam.get_profile_username(no_slash)
+        assert username == gabe_username
+        # ends with /
+        with_slash = "http://steamcommunity.com/id/gabelogannewell/"
+        username = self.steam.get_profile_username(with_slash)
+        assert username == gabe_username
+
+    def test_False(self):
+        string = "this is not a url"
+        username = self.steam.get_profile_username(string)
+        assert username is None
+
+
+class TestGetSteamID:
+    """
+    Tests `get_steam_id` function.
+    """
+
+    @pytest.fixture
+    def mock_response(self, mocker):
+        # Create a mock response object
+        mock_response = mocker.Mock()
+        # Set the JSON data for the response
+        mock_response.json.return_value = {
+            "response": {"steamid": "1231654654", "success": 1}
+        }
+        # Set the status code and whether the request was successful
+        mock_response.ok = True
+        return mock_response
+
+    steam_key, _ = get_steam_api_key_and_id()
+    steam = Steam()
+
+    def test_success(self, mock_response, mocker):
+        # TODO mock requests
+        mocker.patch("requests.get", return_value=mock_response)
+
+        steam_id = self.steam.get_steam_id("gabelogannewell", self.steam_key)
+        assert steam_id == 1231654654
+
+    def test_request_error(self, mocker):
+        steam_id = self.steam.get_steam_id("", self.steam_key)
+        # Mock requests.get to raise an exception
+        mocker.patch(
+            "requests.get", side_effect=requests.RequestException("Test error")
+        )
+        assert steam_id is None
+
+
 class TestGetSteamFriends:
 
     @pytest.fixture

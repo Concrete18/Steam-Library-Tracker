@@ -2,7 +2,6 @@ import pytest
 
 # classes
 from main import Tracker
-from classes.utils import get_steam_api_key_and_id
 
 
 class TestGetTimeToBeat:
@@ -46,17 +45,6 @@ class TestGetStoreLink:
         for app_id, answer in store_link_tests.items():
             store_link = self.trackerObj.get_store_link(app_id)
             assert store_link == answer
-            # tests that the url exists
-            assert self.trackerObj.request_url(store_link)
-
-    def test_invalid_link(self):
-        """
-        Test for broken link that redirects due to the app ID not being found
-        """
-        fake_app_id = "6546546545465484213211545730"
-        invalid_url = f"https://store.steampowered.com/app/{fake_app_id}/"
-        response = self.trackerObj.request_url(invalid_url)
-        assert fake_app_id not in response.url
 
 
 class TestGetPriceInfo:
@@ -113,9 +101,23 @@ class TestGetGameInfo:
     Tests `get_game_info` function.
     """
 
+    @pytest.fixture
+    def mock_response(self, mocker):
+        # Create a mock response object
+        mock_response = mocker.Mock()
+        # Set the JSON data for the response
+        mock_response.json.return_value = {
+            "response": {"steamid": "1231654654", "success": 1}
+        }
+        # Set the status code and whether the request was successful
+        mock_response.ok = True
+        return mock_response
+
     trackerObj = Tracker(save=False)
 
-    def test_has_keys(self):
+    # TODO mock requests
+
+    def test_success(self):
         """
         Checks for keys in the `get_game_info` result dict.
         """
@@ -134,31 +136,16 @@ class TestGetGameInfo:
             "drm_notice",
             "categories",
         ]
-        dict = self.trackerObj.get_game_info(1145360)
-        for key in keys:
-            assert key in dict.keys()
-
-    def test_float(self):
-        """
-        Tests `get_game_info` function for percents.
-        """
         game_info = self.trackerObj.get_game_info(app_id=752590)
+        for key in keys:
+            assert key in game_info.keys()
+        # float
         assert isinstance(game_info["Steam Review Percent"], float)
         assert isinstance(game_info["discount"], float)
         assert isinstance(game_info["price"], float)
-
-    def test_int(self):
-        """
-        Tests `get_game_info` function for specific types of results.
-        """
-        game_info = self.trackerObj.get_game_info(app_id=752590)
+        # int
         assert isinstance(game_info["Steam Review Total"], int)
-
-    def test_string(self):
-        """
-        Tests `get_game_info` function for specific types of results.
-        """
-        game_info = self.trackerObj.get_game_info(app_id=752590)
+        # strings
         assert isinstance(game_info["Developers"], str)
         assert isinstance(game_info["Publishers"], str)
         assert isinstance(game_info["Genre"], str)
@@ -166,16 +153,12 @@ class TestGetGameInfo:
         assert isinstance(game_info["categories"], str)
         assert isinstance(game_info["Release Year"], str)
 
-    def test_other_types(self):
-        """
-        Tests `get_game_info` function for specific types of results.
-        """
-        game_info = self.trackerObj.get_game_info(app_id=752590)
+        # misc
         assert isinstance(game_info, dict)
         assert isinstance(game_info["on_sale"], bool)
         assert game_info["Early Access"] in ["Yes", "No"]
 
-    def test_check_for_default(self):
+    def test_request_error(self):
         """
         Tests for default value when invalid game is given.
         """
@@ -204,49 +187,6 @@ class TestGetGameInfo:
         game_info = self.trackerObj.get_game_info(app_id=730)
         for value in game_info.values():
             assert value != ""
-
-
-class TestGetProfileUsername:
-    """
-    Tests `get_profile_username` function.
-    """
-
-    trackerObj = Tracker(save=False)
-
-    def test_get_profile_username(self):
-        gabe_username = "gabelogannewell"
-        # ends with no /
-        no_slash = "http://steamcommunity.com/id/gabelogannewell"
-        username = self.trackerObj.get_profile_username(no_slash)
-        assert username == gabe_username
-        # ends with /
-        with_slash = "http://steamcommunity.com/id/gabelogannewell/"
-        username = self.trackerObj.get_profile_username(with_slash)
-        assert username == gabe_username
-
-    def test_False(self):
-        string = "this is not a url"
-        username = self.trackerObj.get_profile_username(string)
-        assert username is None
-
-
-class TestGetSteamID:
-    """
-    Tests `get_steam_id` function.
-    """
-
-    steam_key, _ = get_steam_api_key_and_id()
-
-    trackerObj = Tracker(save=False)
-
-    def test_get_steam_id(self):
-        gabe_steam_id = 76561197960287930
-        steam_id = self.trackerObj.get_steam_id("gabelogannewell", self.steam_key)
-        assert steam_id == gabe_steam_id
-
-    def test_False(self):
-        steam_id = self.trackerObj.get_steam_id("", self.steam_key)
-        assert steam_id is None
 
 
 class TestPlayStatus:

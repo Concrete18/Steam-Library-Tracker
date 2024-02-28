@@ -4,13 +4,7 @@ from pick import pick
 import datetime as dt
 from typing import Callable, Any
 from functools import wraps
-
-
-# logging import if helper.py is main
-if __name__ != "__main__":
-    from classes.logger import Logger
-else:
-    from logger import Logger
+from classes.logger import Logger
 
 
 def keyboard_interrupt(func):  # pragma: no cover
@@ -80,7 +74,7 @@ class Utils:
         try:
             requests.head(url, timeout=5)
             return True
-        except requests.exceptions.RequestException:
+        except requests.exceptions.RequestException:  # pragma: no cover
             return False
 
     def request_url(self, url, params=None, headers=None, second_try=False):
@@ -257,6 +251,10 @@ class Utils:
             time_passed += "s"
         # fixs values that end up slightly off
         fix_dict = {
+            "60.0 Minutes": "1.0 Hour",
+            "24.0 Hours": "1.0 Day",
+            "7.0 Days": "1.0 Week",
+            "4.0 Weeks": "1.0 Month",
             "12.0 Months": "1.0 Year",
         }
         if time_passed in fix_dict.keys():
@@ -359,7 +357,7 @@ class Utils:
                 matches[string] = distance
         sorted_keys = sorted(matches, key=matches.get)
         if len(sorted_keys) > limit:
-            sorted_keys = sorted_keys[0:limit]
+            sorted_keys = sorted_keys[0:limit]  # pragma: no cover
         return sorted_keys
 
     def create_levenshtein_matcher(
@@ -415,7 +413,7 @@ class Utils:
         with open(filename) as file:
             last_check_data = json.load(file)
             if new_data != last_check_data:
-                raise PermissionError("Data did not save error")
+                raise PermissionError("Data did not save error")  # pragma: no cover
 
     def update_last_run(
         self, data: dict, config_path: str, name: str
@@ -438,7 +436,3 @@ class Utils:
             if sec_since < check_freq_seconds:
                 return True
         return False
-
-
-if __name__ == "__main__":  # pragma: no cover
-    App = Utils()

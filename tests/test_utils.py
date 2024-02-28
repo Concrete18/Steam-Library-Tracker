@@ -41,6 +41,7 @@ class TestTimePassed:
             12: "12.0 Minutes",
             59: "59.0 Minutes",
             60: "1.0 Hour",
+            59.99: "1.0 Hour",
             800: "13.3 Hours",
             1439: "1.0 Day",
             1440: "1.0 Day",
@@ -62,6 +63,7 @@ class TestTimePassed:
             1: "1.0 Hour",
             13.3: "13.3 Hours",
             24: "1.0 Day",
+            23.99: "1.0 Day",
             48: "2.0 Days",
         }
         for hours, answer in hours_tests.items():
@@ -74,8 +76,10 @@ class TestTimePassed:
         """
         days_tests = {
             1: "1.0 Day",
+            0.99: "1.0 Day",
             5.8: "5.8 Days",
             21: "3.0 Weeks",
+            6.99: "1.0 Week",
             365: "1.0 Year",
         }
         for days, answer in days_tests.items():
@@ -88,6 +92,7 @@ class TestTimePassed:
         """
         weeks_tests = {
             4.4: "1.0 Month",
+            3.99: "1.0 Month",
             8.5: "2.0 Months",
             52: "1.0 Year",
         }
@@ -103,6 +108,7 @@ class TestTimePassed:
             1: "1.0 Month",
             0.5: "2.2 Weeks",
             12: "1.0 Year",
+            11.99: "1.0 Year",
         }
         for months, answer in months_tests.items():
             output = self.utils.convert_time_passed(months=months)
@@ -112,11 +118,12 @@ class TestTimePassed:
         """
         tests function when given years
         """
-        days_tests = {
+        years_tests = {
             1: "1.0 Year",
+            0.999: "1.0 Year",
             5: "5.0 Years",
         }
-        for years, answer in days_tests.items():
+        for years, answer in years_tests.items():
             output = self.utils.convert_time_passed(years=years)
             assert output == answer
 

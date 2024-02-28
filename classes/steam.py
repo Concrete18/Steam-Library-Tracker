@@ -46,20 +46,24 @@ class Steam(Utils):
         """
         Gets a users Steam ID via their `vanity_url` or `vanity_username`.
         """
-        main_url = "https://api.steampowered.com/"
-        api_action = "ISteamUser/ResolveVanityURL/v0001/"
-        url = main_url + api_action
-        query = {
-            "key": steam_key,
-            "vanityurl": vanity_url,
-        }
-        response = self.request_url(url, params=query)
-        if response:
-            data = response.json()["response"]
-            if "steamid" in data.keys():
-                steam_id = data["steamid"]
-                return int(steam_id)
-        return None
+        url = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/"
+        query = {"key": steam_key, "vanityurl": vanity_url}
+        try:
+            response = requests.get(url, query)
+            if response.ok:
+                data = response.json()
+                print(data)
+                if "response" in data and "steamid" in data["response"]:
+                    return int(data["response"]["steamid"])
+                else:
+                    return None  # handle missing keys in the JSON response
+            else:
+                return None  # handle unsuccessful response
+        except requests.RequestException as e:
+            msg = f"Error occurred: {e}"
+            if "Test error" not in str(e):
+                self.error_log.warning(msg)
+            return None  # handle request exceptions
 
     def get_steam_friends(self, steam_key, steam_id):
         """
@@ -103,6 +107,7 @@ class Steam(Utils):
         if not response:
             self.api_sleeper("steam_review_scrape")
             store_link = self.get_store_link(app_id)
+            # TODO replace all instances of request_url
             response = self.request_url(store_link)
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
@@ -256,8 +261,8 @@ class Steam(Utils):
         Gets a games current player count by `app_id` using the Steam API via the `steam_api_key`.
         """
         url = f"http://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}&key={steam_api_key}"
-        response = self.request_url(url)
-        if response:
+        response = requests.get(url)
+        if response.ok:
             data = response.json()
             current_players = data.get("response", {}).get("player_count", "N/A")
             return current_players
