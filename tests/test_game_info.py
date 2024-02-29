@@ -1,4 +1,6 @@
-import pytest, json
+import pytest, json, requests
+from howlongtobeatpy import HowLongToBeat
+
 
 from classes.game_info import Game, GetGameInfo
 
@@ -112,6 +114,21 @@ class TestGetPriceInfo:
         assert discount == 0.5
         assert on_sale
 
+    def test_insufficient_data(self):
+        App = GetGameInfo()
+
+        price, discount, on_sale = App.get_price_info({})
+        assert not price
+        assert not discount
+        assert not on_sale
+
+
+class TestGetTimeToBeat:
+    def test_success(self):
+        App = GetGameInfo()
+        ttb = App.get_time_to_beat("Hades")
+        assert isinstance(ttb, float)
+
 
 class TestGetAppDetails:
 
@@ -133,16 +150,36 @@ class TestGetAppDetails:
 
         assert game_data
 
+    def test_request_error(self, mocker):
+        App = GetGameInfo()
+
+        test_exception = requests.RequestException("Test error")
+        mocker.patch("requests.get", side_effect=test_exception)
+
+        result = App.get_app_details(None)
+        assert result is None
+
 
 class TestGetGameInfo:
 
-    def test_success(self):
+    def test_success(self, mocker):
         App = GetGameInfo()
 
         with open("tests\example_game_app_details.json", "r", encoding="utf-8") as file:
             app_details_json = json.load(file)
 
         game_data = app_details_json.get(str(2379780), {}).get("data")
+
+        mocker.patch("classes.steam.Steam.get_steam_review", return_value=(0.97, 9856))
+        mocker.patch(
+            "classes.steam.Steam.get_steam_user_tags",
+            return_value=[
+                "Roguelike",
+                "Card Game",
+                "Deckbuilding",
+            ],
+        )
+        mocker.patch("classes.game_info.GetGameInfo.get_time_to_beat", return_value=20)
 
         game = App.get_game_info(game_data)
         assert game == Game(
@@ -155,6 +192,15 @@ class TestGetGameInfo:
                 "Indie",
                 "Strategy",
             ],
+            early_access="No",
+            steam_review_percent=0.97,
+            steam_review_total=9856,
+            user_tags=[
+                "Roguelike",
+                "Card Game",
+                "Deckbuilding",
+            ],
+            time_to_beat=20,
             release_year=2024,
             price=14.99,
             discount=0.0,
