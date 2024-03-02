@@ -141,8 +141,11 @@ class GetGameInfo(Steam, Utils):
         review_percent, review_total = self.get_steam_review(app_id=app_id)
         user_tags = self.get_steam_user_tags(app_id=app_id)
         ttb = self.get_time_to_beat(game_name_no_unicode)
-        if steam_api_key:
-            player_count = self.get_steam_game_player_count(app_id, steam_api_key)
+        player_count = (
+            self.get_steam_game_player_count(app_id, steam_api_key)
+            if steam_api_key
+            else None
+        )
 
         return Game(
             app_id=app_id,
@@ -155,7 +158,7 @@ class GetGameInfo(Steam, Utils):
             steam_review_total=review_total,
             user_tags=user_tags,
             time_to_beat=ttb,
-            player_count=player_count or None,
+            player_count=player_count,
             release_year=release_year,
             price=price,
             discount=discount,

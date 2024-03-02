@@ -1,4 +1,4 @@
-import pytest, json
+import pytest, json, requests
 
 from classes.game_info import Game, GetGameInfo
 
@@ -142,17 +142,27 @@ class TestGetAppDetails:
         assert game_data
 
     # TODO fix test
-    # def test_request_error(self, mocker):
-    #     App = GetGameInfo()
+    def test_request_error(self, mocker):
+        App = GetGameInfo()
 
-    #     test_exception = requests.RequestException("Test error")
-    #     mocker.patch("requests.get", side_effect=test_exception)
+        test_exception = requests.RequestException("Test error")
+        mocker.patch("requests.get", side_effect=test_exception)
 
-    #     result = App.get_app_details(None)
-    #     assert result is None
+        result = App.get_app_details(None)
+        assert result is None
 
 
 class TestGetGameInfo:
+
+    @staticmethod
+    def get_steam_api_key() -> str:
+        """
+        Gets the steam API key from the config file.
+        """
+        with open("configs/config.json") as file:
+            data = json.load(file)
+        api_key = data["steam_data"]["api_key"]
+        return api_key
 
     def test_success(self, mocker):
         App = GetGameInfo()
@@ -172,8 +182,11 @@ class TestGetGameInfo:
             ],
         )
         mocker.patch("classes.game_info.GetGameInfo.get_time_to_beat", return_value=20)
+        mocker.patch(
+            "classes.steam.Steam.get_steam_game_player_count", return_value=600
+        )
 
-        game = App.get_game_info(game_data)
+        game = App.get_game_info(game_data, self.get_steam_api_key())
         assert isinstance(game, Game)
         # attribute check
         assert game.name == "Balatro"
@@ -186,6 +199,7 @@ class TestGetGameInfo:
         assert game.steam_review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
         assert game.time_to_beat == 20
+        assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99
         assert game.discount == 0.0

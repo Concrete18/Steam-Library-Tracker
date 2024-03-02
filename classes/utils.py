@@ -78,9 +78,9 @@ def get_steam_api_key_and_id() -> tuple[str, int]:
     config = Path("configs/config.json")
     with open(config) as file:
         data = json.load(file)
-    api_ley = data["steam_data"]["api_key"]
+    api_key = data["steam_data"]["api_key"]
     steam_id = str(data["steam_data"]["steam_id"])
-    return api_ley, steam_id
+    return api_key, steam_id
 
 
 class Utils:

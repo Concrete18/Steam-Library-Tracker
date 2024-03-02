@@ -325,7 +325,7 @@ class Tracker(GetGameInfo, Utils):
             app_details = self.get_app_details(app_id)
             if not app_details:
                 continue
-            game = self.get_game_info(app_details)
+            game = self.get_game_info(app_details, self.steam_key)
             game_data = self.get_game_column_dict(game)
             # update data
             for column, data in game_data.items():
@@ -678,7 +678,7 @@ class Tracker(GetGameInfo, Utils):
             title=title,
             show_lines=True,
             title_style="bold",
-            style="deep_sky_blue1",
+            style="green3",
         )
         table.add_column("Name", justify="left")
         table.add_column("Time\nPlayed", justify="center")
