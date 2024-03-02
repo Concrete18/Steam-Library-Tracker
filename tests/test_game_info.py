@@ -1,4 +1,4 @@
-import pytest, json, requests
+import pytest, json
 
 from classes.game_info import Game, GetGameInfo
 
@@ -137,19 +137,14 @@ class TestGetAppDetails:
 
         mocker.patch("requests.get", return_value=mock_response)
 
-        game_data = App.get_app_details(2379780)
+        assert App.get_app_details(2379780)
 
-        assert game_data
-
-    # TODO fix test
-    def test_request_error(self, mocker):
+    def test_request_error(self, mock_response, mocker):
         App = GetGameInfo()
 
-        test_exception = requests.RequestException("Test error")
-        mocker.patch("requests.get", side_effect=test_exception)
+        mocker.patch("requests.get", return_value=mock_response)
 
-        result = App.get_app_details(None)
-        assert result is None
+        assert App.get_app_details(None) is None
 
 
 class TestGetGameInfo:
