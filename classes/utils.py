@@ -1,5 +1,6 @@
 from pathlib import Path
 import time, json, requests, re, heapq
+from requests.exceptions import RequestException
 from pick import pick
 import datetime as dt
 from typing import Callable, Any
@@ -46,6 +47,26 @@ def benchmark(round_digits: int = 2) -> Callable[..., Any]:  # pragma: no cover
                 raise
 
         return wrapped
+
+    return decorator
+
+
+def retry(max_retries=3, delay=1):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except RequestException as e:
+                    print(f"Request failed: {e}. Retrying...")
+                    retries += 1
+                    time.sleep(delay)
+            print(f"Failed after {max_retries} retries.")
+            return None
+
+        return wrapper
 
     return decorator
 
@@ -118,6 +139,12 @@ class Utils:
 
         self.error_log.warning(msg)
         return False
+
+    def create_hyperlink(self, url: str, label: str) -> str:
+        """
+        Generates a steam an excel HYPERLINK to `url` with the `label`.
+        """
+        return f'=HYPERLINK("{url}","{label}")'
 
     def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
         """

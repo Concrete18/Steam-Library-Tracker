@@ -134,6 +134,7 @@ dmypy.json
 *.bak
 *.xml
 *.pkl
+*.old
 
 # custom files
 *.lnk

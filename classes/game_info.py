@@ -119,7 +119,7 @@ class GetGameInfo(Steam, Utils):
             return response.json().get(str(app_id), {}).get("data")
         return None
 
-    def get_game_info(self, game_data: dict) -> Game | None:
+    def get_game_info(self, game_data: dict, steam_api_key=None) -> Game | None:
         """
         Creates a Game object with data from `game_data`.
         """
@@ -132,18 +132,17 @@ class GetGameInfo(Steam, Utils):
         publisher = ", ".join(game_data.get("publishers", []))
         genre = [desc["description"] for desc in game_data.get("genres", [])]
         early_access = "Yes" if "early access" in genre else "No"
-
-        review_percent, review_total = self.get_steam_review(app_id=app_id)
-        user_tags = self.get_steam_user_tags(app_id=app_id)
-        ttb = self.get_time_to_beat(game_name_no_unicode)
-        # TODO add player count
-        # player_count = self.get_steam_game_player_count(app_id)
-
         release_year = self.parse_release_date(game_data)
         price, discount, on_sale = self.get_price_info(game_data)
         linux_compat = game_data.get("platforms", {}).get("linux", False)
         categories = [desc["description"] for desc in game_data.get("categories", [])]
         drm_notice = game_data.get("drm_notice", None)
+        # extra internet checks
+        review_percent, review_total = self.get_steam_review(app_id=app_id)
+        user_tags = self.get_steam_user_tags(app_id=app_id)
+        ttb = self.get_time_to_beat(game_name_no_unicode)
+        if steam_api_key:
+            player_count = self.get_steam_game_player_count(app_id, steam_api_key)
 
         return Game(
             app_id=app_id,
@@ -156,7 +155,7 @@ class GetGameInfo(Steam, Utils):
             steam_review_total=review_total,
             user_tags=user_tags,
             time_to_beat=ttb,
-            # player_count=player_count,
+            player_count=player_count or None,
             release_year=release_year,
             price=price,
             discount=discount,

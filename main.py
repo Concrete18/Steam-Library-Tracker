@@ -1,5 +1,4 @@
-import random, json, os, sys, time, subprocess, webbrowser, math, requests
-from howlongtobeatpy import HowLongToBeat
+import random, json, os, sys, subprocess, webbrowser, math
 from difflib import SequenceMatcher
 from pathlib import Path
 from pick import pick
@@ -14,7 +13,10 @@ from rich.theme import Theme
 
 # classes
 from classes.setup import Setup
-from classes.steam import Steam
+
+# TODO decide if steam should inherit GetGameInfo instead
+# from classes.steam import Steam
+from classes.game_info import Game, GetGameInfo
 from classes.game_skipper import GameSkipper
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
@@ -23,7 +25,7 @@ from classes.logger import Logger
 from easierexcel import Excel, Sheet
 
 
-class Tracker(Steam, Utils):
+class Tracker(GetGameInfo, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
@@ -130,7 +132,6 @@ class Tracker(Steam, Utils):
         date_added_col := "Date Added",
         date_updated_col := "Date Updated",
         my_rating_col := "My Rating",
-        rating_comp_col := "Rating Comparison",
         steam_rev_per_col := "Steam Review Percent",
         steam_rev_total_col := "Steam Review Total",
         price_col := "Price",
@@ -239,40 +240,13 @@ class Tracker(Steam, Utils):
         self.config_data["friend_ids"] = cur_friend_ids
         self.save_json(self.config_data, self.config_path)
 
-    def set_title(self, title=None):
+    def set_title(self, title: str = None) -> None:
         """
-        Sets the CLI windows title.
+        Sets the CLI window title to the specified title if provided.
+        If no title is given, it sets the title back to the default.
         """
-        if title:
-            set_title = title
-        else:
-            set_title = self.title
-        os.system("title " + set_title)
-
-    def get_time_to_beat(self, game_name: str) -> float | str:
-        """
-        Uses howlongtobeatpy to get the time to beat for entered game.
-        """
-        game_name = self.unicode_remover(game_name)
-        self.api_sleeper("time_to_beat")
-        try:
-            results = HowLongToBeat().search(game_name)
-        except:
-            for _ in range(3):
-                time.sleep(10)
-                results = HowLongToBeat().search(game_name)
-            return "-"
-        if not results:
-            self.api_sleeper("time_to_beat")
-            if game_name.isupper():
-                results = HowLongToBeat().search(game_name.title())
-            else:
-                results = HowLongToBeat().search(game_name.upper())
-        time_to_beat = "-"
-        if results is not None and len(results) > 0:
-            best_element = max(results, key=lambda element: element.similarity)
-            time_to_beat = best_element.main_extra or best_element.main_story or "-"
-        return time_to_beat
+        set_title = title or self.title
+        os.system(f"title {set_title}")
 
     def create_save_every_nth(self, save_on_nth=20):
         counter = 0
@@ -285,56 +259,6 @@ class Tracker(Steam, Utils):
                 counter = 0
 
         return save_every_nth
-
-    def set_release_year(self, app_id, release_year):
-        """
-        Sets `app_id`'s release year cell to `release_year` if a year is not
-        already set.
-        """
-        cur_val = self.steam.get_cell(app_id, self.release_col)
-        if not self.any_is_num(cur_val):
-            return self.steam.update_cell(app_id, self.release_col, release_year)
-
-    def set_genre(self, app_id, genre):
-        """
-        Sets `app_id`'s genre cell to `genre`.
-        """
-        return self.steam.update_cell(app_id, self.genre_col, genre)
-
-    def set_time_to_beat(self, app_id, new_ttb, cur_ttb):
-        """
-        Sets `app_id`'s Time to beat cell to `time_to_beat`.
-        """
-        if not new_ttb:
-            return
-        if not self.any_is_num(cur_ttb):
-            return self.steam.update_cell(app_id, self.time_to_beat_col, new_ttb)
-
-    def set_hours_played(self, app_id, hours):
-        """
-        Sets `app_id`'s Hours Played cell to `hours`.
-        """
-        return self.steam.update_cell(app_id, self.hours_played_col, hours)
-
-    def set_linux_hours_played(self, app_id, hours):
-        """
-        Sets `app_id`'s Linux Hours cell to `hours`.
-        """
-        return self.steam.update_cell(app_id, self.linux_hours_col, hours)
-
-    def set_last_playtime(self, app_id, set_last_playtime):
-        """
-        Sets `app_id`'s last play time to `set_last_playtime`.
-        """
-        column = self.last_play_time_col
-        return self.steam.update_cell(app_id, column, set_last_playtime)
-
-    def set_time_played(self, app_id, time_played):
-        """
-        Sets `app_id`'s time played to `time_played`.
-        """
-        column = self.time_played_col
-        return self.steam.update_cell(app_id, column, time_played)
 
     def set_play_status(self, app_id, new_status, cur_status=None):
         """
@@ -349,128 +273,6 @@ class Tracker(Steam, Utils):
         """
         cur_date = dt.datetime.now()
         return self.steam.update_cell(app_id, self.date_updated_col, cur_date)
-
-    @staticmethod
-    def get_price_info(game_info: dict) -> tuple[float, float, bool]:
-        """
-        Gets price info from `game_info` and returns None if anything is set up
-        wrong for any or all return values.
-        """
-        if "price_overview" not in game_info.keys():
-            return None, None, None
-        price_data = game_info["price_overview"]
-        # price
-        price = None
-        if "final_formatted" in price_data.keys():
-            price_value = price_data["final_formatted"]
-            try:
-                price = float(price_value.replace("$", ""))
-            except:
-                price = None
-        # discount
-        discount = None
-        if "discount_percent" in price_data.keys():
-            discount = float(price_data["discount_percent"])
-        # on sale
-        on_sale = None
-        if "discount_percent" in price_data.keys():
-            on_sale = price_data["discount_percent"] > 0
-        return price, discount, on_sale
-
-    def get_game_info(self, app_id):
-        """
-        Gets game info with steam api using a `app_id`.
-        """
-        info_dict = {
-            "game_name": "-",
-            self.dev_col: "-",
-            self.pub_col: "-",
-            self.genre_col: "-",
-            self.ea_col: "No",
-            self.steam_rev_per_col: "-",
-            self.steam_rev_total_col: "-",
-            self.user_tags_col: "-",
-            self.release_col: "-",
-            "price": "-",
-            "discount": 0.0,
-            "on_sale": False,
-            "drm_notice": "-",
-            "categories": "-",
-        }
-        if not app_id:
-            return info_dict
-
-        def get_json_desc(data):
-            return [item["description"] for item in data]
-
-        app_details = self.get_app_details(app_id)
-        if not app_details:
-            return info_dict
-        # gets games store data
-        store_link = self.get_store_link(app_id)
-        self.api_sleeper("store_data")
-        response = requests.get(store_link)
-        if not response.ok:
-            return info_dict
-        # steam review data
-        percent, total = self.get_steam_review(app_id=app_id, response=response)
-        info_dict[self.steam_rev_per_col] = percent
-        info_dict[self.steam_rev_total_col] = total
-        # get user tags
-        tags = self.get_steam_user_tags(app_id=app_id, response=response)
-        if tags:
-            info_dict[self.user_tags_col] = ", ".join(tags)
-        # info_dict setup
-        if "data" in app_details[str(app_id)].keys():
-            game_info = app_details[str(app_id)]["data"]
-            keys = game_info.keys()
-            # get game name
-            if "name" in keys:
-                info_dict["game_name"] = game_info["name"]
-            # get developer
-            if "developers" in keys:
-                output = self.list_to_sentence(game_info["developers"])
-                if output != "":
-                    info_dict[self.dev_col] = output
-            # get publishers
-            if "publishers" in keys:
-                output = self.list_to_sentence(game_info["publishers"])
-                if output != "":
-                    info_dict[self.pub_col] = output
-            # get genre
-            if "genres" in keys:
-                genres = get_json_desc(game_info["genres"])
-                info_dict[self.genre_col] = ", ".join(genres)
-                # early access
-                if self.ea_col in info_dict[self.genre_col]:
-                    info_dict[self.ea_col] = "Yes"
-            # get release year
-            if "release_date" in keys:
-                release_date = game_info["release_date"]["date"]
-                release_date = self.get_year(release_date)
-                info_dict[self.release_col] = release_date or "-"
-            # get price_info
-            if "price_overview" in keys:
-                price, discount, on_sale = self.get_price_info(game_info)
-                if price:
-                    info_dict["price"] = price
-                if discount:
-                    info_dict["discount"] = discount
-                if on_sale:
-                    info_dict["on_sale"] = on_sale
-            # get linux compat
-            if "linux_compat" in keys:
-                info_dict["linux_compat"] = game_info["platforms"]["linux"]
-            # categories
-            if "categories" in keys:
-                categories = get_json_desc(game_info["categories"])
-                info_dict["categories"] = self.list_to_sentence(categories)
-            # drm info
-            if "drm_notice" in keys:
-                info_dict["drm_notice"] = game_info["drm_notice"]
-            # runs unicode remover on all values
-            return {k: self.unicode_remover(v) for k, v in info_dict.items()}
-        return info_dict
 
     def find_recent_games(
         self,
@@ -487,7 +289,28 @@ class Tracker(Steam, Utils):
             by=self.date_updated_col, ascending=False
         ).to_dict(orient="records")
 
-    def update_extra_steam_info(self, app_ids):
+    def get_game_column_dict(self, game: Game) -> dict:
+        """
+        Returns a dict of column names and the value for that column.
+        """
+        game_data = {
+            self.dev_col: game.developer,
+            self.pub_col: game.publisher,
+            self.steam_rev_per_col: game.steam_review_percent,
+            self.steam_rev_total_col: game.steam_review_total,
+            self.price_col: game.price,
+            self.discount_col: game.discount,
+            self.steam_player_count_col: game.player_count,
+            self.genre_col: game.genre_str,
+            self.user_tags_col: game.tags_str,
+            self.ea_col: game.early_access,
+            self.time_to_beat_col: game.time_to_beat,
+            self.store_link_col: self.create_hyperlink(game.game_url, "Store"),
+            self.release_col: game.release_year,
+        }
+        return {key: value for key, value in game_data.items() if value is not None}
+
+    def update_extra_game_info(self, app_ids):
         """
         Updates info that changes often enough that it needs to be updated manually.
         """
@@ -497,24 +320,21 @@ class Tracker(Steam, Utils):
         print()
         desc = "Syncing Game Data"
         for app_id in track(app_ids, description=desc):
-            game_data = self.steam.get_row(app_id)
-            game_name = game_data[self.name_col]
-            # How long to beat check
-            cur_ttb = game_data[self.time_to_beat_col]
-            if not cur_ttb:
-                new_ttb = self.get_time_to_beat(game_name)
-                self.set_time_to_beat(app_id, new_ttb, cur_ttb)
-            steam_info = self.get_game_info(app_id)
-            # updates sheet with data found in steam_info
-            special_case_col = [self.release_col]
-            for key, val in steam_info.items():
-                if key in self.excel_columns and steam_info[key]:
-                    if key not in special_case_col:
-                        self.steam.update_cell(app_id, key, val)
-            # release year
-            if steam_info[self.release_col]:
-                year = steam_info[self.release_col]
-                self.set_release_year(app_id, year)
+            game_row = self.steam.get_row(app_id)
+            # get new data from internet
+            app_details = self.get_app_details(app_id)
+            if not app_details:
+                continue
+            game = self.get_game_info(app_details)
+            game_data = self.get_game_column_dict(game)
+            # update data
+            for column, data in game_data.items():
+                if not data:
+                    continue
+                if column == self.time_to_beat_col and game_row[self.time_to_beat_col]:
+                    continue
+                self.steam.update_cell(game.app_id, column, data)
+            # saves data
             if self.save_to_file:
                 save_every_nth()
             # title progress percentage
@@ -525,10 +345,10 @@ class Tracker(Steam, Utils):
 
     def update_all_game_data(self):
         """
-        Gets app_ids and updates games using update_extra_steam_info func.
+        Gets app_ids and updates games using update_extra_game_info func.
         """
         app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
-        self.update_extra_steam_info(app_ids)
+        self.update_extra_game_info(app_ids)
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
@@ -601,7 +421,7 @@ class Tracker(Steam, Utils):
             return
         # updates game data
         try:
-            self.update_extra_steam_info(update_list)
+            self.update_extra_game_info(update_list)
             if updated_recent:
                 self.update_last_run(
                     self.config_data, self.config_path, "recently_played"
@@ -953,13 +773,15 @@ class Tracker(Steam, Utils):
                 if update_info:
                     played_games.append(update_info)
             else:
+
                 added_info = self.add_steam_game(
-                    app_id,
-                    game_name,
-                    minutes_played,
-                    linux_minutes_played,
-                    time_played,
-                    new_status,
+                    app_id=app_id,
+                    game_name=game_name,
+                    minutes_played=minutes_played,
+                    linux_minutes_played=linux_minutes_played,
+                    time_played=time_played,
+                    new_status=new_status,
+                    get_internet_info=len(added_games) <= 10,
                 )
                 added_games.append(added_info)
         # saves each time the checks count is divisible by num
@@ -1025,36 +847,35 @@ class Tracker(Steam, Utils):
         """
         Updates the games playtime and play status if they changed.
         """
-        # all hours
-        previous_hours_played = self.steam.get_cell(app_id, self.hours_played_col)
-        current_hours_played = self.hours_played(minutes_played)
-        current_linux_hours_played = self.hours_played(linux_minutes_played)
-        # makes sure hours played is a number
-        if previous_hours_played == None or previous_hours_played == "None":
-            previous_hours_played = 0
-        else:
-            previous_hours_played = float(previous_hours_played)
-        if not current_hours_played:
+        prev_hours = self.steam.get_cell(app_id, self.hours_played_col)
+        try:
+            prev_hours = float(prev_hours)
+        except (TypeError, ValueError):
+            prev_hours = 0.0
+        cur_hours = self.hours_played(minutes_played)
+        if not cur_hours:
             return
-        if current_hours_played > previous_hours_played:
-            hours_played = current_hours_played - previous_hours_played
-            added_time_played = self.convert_time_passed(hours=hours_played)
-            self.set_hours_played(app_id, current_hours_played)
-            self.set_linux_hours_played(app_id, current_linux_hours_played)
-            self.set_last_playtime(app_id, added_time_played)
-            self.set_time_played(app_id, time_played)
+        # only updates if new play time occurred
+        if cur_hours > prev_hours:
+            hours_played = cur_hours - prev_hours
+            self.steam.update_cell(app_id, self.hours_played_col, cur_hours)
+            cur_linux_hours = self.hours_played(linux_minutes_played)
+            self.steam.update_cell(app_id, self.linux_hours_col, cur_linux_hours)
+            added_time = self.convert_time_passed(hours=hours_played)
+            self.steam.update_cell(app_id, self.last_play_time_col, added_time)
+            self.steam.update_cell(app_id, self.time_played_col, time_played)
             self.set_date_updated(app_id)
             self.set_play_status(app_id, new_status, cur_status)
             self.steam.format_row(app_id)
             self.total_session_playtime += hours_played
             # updated game logging
-            msg = f"Playtime: {game_name} played for {added_time_played}"
+            msg = f"Playtime: {game_name} played for {added_time}"
             if self.logging:
                 self.main_log.info(msg)
             return {
                 "name": game_name,
-                "added_time_played": added_time_played,
-                "total_playtime": current_hours_played,
+                "added_time_played": added_time,
+                "total_playtime": cur_hours,
             }
 
     def add_steam_game(
@@ -1065,6 +886,7 @@ class Tracker(Steam, Utils):
         linux_minutes_played=None,
         time_played=None,
         play_status=None,
+        get_internet_info=True,
         save_after_add=False,
     ) -> dict:
         """
@@ -1080,31 +902,27 @@ class Tracker(Steam, Utils):
         linux_hours_played = ""
         if linux_minutes_played:
             linux_hours_played = self.hours_played(linux_minutes_played)
-        # store link setup
-        store_link = self.get_store_link(app_id)
-        store_link_hyperlink = f'=HYPERLINK("{store_link}","Store")'
-        # misc
-        early_access = "No"
-        # sets excel column values
-        column_info = {
-            self.my_rating_col: "",
+
+        cur_date = dt.datetime.now()
+        base_data = {
             self.name_col: game_name,
+            self.app_id_col: app_id,
             self.play_status_col: play_status,
-            self.ea_col: early_access,
-            self.time_to_beat_col: self.get_time_to_beat(game_name),
             self.hours_played_col: hours_played,
             self.linux_hours_col: linux_hours_played,
             self.time_played_col: time_played,
-            self.app_id_col: app_id,
-            self.store_link_col: store_link_hyperlink,
-            self.date_added_col: dt.datetime.now(),
-            self.date_updated_col: dt.datetime.now(),
+            self.date_added_col: cur_date,
+            self.date_updated_col: cur_date,
         }
-        if steam_info := self.get_game_info(app_id):
-            for column in self.excel_columns:
-                if column in steam_info.keys():
-                    column_info[column] = steam_info[column]
-        self.steam.add_new_line(column_info)
+        extra_data = {}
+        if get_internet_info:
+            app_details = self.get_app_details(app_id)
+            if app_details:
+                game = self.get_game_info(app_details, self.steam_key)
+                extra_data = self.get_game_column_dict(game)
+        game_data = {**base_data, **extra_data}
+
+        self.steam.add_new_line(game_data)
         # logging
         if not hours_played:
             time_played = "no time"
@@ -1123,6 +941,7 @@ class Tracker(Steam, Utils):
         """
         Adds a playstation games with `game_name` and `platform` info.
         """
+        unicode_free_name = self.unicode_remover(game_name)
         # sets excel column values
         column_info = {
             self.date_added_col: dt.datetime.now(),
@@ -1130,7 +949,7 @@ class Tracker(Steam, Utils):
             self.name_col: game_name,
             self.play_status_col: "Unplayed",
             self.platform_col: platform,
-            self.time_to_beat_col: self.get_time_to_beat(game_name),
+            self.time_to_beat_col: self.get_time_to_beat(unicode_free_name),
         }
         self.playstation.add_new_line(column_info)
         # logging
@@ -1281,7 +1100,7 @@ class Tracker(Steam, Utils):
             return
         self.console.print(
             f"\nPicking games set as [secondary]{play_status}[/]"
-            "\nType Stop To Finish"
+            "\nType Stop To Finish\n"
             f"\nPicked: [secondary]{picked_game_name}[/]"
         )
         # allows getting another random pick
@@ -1293,39 +1112,43 @@ class Tracker(Steam, Utils):
             picked_game_name, choice_list = self.get_random_game_name(play_status)
             self.console.print(f"Picked: [secondary]{picked_game_name}[/]")
 
-    def get_favorite_games(self, min_rating=8) -> list:
+    def get_favorite_games(self, min_rating: int = 8) -> list[dict]:
         """
         gets favorite games from excel file as a list of dicts
         """
+        # TODO convert to use the new Game class
+        print("\nget_favorite_games is not currently working")
+        return
         # starts check with progress bar
         print(f"Minimum Rating set to {min_rating}\n")
         games = []
         desc = "Finding Favorite Games"
         for app_id in track(self.steam.row_idx.keys(), description=desc):
-            game_data = self.steam.get_row(app_id)
-            if game_data[self.my_rating_col] == None:
+            game_row = self.steam.get_row(app_id)
+            if game_row[self.my_rating_col] == None:
                 continue
-            if game_data[self.my_rating_col] >= min_rating and app_id:
-                game_info = self.get_game_info(app_id)
-                if not game_info or not "on_sale" in game_info.keys():
+            if game_row[self.my_rating_col] >= min_rating and app_id:
+                game_data = self.get_app_details(app_id)
+                game = self.get_game_info(game_data)
+                if not game or not game.on_sale:
                     continue
                 # create game_dict
                 game_dict = {
                     self.date_updated_col: dt.datetime.now(),
-                    self.name_col: game_info["game_name"],
-                    self.discount_col: game_info["discount"] * 0.01,
-                    self.price_col: game_info["price"],
-                    self.my_rating_col: game_data[self.my_rating_col],
-                    self.steam_rev_per_col: game_info[self.steam_rev_per_col],
-                    self.steam_rev_total_col: game_info[self.steam_rev_total_col],
-                    self.store_link_col: game_data[self.store_link_col],
-                    self.time_to_beat_col: game_data[self.time_to_beat_col],
-                    self.user_tags_col: game_info[self.user_tags_col],
-                    self.release_col: game_info[self.release_col],
-                    self.genre_col: game_info[self.genre_col],
-                    self.ea_col: game_info[self.ea_col],
-                    self.dev_col: game_info[self.dev_col],
-                    self.pub_col: game_info[self.pub_col],
+                    self.name_col: game.name,
+                    self.discount_col: game.discount * 0.01,
+                    self.price_col: game.price,
+                    self.my_rating_col: game_row[self.my_rating_col],
+                    self.steam_rev_per_col: game.steam_review_percent,
+                    self.steam_rev_total_col: game.steam_review_total,
+                    self.store_link_col: game_row[self.store_link_col],
+                    self.time_to_beat_col: game_row[self.time_to_beat_col],
+                    self.user_tags_col: game.user_tags,
+                    self.release_col: game.release_year,
+                    self.genre_col: game.genre,
+                    self.ea_col: game.early_access,
+                    self.dev_col: game.developer,
+                    self.pub_col: game.publisher,
                 }
                 games.append(game_dict)
         return games
@@ -1334,13 +1157,13 @@ class Tracker(Steam, Utils):
         """
         Updates the sales sheet with each games info from `games`.
         """
-        for game in games:
-            name = game["Name"]
-            price = game["Price"]
-            discount = game["Discount"]
+        for game_dict in games:
+            name = game_dict["Name"]
+            price = game_dict["Price"]
+            discount = game_dict["Discount"]
             if name in self.sales.row_idx.keys():
                 self.sales.delete_row(name)
-            # checks to see if it should skip the game
+            # checks to see if it should skip the game_dict
             skip_checks = [
                 name == "Unset",
                 (type(price) is str and "$" not in price),
@@ -1348,7 +1171,7 @@ class Tracker(Steam, Utils):
             ]
             if any(skip_checks):
                 continue
-            self.sales.add_new_line(game)
+            self.sales.add_new_line(game_dict)
         self.sales.format_all_cells()
         if self.save_to_file:
             self.excel.save(use_print=False)
@@ -1562,7 +1385,7 @@ class Tracker(Steam, Utils):
             ("Exit and Open the Excel File", self.excel.open_excel),
             ("Random Game Explorer", self.pick_random_game),
             ("Player Counts Sync", lambda: self.update_player_counts(df)),
-            ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
+            # ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.get_friends_list_changes(0)),
@@ -1613,6 +1436,3 @@ class Tracker(Steam, Utils):
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.main()
-
-    # import cProfile
-    # cProfile.run("App.main()", sort="cumtime")
