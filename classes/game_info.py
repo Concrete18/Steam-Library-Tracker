@@ -4,37 +4,53 @@ import requests, time
 
 from classes.utils import Utils
 from classes.steam import Steam
-game = App.get_game_info(1458140)
 
-@dataclass(frozen=True)
-class Game(Utils):
+
+@dataclass()
+class Game(Steam, Utils):
     app_id: int
     name: str
-    developer: str = field(default="-")
-    publisher: str = field(default="-")
-    genre: list | str = field(default="-")
-    early_access: str = field(default="No")
-    steam_review_percent: float | str = field(default="-")
-    steam_review_total: int | str = field(default="-")
-    user_tags: list | str = field(default="-")
-    time_to_beat: float | str = field(default="-")
-    release_year: int = field(default="-")
-    price: float | str = field(default="-")
-    discount: float = field(default=0.0)
-    on_sale: bool = field(default=False)
-    linux_compat: bool = field(default=False)
-    categories: list | str = field(default="-")
-    drm_notice: str = field(default="-")
+    developer: str | None = None
+    publisher: str | None = None
+    steam_review_percent: float | None = None
+    steam_review_total: int | None = None
+    early_access: str = None
+    time_to_beat: float | None = None
+    release_year: int | None = None
+    linux_compat: bool = False
+    drm_notice: str | None = None
+    # price
+    price: float | None = None
+    discount: float = 0.0
+    on_sale: bool = False
+    player_count: int | None = None
+    # lists
+    genre: list | None = None
+    user_tags: list | None = None
+    categories: list | None = None
+    # no init
+    game_url: str = field(init=False)
+    genre_str: str = field(init=False)
+    tags_str: str = field(init=False)
+    categories_str: str = field(init=False)
 
-    def get_genre_str(self):
-        return self.list_to_sentence(self.genre)
+    def __post_init__(self):
+        self.game_url = self.get_game_url(self.app_id)
+        # create sentence strings
+        self.tags_str = self.convert_to_sentence(self.user_tags)
+        self.genre_str = self.convert_to_sentence(self.genre)
+        self.categories_str = self.convert_to_sentence(self.categories)
 
-    def get_categories_str(self):
-        return self.list_to_sentence(self.categories)
+    def convert_to_sentence(self, items: list[str] | None) -> str | None:
+        """
+        Convert a list of items into a sentence.
+        """
+        if items:
+            return self.list_to_sentence(items)
+        return None
 
 
 class GetGameInfo(Steam, Utils):
-    beat = HowLongToBeat()
 
     def parse_release_date(self, game_data) -> int:
         release_date = game_data["release_date"]["date"]
@@ -69,20 +85,22 @@ class GetGameInfo(Steam, Utils):
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
+        beat = HowLongToBeat()
         self.api_sleeper("time_to_beat")
         try:
-            results = self.beat.search(game_name)
+            results = beat.search(game_name)
         except:
+            # TODO replace this
             for _ in range(3):
                 time.sleep(10)
-                results = self.beat.search(game_name)
+                results = beat.search(game_name)
             return "-"
         if not results:
             self.api_sleeper("time_to_beat")
             if game_name.isupper():
-                results = self.beat.search(game_name.title())
+                results = beat.search(game_name.title())
             else:
-                results = self.beat.search(game_name.upper())
+                results = beat.search(game_name.upper())
         time_to_beat = "-"
         if results is not None and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
@@ -103,10 +121,13 @@ class GetGameInfo(Steam, Utils):
 
     def get_game_info(self, game_data: dict) -> Game | None:
         """
-        Retrieves game information using a `app_id` and returns a Game object or None if not found.
+        Creates a Game object with data from `game_data`.
         """
-        app_id = game_data.get("steam_appid", "-")
-        game_name = game_data.get("name", "-")
+        app_id = game_data.get("steam_appid", None)
+        game_name = game_data.get("name", None)
+        if not app_id or not game_name:
+            return None
+        game_name_no_unicode = self.unicode_remover(game_name)
         developer = ", ".join(game_data.get("developers", []))
         publisher = ", ".join(game_data.get("publishers", []))
         genre = [desc["description"] for desc in game_data.get("genres", [])]
@@ -114,13 +135,15 @@ class GetGameInfo(Steam, Utils):
 
         review_percent, review_total = self.get_steam_review(app_id=app_id)
         user_tags = self.get_steam_user_tags(app_id=app_id)
-        ttb = self.get_time_to_beat(self.unicode_remover(game_name))
+        ttb = self.get_time_to_beat(game_name_no_unicode)
+        # TODO add player count
+        # player_count = self.get_steam_game_player_count(app_id)
 
         release_year = self.parse_release_date(game_data)
         price, discount, on_sale = self.get_price_info(game_data)
         linux_compat = game_data.get("platforms", {}).get("linux", False)
         categories = [desc["description"] for desc in game_data.get("categories", [])]
-        drm_notice = game_data.get("drm_notice", "-")
+        drm_notice = game_data.get("drm_notice", None)
 
         return Game(
             app_id=app_id,
@@ -133,6 +156,7 @@ class GetGameInfo(Steam, Utils):
             steam_review_total=review_total,
             user_tags=user_tags,
             time_to_beat=ttb,
+            # player_count=player_count,
             release_year=release_year,
             price=price,
             discount=discount,
