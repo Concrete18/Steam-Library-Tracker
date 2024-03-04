@@ -95,13 +95,6 @@ class Steam(Utils):
                 self.error_log.warning(msg)
             return None  # handle request exceptions
 
-    def get_game_url(self, app_id: int) -> str:
-        """
-        Generates a steam store url to the games page using it's `app_id`.
-        """
-        # TODO determine if this should be moved
-        return f"https://store.steampowered.com/app/{app_id}/"
-
     @retry()
     def get_steam_review(self, app_id: int) -> tuple[int] | None:
         """
@@ -140,23 +133,24 @@ class Steam(Utils):
             total = "-"
         return (percent, total)
 
-    def get_steam_user_tags(self, app_id: int, response=None):
+    @retry()
+    def get_steam_user_tags(self, app_id: int):
         """
         Gets a games user tags from Steam.
         """
-        if not response:
-            self.api_sleeper("steam_review_scrape")
-            response = self.request_url(self.get_game_url(app_id))
-        soup = BeautifulSoup(response.text, "html.parser")
-        hidden_review_class = "app_tag"
-        results = soup.find_all(class_=hidden_review_class)
-        tags = []
-        ignore_tags = ["+"]
-        for tag in results:
-            string = tag.text.strip()
-            if string not in ignore_tags:
-                tags.append(string)
-        return tags
+        self.api_sleeper("steam_review_scrape")
+        response = requests.get(self.get_game_url(app_id))
+        if response.ok:
+            soup = BeautifulSoup(response.text, "html.parser")
+            hidden_review_class = "app_tag"
+            results = soup.find_all(class_=hidden_review_class)
+            tags = []
+            ignore_tags = ["+"]
+            for tag in results:
+                string = tag.text.strip()
+                if string not in ignore_tags:
+                    tags.append(string)
+            return tags
 
     @retry()
     def get_owned_steam_games(self, steam_key: str, steam_id: int) -> list | None:
@@ -230,9 +224,9 @@ class Steam(Utils):
         """
         url = "https://store.steampowered.com/api/appdetails"
         self.api_sleeper("steam_app_details")
-        query = {"appids": app_id, "l": "english"}
-        response = self.request_url(url, params=query)
-        if response:
+        params = {"appids": app_id, "l": "english"}
+        response = requests.get(url, params)
+        if response.ok:
             return response.json()
         return None
 

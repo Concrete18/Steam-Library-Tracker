@@ -7,7 +7,7 @@ from classes.steam import Steam
 
 
 @dataclass()
-class Game(Steam, Utils):
+class Game(Utils):
     app_id: int
     name: str
     developer: str | None = None

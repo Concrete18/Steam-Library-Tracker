@@ -14,9 +14,8 @@ from rich.theme import Theme
 # classes
 from classes.setup import Setup
 
-# TODO decide if steam should inherit GetGameInfo instead
-# from classes.steam import Steam
-from classes.game_info import Game, GetGameInfo
+from classes.steam import Steam
+from classes.game_info import Game
 from classes.game_skipper import GameSkipper
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
@@ -25,7 +24,7 @@ from classes.logger import Logger
 from easierexcel import Excel, Sheet
 
 
-class Tracker(GetGameInfo, Utils):
+class Tracker(Steam, Utils):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 

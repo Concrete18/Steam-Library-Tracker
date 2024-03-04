@@ -1,6 +1,7 @@
 import pytest, json
 
 from classes.game_info import Game, GetGameInfo
+from classes.utils import Utils
 
 
 class TestGame:
@@ -147,17 +148,7 @@ class TestGetAppDetails:
         assert App.get_app_details(None) is None
 
 
-class TestGetGameInfo:
-
-    @staticmethod
-    def get_steam_api_key() -> str:
-        """
-        Gets the steam API key from the config file.
-        """
-        with open("configs/config.json") as file:
-            data = json.load(file)
-        api_key = data["steam_data"]["api_key"]
-        return api_key
+class TestGetGameInfo(Utils):
 
     def test_success(self, mocker):
         App = GetGameInfo()
@@ -181,7 +172,9 @@ class TestGetGameInfo:
             "classes.steam.Steam.get_steam_game_player_count", return_value=600
         )
 
-        game = App.get_game_info(game_data, self.get_steam_api_key())
+        api_key, _ = self.get_steam_api_key_and_id()
+
+        game = App.get_game_info(game_data, api_key)
         assert isinstance(game, Game)
         # attribute check
         assert game.name == "Balatro"

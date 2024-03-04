@@ -3,10 +3,10 @@ import requests
 
 # classes
 from classes.steam import Steam
-from classes.utils import get_steam_api_key_and_id
+from classes.utils import Utils
 
 
-class TestGetOwnedSteamGames:
+class TestGetOwnedSteamGames(Utils):
 
     @pytest.fixture
     def mock_response(self, mocker):
@@ -25,13 +25,14 @@ class TestGetOwnedSteamGames:
         mock_response.ok = True
         return mock_response
 
+    steam = Steam()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
+
     def test_success(self, mock_response, mocker):
-        steam = Steam()
-        steam_key, steam_id = get_steam_api_key_and_id()
         # Mock requests.get and return the mock response
         mocker.patch("requests.get", return_value=mock_response)
         # Call the function you want to test
-        result = steam.get_owned_steam_games(steam_key, steam_id)
+        result = self.steam.get_owned_steam_games(self.steam_key, self.steam_id)
         # Assert that the function returns the expected result
         assert result == [
             {"name": "Game 1", "appid": 123},
@@ -39,13 +40,10 @@ class TestGetOwnedSteamGames:
         ]
 
     def test_request_error(self, mocker):
-        steam = Steam()
-        steam_key, _ = get_steam_api_key_and_id()
-
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 
-        result = steam.get_owned_steam_games(steam_key, 123456)
+        result = self.steam.get_owned_steam_games(self.steam_key, 123456)
         assert result is None
 
 
@@ -55,11 +53,12 @@ class TestSteamReview:
     floats for percent and integers for total.
     """
 
+    steam = Steam()
+
     def test_success(self):
-        steam = Steam()
 
         # TODO mock request
-        result = steam.get_steam_review(app_id=752590)
+        result = self.steam.get_steam_review(app_id=752590)
         if result:
             percent, total = result
             assert isinstance(percent, float)
@@ -76,6 +75,7 @@ class TestGetGameUrl:
     steam = Steam()
 
     def test_get_game_url(self):
+
         store_link_tests = {
             "752590": "https://store.steampowered.com/app/752590/",
             "629730": "https://store.steampowered.com/app/629730/",
@@ -85,7 +85,7 @@ class TestGetGameUrl:
             assert game_url == answer
 
 
-class TestGetRecentlyPlayedGames:
+class TestGetRecentlyPlayedGames(Utils):
     @pytest.fixture
     def mock_response(self, mocker):
         mock_response = mocker.Mock()
@@ -100,14 +100,15 @@ class TestGetRecentlyPlayedGames:
         mock_response.ok = True
         return mock_response
 
+    steam = Steam()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
+
     def test_success(self, mock_response, mocker):
-        steam = Steam()
-        steam_key, steam_id = get_steam_api_key_and_id()
 
         mocker.patch("requests.get", return_value=mock_response)
 
-        result = steam.get_recently_played_steam_games(
-            steam_key, steam_id, game_count=1
+        result = self.steam.get_recently_played_steam_games(
+            self.steam_key, self.steam_id, game_count=1
         )
 
         assert result == [
@@ -116,17 +117,17 @@ class TestGetRecentlyPlayedGames:
         ]
 
     def test_request_error(self, mocker):
-        steam = Steam()
-        steam_key, _ = get_steam_api_key_and_id()
 
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 
-        result = steam.get_recently_played_steam_games(steam_key, 123456, game_count=1)
+        result = self.steam.get_recently_played_steam_games(
+            self.steam_key, 123456, game_count=1
+        )
         assert result is None
 
 
-class TestGetSteamUsername:
+class TestGetSteamUsername(Utils):
     @pytest.fixture
     def mock_response(self, mocker):
         mock_response = mocker.Mock()
@@ -143,24 +144,23 @@ class TestGetSteamUsername:
         mock_response.ok = True
         return mock_response
 
+    steam = Steam()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
+
     def test_success(self, mock_response, mocker):
-        steam = Steam()
-        steam_key, steam_id = get_steam_api_key_and_id()
 
         mocker.patch("requests.get", return_value=mock_response)
 
-        result = steam.get_steam_username(steam_key, steam_id)
+        result = self.steam.get_steam_username(self.steam_key, self.steam_id)
 
         assert result == "test_user"
 
     def test_request_error(self, mocker):
-        steam = Steam()
-        steam_key, _ = get_steam_api_key_and_id()
 
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 
-        result = steam.get_steam_username(steam_key, 123456)
+        result = self.steam.get_steam_username(self.steam_key, 123456)
         assert result is None
 
 
@@ -199,8 +199,8 @@ class TestGetSteamID:
         mock_response.ok = True
         return mock_response
 
-    steam_key, _ = get_steam_api_key_and_id()
     steam = Steam()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
 
     def test_success(self, mock_response, mocker):
         # TODO mock requests
@@ -242,13 +242,13 @@ class TestGetSteamFriends:
         mock_response.ok = True
         return mock_response
 
-    def test_success(self, mock_response, mocker):
-        steam = Steam()
-        steam_key, steam_id = get_steam_api_key_and_id()
+    steam = Steam()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
 
+    def test_success(self, mock_response, mocker):
         mocker.patch("requests.get", return_value=mock_response)
 
-        result = steam.get_steam_friends(steam_key, steam_id)
+        result = self.steam.get_steam_friends(self.steam_key, self.steam_id)
         assert result == [
             {
                 "steamid": "1231654654",
@@ -263,19 +263,18 @@ class TestGetSteamFriends:
         ]
 
     def test_request_error(self, mocker):
-        steam = Steam()
-        steam_key, _ = get_steam_api_key_and_id()
 
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 
-        result = steam.get_steam_friends(steam_key, 123456)
+        result = self.steam.get_steam_friends(self.steam_key, 123456)
         assert result is None
 
 
 class TestGetSteamGamePlayerCount:
+
     steam = Steam()
-    steam_key, _ = get_steam_api_key_and_id()
+    steam_key, steam_id = steam.get_steam_api_key_and_id()
 
     def test_success(self):
         """
@@ -309,15 +308,15 @@ class TestGetAppList:
         mock_response.ok = True
         return mock_response
 
+    steam = Steam()
+
     def test_success(self, mock_response, mocker):
         """
         Tests `get_app_list` function.
         """
-        steam = Steam()
-
         mocker.patch("requests.get", return_value=mock_response)
 
-        app_list = steam.get_app_list()
+        app_list = self.steam.get_app_list()
         print(app_list)
         assert isinstance(app_list[0]["appid"], int)
         assert isinstance(app_list[0]["name"], str)

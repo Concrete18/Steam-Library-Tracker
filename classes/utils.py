@@ -51,7 +51,7 @@ def benchmark(round_digits: int = 2) -> Callable[..., Any]:  # pragma: no cover
     return decorator
 
 
-def retry(max_retries=3, delay=1):
+def retry(max_retries=4, delay=5):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -59,8 +59,7 @@ def retry(max_retries=3, delay=1):
             while retries < max_retries:
                 try:
                     return func(*args, **kwargs)
-                except RequestException as e:
-                    print(f"Request failed: {e}. Retrying...")
+                except RequestException:
                     retries += 1
                     time.sleep(delay)
             print(f"Failed after {max_retries} retries.")
@@ -69,18 +68,6 @@ def retry(max_retries=3, delay=1):
         return wrapper
 
     return decorator
-
-
-def get_steam_api_key_and_id() -> tuple[str, int]:
-    """
-    Gets the steam key and steam id from the config file.
-    """
-    config = Path("configs/config.json")
-    with open(config) as file:
-        data = json.load(file)
-    api_key = data["steam_data"]["api_key"]
-    steam_id = str(data["steam_data"]["steam_id"])
-    return api_key, steam_id
 
 
 class Utils:
@@ -98,47 +85,17 @@ class Utils:
         except requests.exceptions.RequestException:  # pragma: no cover
             return False
 
-    def request_url(self, url, params=None, headers=None, second_try=False):
-        try:
-            response = requests.get(url, params=params, headers=headers)
-            response.raise_for_status()
-        except requests.exceptions.RequestException as e:
-            if second_try:
-                return False
-            msg = None
-            if isinstance(e, requests.exceptions.ConnectionError):
-                msg = "Connection Error: Internet can't be accessed"
-            elif isinstance(e, requests.exceptions.TooManyRedirects):
-                msg = "Too Many Redirects: Exceeded 30 redirects"
-            elif isinstance(e, requests.exceptions.ReadTimeout):
-                return False
-            else:
-                msg = f"Unknown Error: {e}"
-
-            self.error_log.warning(msg)
-            time.sleep(5)
-            return self.request_url(
-                url,
-                params=params,
-                headers=headers,
-                second_try=True,
-            )
-
-        msg = "Unknown Error"
-        if response.status_code == requests.codes.ok:
-            return response
-        elif response.status_code == 500:
-            msg = "Server Error: make sure your api key and steam id is valid"
-        elif response.status_code == 404:
-            msg = f"Server Error: 404 Content does not exist. URL: {url}"
-        elif response.status_code == 429 or response.status_code == 403:
-            msg = "Server Error: Too Many requests made. Waiting to try again"
-            self.error_log.warning(response)
-            time.sleep(5)
-            return self.request_url(url, params=params, headers=headers)
-
-        self.error_log.warning(msg)
-        return False
+    @staticmethod
+    def get_steam_api_key_and_id() -> tuple[str, int]:
+        """
+        Gets the steam key and steam id from the config file.
+        """
+        config = Path("configs/config.json")
+        with open(config) as file:
+            data = json.load(file)
+        api_key = data["steam_data"]["api_key"]
+        steam_id = str(data["steam_data"]["steam_id"])
+        return api_key, steam_id
 
     def create_hyperlink(self, url: str, label: str) -> str:
         """
@@ -166,6 +123,13 @@ class Utils:
         if hours_played == 0.0:
             return None
         return round(minutes_played / 60, 1)
+
+    @staticmethod
+    def get_game_url(app_id: int) -> str:
+        """
+        Generates a steam store url to the games page using it's `app_id`.
+        """
+        return f"https://store.steampowered.com/app/{app_id}/"
 
     @staticmethod
     def string_to_date(date: str) -> dt.datetime:
