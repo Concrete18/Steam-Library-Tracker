@@ -1,4 +1,4 @@
-import random, json, os, sys, subprocess, webbrowser, math
+import random, json, os, sys, subprocess, webbrowser, math, keyboard, time
 from difflib import SequenceMatcher
 from pathlib import Path
 from pick import pick
@@ -1085,31 +1085,40 @@ class Tracker(Steam, Utils):
         picked_game_name = self.steam.get_cell(picked_app_id, self.name_col)
         return picked_game_name, choice_list
 
-    def pick_random_game(self) -> None:
+    def random_game_picker(self) -> None:
         """
-        Allows you to pick a play_status to have a random game chosen from. It allows retrying.
+        Allows you to pick a play_status to have a random game chosen from.
         """
         msg = "\nWhat play status do you want a random game picked from?"
         play_statuses = list(self.play_status_choices.values())
         play_status = pick(play_statuses, msg)[0]
-        picked_game_name, choice_list = self.get_random_game_name(play_status)
-        if not picked_game_name:
-            error = f'\n[warning]No game has the[/] [secondary]"{play_status}"[/] [warning]Status[/]'
-            self.console.print(error)
-            return
+
         self.console.print(
-            f"\nPicking games set as [secondary]{play_status}[/]"
-            "\nType Stop To Finish\n"
-            f"\nPicked: [secondary]{picked_game_name}[/]"
+            f"\nPicking [secondary]{play_status}[/] games"
+            "\nPress [bold]Enter[/] to pick another and [bold]ESC[/] to Stop"
         )
-        # allows getting another random pick
-        # TODO test switching to pick function so it is much simpler
-        while not input().lower() in ["no", "n", "cancel", "stop"]:
+
+        def pick_game(play_status: str, choice_list: list) -> list:
+            """
+            Picks random game from `choice_list` with `play_status`.
+            Returns `choice_list` with picked game removed.
+            """
             if not choice_list:
                 print(f"All games have already been picked.\n")
                 return
             picked_game_name, choice_list = self.get_random_game_name(play_status)
-            self.console.print(f"Picked: [secondary]{picked_game_name}[/]")
+            self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
+            return choice_list
+
+        choice_list = True
+        while True:
+            choice_list = pick_game(play_status, choice_list)
+            key = keyboard.read_key(True)
+            if key == "enter":
+                continue
+            elif key == "esc":
+                return
+            time.sleep(0.1)
 
     def get_favorite_games(self, min_rating: int = 8) -> list[dict]:
         """
@@ -1382,7 +1391,7 @@ class Tracker(Steam, Utils):
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
-            ("Random Game Explorer", self.pick_random_game),
+            ("Random Game Explorer", self.random_game_picker),
             ("Player Counts Sync", lambda: self.update_player_counts(df)),
             # ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
