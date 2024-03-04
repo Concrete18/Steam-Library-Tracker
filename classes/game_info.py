@@ -89,7 +89,7 @@ class GetGameInfo(Steam, Utils):
         self.api_sleeper("time_to_beat")
         try:
             results = beat.search(game_name)
-        except:
+        except:  # pragma: no cover
             # TODO replace this
             for _ in range(3):
                 time.sleep(10)
