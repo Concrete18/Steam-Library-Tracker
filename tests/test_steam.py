@@ -203,7 +203,6 @@ class TestGetSteamID:
     steam_key, steam_id = steam.get_steam_api_key_and_id()
 
     def test_success(self, mock_response, mocker):
-        # TODO mock requests
         mocker.patch("requests.get", return_value=mock_response)
 
         steam_id = self.steam.get_steam_id("gabelogannewell", self.steam_key)
@@ -273,17 +272,26 @@ class TestGetSteamFriends:
 
 class TestGetSteamGamePlayerCount:
 
+    @pytest.fixture
+    def mock_response(self, mocker):
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {
+            "response": {"player_count": 5000, "result": 1}
+        }
+        mock_response.ok = True
+        return mock_response
+
     steam = Steam()
     steam_key, steam_id = steam.get_steam_api_key_and_id()
 
-    def test_success(self):
+    def test_success(self, mock_response, mocker):
         """
         Tests `get_steam_game_player_count` function.
         """
-        # TODO mock request
-        app_id = 730
-        player_count = self.steam.get_steam_game_player_count(app_id, self.steam_key)
+        mocker.patch("requests.get", return_value=mock_response)
+        player_count = self.steam.get_steam_game_player_count(730, self.steam_key)
         assert isinstance(player_count, int)
+        assert player_count == 5000
 
 
 class TestGetAppList:

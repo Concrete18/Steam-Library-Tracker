@@ -266,6 +266,7 @@ class Steam(Utils):
         response = requests.get(url)
         if response.ok:
             data = response.json()
+            print(data)
             current_players = data.get("response", {}).get("player_count", "N/A")
             return current_players
         return None
