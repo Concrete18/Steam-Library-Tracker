@@ -127,7 +127,7 @@ class TestGetAppDetails:
     @pytest.fixture
     def mock_response(self, mocker):
         mock_response = mocker.Mock()
-        with open("tests\example_game_app_details.json", "r", encoding="utf-8") as file:
+        with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             data = json.load(file)
             mock_response.json.return_value = data
         mock_response.ok = True
@@ -153,7 +153,7 @@ class TestGetGameInfo(Utils):
     def test_success(self, mocker):
         App = GetGameInfo()
 
-        with open("tests\example_game_app_details.json", "r", encoding="utf-8") as file:
+        with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             app_details_json = json.load(file)
 
         game_data = app_details_json.get(str(2379780), {}).get("data")
