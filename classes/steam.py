@@ -1,6 +1,6 @@
 from classes.utils import Utils, retry
 from bs4 import BeautifulSoup
-import re, requests
+import re, requests, vdf
 
 
 class Steam(Utils):
@@ -270,3 +270,19 @@ class Steam(Utils):
             current_players = data.get("response", {}).get("player_count", "N/A")
             return current_players
         return None
+
+    def get_installed_app_ids(self, library_vdf_path: str = None) -> list:
+        """
+        ph
+        """
+        if not library_vdf_path:
+            return []
+        with open(library_vdf_path, "r", encoding="utf-8") as file:
+            data = vdf.load(file)
+        if "libraryfolders" not in data:
+            return []
+        installed_app_ids = []
+        for library in data["libraryfolders"].values():
+            for app_id in library["apps"].keys():
+                installed_app_ids.append(int(app_id))
+        return installed_app_ids

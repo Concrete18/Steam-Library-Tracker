@@ -344,5 +344,14 @@ class TestGetAppId:
         assert app_id == None
 
 
+class TestGetInstalledAppIds:
+    steam = Steam()
+    vdf_path = "tests\data\libraryfolders.vdf"
+
+    def test_success(self):
+        app_ids = self.steam.get_installed_app_ids(self.vdf_path)
+        assert app_ids == [228980, 250820, 620, 228380]
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

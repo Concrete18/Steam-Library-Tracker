@@ -48,7 +48,8 @@ pip install -r requirements.txt
   "steam_data": {
     "vanity_url": "Insert Steam Vanity URL (Optional)",
     "steam_id": "Insert Steam ID",
-    "api_key": "Insert API Key"
+    "api_key": "Insert API Key",
+    "library_vdf_path": "Insert Path to libraryfolders.vdf file (Optional) - Example: C:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf"
   },
   "settings": {
     "excel_filename": "Game Library.xlsx",

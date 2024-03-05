@@ -36,6 +36,7 @@ class Tracker(Steam, Utils):
     steam_key = config_data["steam_data"]["api_key"]
     steam_id = str(config_data["steam_data"]["steam_id"])
     vanity_url = config_data["steam_data"]["vanity_url"]
+    library_vdf_path = config_data["steam_data"]["library_vdf_path"]
 
     # settings
     playstation_data_link = config_data["settings"]["playstation_data_link"]
@@ -144,6 +145,7 @@ class Tracker(Steam, Utils):
         genre_col := "Genre",
         user_tags_col := "User Tags",
         ea_col := "Early Access",
+        installed_col := "Installed",
         time_played_col := "Time Played",
         hours_played_col := "Hours Played",
         linux_hours_col := "Linux Hours",
@@ -729,6 +731,7 @@ class Tracker(Steam, Utils):
         print()
         total_games = len(steam_games)
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
+        installed_app_ids = self.get_installed_app_ids(self.library_vdf_path)
         for game in track(steam_games, description=desc):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -757,17 +760,19 @@ class Tracker(Steam, Utils):
             # play status
             cur_status = cur_game_data[self.play_status_col]
             new_status = self.decide_play_status(cur_status, minutes_played)
+            installed = app_id in installed_app_ids
             # updates or adds game
             if app_id in sheet_games:
                 sheet_games.remove(app_id)
                 update_info = self.update_steam_game(
-                    app_id,
-                    game_name,
-                    minutes_played,
-                    linux_minutes_played,
-                    new_status,
-                    cur_status,
-                    time_played,
+                    app_id=app_id,
+                    game_name=game_name,
+                    minutes_played=minutes_played,
+                    linux_minutes_played=linux_minutes_played,
+                    new_status=new_status,
+                    cur_status=cur_status,
+                    time_played=time_played,
+                    installed=installed,
                 )
                 if update_info:
                     played_games.append(update_info)
@@ -781,6 +786,7 @@ class Tracker(Steam, Utils):
                     time_played=time_played,
                     new_status=new_status,
                     get_internet_info=len(added_games) <= 10,
+                    installed=installed,
                 )
                 added_games.append(added_info)
         # saves each time the checks count is divisible by num
@@ -841,11 +847,14 @@ class Tracker(Steam, Utils):
         linux_minutes_played,
         new_status,
         cur_status,
+        installed=False,
         time_played=None,
     ) -> dict | None:
         """
         Updates the games playtime and play status if they changed.
         """
+        installed_value = "Yes" if installed else "No"
+        self.steam.update_cell(app_id, self.installed_col, installed_value)
         prev_hours = self.steam.get_cell(app_id, self.hours_played_col)
         try:
             prev_hours = float(prev_hours)
@@ -887,6 +896,7 @@ class Tracker(Steam, Utils):
         play_status=None,
         get_internet_info=True,
         save_after_add=False,
+        installed=False,
     ) -> dict:
         """
         Adds a game with the game_name, hours played using `minutes_played` and `play_status`.
@@ -910,6 +920,7 @@ class Tracker(Steam, Utils):
             self.hours_played_col: hours_played,
             self.linux_hours_col: linux_hours_played,
             self.time_played_col: time_played,
+            self.installed_col: "Yes" if installed else "No",
             self.date_added_col: cur_date,
             self.date_updated_col: cur_date,
         }
@@ -1092,6 +1103,7 @@ class Tracker(Steam, Utils):
         msg = "\nWhat play status do you want a random game picked from?"
         play_statuses = list(self.play_status_choices.values())
         play_status = pick(play_statuses, msg)[0]
+        # TODO add Installed Games as a choice
 
         self.console.print(
             f"\nPicking [secondary]{play_status}[/] games"
