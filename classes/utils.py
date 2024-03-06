@@ -1,5 +1,5 @@
 from pathlib import Path
-import time, json, requests, re, heapq
+import time, json, requests, re, heapq, keyboard
 from requests.exceptions import RequestException
 from pick import pick
 import datetime as dt
@@ -90,12 +90,24 @@ class Utils:
         """
         Gets the steam key and steam id from the config file.
         """
+        # this function is here for import access
         config = Path("configs/config.json")
         with open(config) as file:
             data = json.load(file)
         api_key = data["steam_data"]["api_key"]
         steam_id = str(data["steam_data"]["steam_id"])
         return api_key, steam_id
+
+    @staticmethod
+    def wait_for_key_release(allowed_keys: list[str], suppress: bool = False) -> None:
+        """
+        Waits for the press and release of keys and returns the key only if it is one of the `allowed_keys`.
+        Prevents keys from working anywhere but within the terminal if set to True.
+        """
+        while True:
+            event = keyboard.read_event(suppress=suppress)
+            if event.event_type == "up" and event.name in allowed_keys:
+                return event.name
 
     def create_hyperlink(self, url: str, label: str) -> str:
         """

@@ -273,7 +273,7 @@ class Steam(Utils):
 
     def get_installed_app_ids(self, library_vdf_path: str = None) -> list:
         """
-        ph
+        Returns a list of all app_ids among all libraries from the steam library VDF file in `library_vdf_path`.
         """
         if not library_vdf_path:
             return []

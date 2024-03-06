@@ -1,4 +1,4 @@
-import random, json, os, sys, subprocess, webbrowser, math, keyboard, time
+import json, os, sys, subprocess, webbrowser, math
 from difflib import SequenceMatcher
 from pathlib import Path
 from pick import pick
@@ -16,6 +16,7 @@ from classes.setup import Setup
 
 from classes.steam import Steam
 from classes.game_info import Game
+from classes.random_game import RandomGame
 from classes.game_skipper import GameSkipper
 from classes.utils import Utils, keyboard_interrupt
 from classes.logger import Logger
@@ -969,6 +970,7 @@ class Tracker(Steam, Utils):
         self.playstation.format_row(game_name)
         return f"\n > {game_name} added"
 
+    # TODO move playstation functions to its own class
     def check_playstation_json(self) -> dict:
         """
         Checks `playstation_games.json` to find out if it is newly updated so
@@ -1077,60 +1079,18 @@ class Tracker(Steam, Utils):
         if total_added or total_updated and self.save_to_file:
             self.excel.save(use_print=False)
 
-    def get_random_game_name(self, play_status, choice_list=[]) -> tuple[str, list]:
+    def start_random_game_picker(self) -> None:
         """
-        Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
+        Allows you to pick a play_status or installed status to have a random game chosen from.
         """
-        if not choice_list:
-            for app_id in self.steam.row_idx.keys():
-                game_play_status = self.steam.get_cell(app_id, self.play_status_col)
-                if not game_play_status:
-                    continue
-                if game_play_status.lower() == play_status.lower():
-                    choice_list.append(app_id)
-        # picks random game then removes it from the choice list so it wont show up again during this session
-        if not choice_list:
-            return None, choice_list
-        picked_app_id = random.choice(choice_list)
-        choice_list.pop(choice_list.index(picked_app_id))
-        picked_game_name = self.steam.get_cell(picked_app_id, self.name_col)
-        return picked_game_name, choice_list
-
-    def random_game_picker(self) -> None:
-        """
-        Allows you to pick a play_status to have a random game chosen from.
-        """
-        msg = "\nWhat play status do you want a random game picked from?"
-        play_statuses = list(self.play_status_choices.values())
-        play_status = pick(play_statuses, msg)[0]
-        # TODO add Installed Games as a choice
-
-        self.console.print(
-            f"\nPicking [secondary]{play_status}[/] games"
-            "\nPress [bold]Enter[/] to pick another and [bold]ESC[/] to Stop"
+        Picker = RandomGame(
+            steam_sheet=Tracker.steam,
+            play_status_choices=App.play_status_choices,
+            name_column=App.name_col,
+            installed_column=App.installed_col,
+            play_status_column=App.play_status_col,
         )
-
-        def pick_game(play_status: str, choice_list: list) -> list:
-            """
-            Picks random game from `choice_list` with `play_status`.
-            Returns `choice_list` with picked game removed.
-            """
-            if not choice_list:
-                print(f"All games have already been picked.\n")
-                return
-            picked_game_name, choice_list = self.get_random_game_name(play_status)
-            self.console.print(f"\nPicked: [secondary]{picked_game_name}[/]")
-            return choice_list
-
-        choice_list = True
-        while True:
-            choice_list = pick_game(play_status, choice_list)
-            key = keyboard.read_key(True)
-            if key == "enter":
-                continue
-            elif key == "esc":
-                return
-            time.sleep(0.1)
+        Picker.random_game_picker()
 
     def get_favorite_games(self, min_rating: int = 8) -> list[dict]:
         """
@@ -1403,7 +1363,7 @@ class Tracker(Steam, Utils):
         # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
-            ("Random Game Explorer", self.random_game_picker),
+            ("Random Game Explorer", self.start_random_game_picker),
             ("Player Counts Sync", lambda: self.update_player_counts(df)),
             # ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
