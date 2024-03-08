@@ -7,11 +7,11 @@ from classes.utils import Utils
 class TestGame:
 
     def test_given_args(self):
-        name = "Test1"
-        app_id = 12345
+        NAME = "Test1"
+        APP_ID = 12345
         game = Game(
-            name=name,
-            app_id=app_id,
+            name=NAME,
+            app_id=APP_ID,
             developer="Dev",
             publisher="Pub",
             genre="Testing",
@@ -23,8 +23,8 @@ class TestGame:
             categories="Tests",
             drm_notice="Has DRM",
         )
-        assert game.app_id == app_id
-        assert game.name == name
+        assert game.app_id == APP_ID
+        assert game.name == NAME
         assert game.developer == "Dev"
         assert game.publisher == "Pub"
         assert game.genre == "Testing"
@@ -38,14 +38,14 @@ class TestGame:
         assert game.drm_notice == "Has DRM"
 
     def test_only_required_args(self):
-        name = "Test1"
-        app_id = 12345
-        game = Game(app_id=app_id, name=name)
+        NAME = "Test1"
+        APP_ID = 12345
+        game = Game(app_id=APP_ID, name=NAME)
         # total attributes
         assert len(vars(game)) == 22
         # required values
-        assert game.name == name
-        assert game.app_id == app_id
+        assert game.name == NAME
+        assert game.app_id == APP_ID
         # str
         assert game.game_url == "https://store.steampowered.com/app/12345/"
         # float
@@ -54,22 +54,22 @@ class TestGame:
         assert game.on_sale == False
         assert game.linux_compat == False
         # none
-        assert game.developer == None
-        assert game.publisher == None
-        assert game.early_access == None
-        assert game.genre == None
-        assert game.categories == None
-        assert game.categories_str == None
-        assert game.user_tags == None
-        assert game.tags_str == None
-        assert game.genre_str == None
-        assert game.release_year == None
-        assert game.steam_review_percent == None
-        assert game.steam_review_total == None
-        assert game.price == None
-        assert game.drm_notice == None
-        assert game.time_to_beat == None
-        assert game.player_count == None
+        assert game.developer is None
+        assert game.publisher is None
+        assert game.early_access is None
+        assert game.genre is None
+        assert game.categories is None
+        assert game.categories_str is None
+        assert game.user_tags is None
+        assert game.tags_str is None
+        assert game.genre_str is None
+        assert game.release_year is None
+        assert game.steam_review_percent is None
+        assert game.steam_review_total is None
+        assert game.price is None
+        assert game.drm_notice is None
+        assert game.time_to_beat is None
+        assert game.player_count is None
 
     def test_no_args(self):
         with pytest.raises(TypeError):
@@ -80,8 +80,8 @@ class TestParseReleaseDate:
 
     def test_success(self):
         App = GetGameInfo()
-        game_data = {"release_date": {"date": "Feb 20, 2024"}}
-        year = App.parse_release_date(game_data)
+        GAME_DATA = {"release_date": {"date": "Feb 20, 2024"}}
+        year = App.parse_release_date(GAME_DATA)
         assert year == 2024
 
 
@@ -90,7 +90,7 @@ class TestGetPriceInfo:
     def test_success(self):
         App = GetGameInfo()
 
-        game_data = {
+        GAME_DATA = {
             "price_overview": {
                 "currency": "USD",
                 "initial": 5999,
@@ -101,7 +101,7 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount, on_sale = App.get_price_info(game_data)
+        price, discount, on_sale = App.get_price_info(GAME_DATA)
         assert price == 29.99
         assert discount == 0.5
         assert on_sale
@@ -200,7 +200,7 @@ class TestGetGameInfo(Utils):
             "Steam Cloud",
             "Family Sharing",
         ]
-        assert game.drm_notice == None
+        assert game.drm_notice is None
 
     def test_not_enough_data(self):
         App = GetGameInfo()

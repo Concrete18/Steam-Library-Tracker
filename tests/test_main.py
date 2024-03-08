@@ -53,6 +53,7 @@ class TestPlayStatus:
             {"play_status": None, "minutes": 30, "ans": "Played"},
             # error
             {"play_status": None, "minutes": "Test", "ans": ""},
+            {"play_status": None, "minutes": None, "ans": ""},
             {"play_status": "Unplayed", "minutes": "Test", "ans": "Unplayed"},
         ]
         for test in tests:

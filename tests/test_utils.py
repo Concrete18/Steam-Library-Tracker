@@ -15,13 +15,14 @@ class TestHoursPlayed:
     utils = Utils()
 
     def test_hours_played(self):
-        time_hours_played = {
+        HOURS_PLAYED_TESTS = {
             800: 13.3,
             30: 0.5,
             2940: 49,
             0: None,
+            None: None,
         }
-        for minutes_played, answer in time_hours_played.items():
+        for minutes_played, answer in HOURS_PLAYED_TESTS.items():
             result = self.utils.hours_played(minutes_played)
             assert result == answer
 
@@ -37,7 +38,7 @@ class TestTimePassed:
         """
         tests function when given minutes
         """
-        minutes_tests = {
+        MINUTE_TESTS = {
             12: "12.0 Minutes",
             59: "59.0 Minutes",
             60: "1.0 Hour",
@@ -50,7 +51,7 @@ class TestTimePassed:
             1440 * 7: "1.0 Week",
             525600: "1.0 Year",
         }
-        for minutes, answer in minutes_tests.items():
+        for minutes, answer in MINUTE_TESTS.items():
             output = self.utils.convert_time_passed(minutes=minutes)
             assert output == answer
 
@@ -58,7 +59,7 @@ class TestTimePassed:
         """
         tests function when given hours
         """
-        hours_tests = {
+        HOUR_TESTS = {
             0.2: "12.0 Minutes",
             1: "1.0 Hour",
             13.3: "13.3 Hours",
@@ -66,7 +67,7 @@ class TestTimePassed:
             23.99: "1.0 Day",
             48: "2.0 Days",
         }
-        for hours, answer in hours_tests.items():
+        for hours, answer in HOUR_TESTS.items():
             output = self.utils.convert_time_passed(hours=hours)
             assert output == answer
 
@@ -74,7 +75,7 @@ class TestTimePassed:
         """
         tests function when given days
         """
-        days_tests = {
+        DAY_TESTS = {
             1: "1.0 Day",
             0.99: "1.0 Day",
             5.8: "5.8 Days",
@@ -82,7 +83,7 @@ class TestTimePassed:
             6.99: "1.0 Week",
             365: "1.0 Year",
         }
-        for days, answer in days_tests.items():
+        for days, answer in DAY_TESTS.items():
             output = self.utils.convert_time_passed(days=days)
             assert output == answer
 
@@ -90,13 +91,13 @@ class TestTimePassed:
         """
         tests function when given weeks
         """
-        weeks_tests = {
+        WEEK_TESTS = {
             4.4: "1.0 Month",
             3.99: "1.0 Month",
             8.5: "2.0 Months",
             52: "1.0 Year",
         }
-        for weeks, answer in weeks_tests.items():
+        for weeks, answer in WEEK_TESTS.items():
             output = self.utils.convert_time_passed(weeks=weeks)
             assert output == answer
 
@@ -104,13 +105,13 @@ class TestTimePassed:
         """
         tests function when given months
         """
-        months_tests = {
+        MONTH_TESTS = {
             1: "1.0 Month",
             0.5: "2.2 Weeks",
             12: "1.0 Year",
             11.99: "1.0 Year",
         }
-        for months, answer in months_tests.items():
+        for months, answer in MONTH_TESTS.items():
             output = self.utils.convert_time_passed(months=months)
             assert output == answer
 
@@ -118,12 +119,12 @@ class TestTimePassed:
         """
         tests function when given years
         """
-        years_tests = {
+        YEAR_TESTS = {
             1: "1.0 Year",
             0.999: "1.0 Year",
             5: "5.0 Years",
         }
-        for years, answer in years_tests.items():
+        for years, answer in YEAR_TESTS.items():
             output = self.utils.convert_time_passed(years=years)
             assert output == answer
 
@@ -186,14 +187,14 @@ class TestGetYear:
     utils = Utils()
 
     def test_valid(self):
-        date_tests = {
+        DATE_TESTS = {
             "Sep 14, 2016": 2016,
             "25 Apr, 1991": 1991,
             "16 Nov, 2009": 2009,
             "Mai 25, 1991": 1991,
             "Apr , 2015": 2015,
         }
-        for date, answer in date_tests.items():
+        for date, answer in DATE_TESTS.items():
             year = self.utils.get_year(date)
             assert year == answer
 
@@ -210,12 +211,12 @@ class TestUrlSanitize:
     utils = Utils()
 
     def test_url_sanitize(self):
-        url_tests = {
+        URL_TESTS = {
             "Hood: Outlaws & Legends": "hood-outlaws-legends",
             "This is a (test), or is it?": "this-is-a-test-or-is-it",
             "Blade & Sorcery": "blade-sorcery",
         }
-        for string, result in url_tests.items():
+        for string, result in URL_TESTS.items():
             assert self.utils.url_sanitize(string) == result
 
 
@@ -251,13 +252,13 @@ class TestCreateAndSentence:
     utils = Utils()
 
     def test_list_to_sentence(self):
-        list_tests = [
+        LIST_TESTS = [
             (["Test1"], "Test1"),
             (["Test1", "Test2"], "Test1 and Test2"),
             (["Test1", "Test2", "Test3"], "Test1, Test2 and Test3"),
             ([], ""),
         ]
-        for list, answer in list_tests:
+        for list, answer in LIST_TESTS:
             result = self.utils.list_to_sentence(list)
             assert result == answer
 
@@ -301,7 +302,7 @@ class TestSimilarityMatching:
     utils = Utils()
 
     def test_lev_dist_matcher(self):
-        test_list = [
+        TEST_LIST = [
             "This is a test, yay",
             "this is not it, arg",
             "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
@@ -314,7 +315,7 @@ class TestSimilarityMatching:
             "Marvel's Spider-Man: Miles Morales",
             "Crypt Of The Necrodancer: Nintendo Switch Edition",
         ]
-        string_tests = {
+        STRING_TESTS = {
             "This is a test": "This is a test, yay",
             "Shadow Tactics Blade of the Shogun Aiko's Chosen": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
             "the last of us": "The Last of Us",
@@ -325,8 +326,8 @@ class TestSimilarityMatching:
             "Spider-Man: Miles Morales": "Marvel's Spider-Man: Miles Morales",
             "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
         }
-        for string, answer in string_tests.items():
-            result = self.utils.lev_dist_matcher(string, test_list)[0]
+        for string, answer in STRING_TESTS.items():
+            result = self.utils.lev_dist_matcher(string, TEST_LIST)[0]
             assert result == answer
 
 
@@ -338,7 +339,7 @@ class TestCreateLevenshteinMatcher:
         matcher = self.utils.create_levenshtein_matcher("base_string", n=3)
 
         # Check multiple strings
-        strings_to_check = [
+        STRINGS_TO_CHECK = [
             "new_string1",
             "new_string2",
             "new_string3",
@@ -346,11 +347,11 @@ class TestCreateLevenshteinMatcher:
             "example_string",
         ]
         best_matches = []
-        for string in strings_to_check:
+        for string in STRINGS_TO_CHECK:
             best_matches = matcher(string)
 
-        answer = ["other_string", "example_string", "new_string1"]
-        assert best_matches == answer
+        ANSWER = ["other_string", "example_string", "new_string1"]
+        assert best_matches == ANSWER
 
 
 class TestAnyIsNum:
@@ -425,10 +426,10 @@ class TestRecentlyExecuted:
     """
 
     utils = Utils()
-    secs_in_day = 86400
+    SECS_IN_DAYS = 86400
 
     def test_true(self):
-        past_time = time.time() - (self.secs_in_day * 3)
+        past_time = time.time() - (self.SECS_IN_DAYS * 3)
         data = {
             "last_runs": {
                 "test_run": past_time,
@@ -440,7 +441,7 @@ class TestRecentlyExecuted:
         assert test is True
 
     def test_false(self):
-        past_time = time.time() - (self.secs_in_day * 7)
+        past_time = time.time() - (self.SECS_IN_DAYS * 7)
         data = {
             "last_runs": {
                 "test_run": past_time,

@@ -12,14 +12,12 @@ class TestValidateSteamApiKey:
     setupObj = Setup()
 
     def test_True(self):
-        test_api_key = "15D4C014D419C0642B1E707BED41G7D4"
-        is_steam_key = self.setupObj.validate_steam_key(test_api_key)
-        assert is_steam_key is True
+        TEST_API_KEY = "15D4C014D419C0642B1E707BED41G7D4"
+        assert self.setupObj.validate_steam_key(TEST_API_KEY)
 
     def test_False(self):
-        test_api_key = "15D4C014D419C0642B7D4"
-        is_steam_key = self.setupObj.validate_steam_key(test_api_key)
-        assert is_steam_key is False
+        TEST_API_KEY = "15D4C014D419C0642B7D4"
+        assert not self.setupObj.validate_steam_key(TEST_API_KEY)
 
 
 class TestValidateSteamID:
@@ -31,12 +29,12 @@ class TestValidateSteamID:
     setupObj = Setup()
 
     def test_True(self):
-        assert self.setupObj.validate_steam_id(76561197960287930) is True
-        assert self.setupObj.validate_steam_id("76561197960287930") is True
+        assert self.setupObj.validate_steam_id(76561197960287930)
+        assert self.setupObj.validate_steam_id("76561197960287930")
 
     def test_False(self):
-        assert self.setupObj.validate_steam_id(765611028793) is False
-        assert self.setupObj.validate_steam_id("asjkdhadsjdhjssaj") is False
+        assert not self.setupObj.validate_steam_id(765611028793)
+        assert not self.setupObj.validate_steam_id("not a steam id")
 
 
 if __name__ == "__main__":
