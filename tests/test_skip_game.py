@@ -40,7 +40,7 @@ class TestSkipGame:
         """
         Tests for False returns.
         """
-        self.game_skipper.NAME_IGNORE_LIST = ["Half-Life 2: Lost Coast"]
+        self.game_skipper.name_ignore_list = ["Half-Life 2: Lost Coast"]
         # app_id return false
         assert not self.game_skipper.skip_game(app_id=345643)
         # name return false

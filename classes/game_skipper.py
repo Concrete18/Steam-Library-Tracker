@@ -62,13 +62,13 @@ class GameSkipper(Utils):
 
         `Name` check looks for keywords and if the name is in the name_ignore_list or media list.
 
-        `app_id` check looks for the `app_id` in the APP_ID_IGNORE_LIST.
+        `app_id` check looks for the `app_id` in the app_id_ignore_list.
         """
         # return False if name and app_id is not given
         if not any([game_name, app_id]):
             raise ValueError("No game_name or app_id was given")
         # ignore by app id
-        if app_id and int(app_id) in self.APP_ID_IGNORE_LIST:
+        if app_id and int(app_id) in self.app_id_ignore_list:
             return True
         # ignore by name
         if game_name:
