@@ -22,26 +22,26 @@ class RandomGame(Utils):
     def __init__(
         self,
         steam_sheet: Sheet,
-        play_status_choices,
         name_column,
         installed_column,
+        play_status_choices,
         play_status_column,
     ) -> None:
         """
         Random Game Picker Class
         """
         self.sheet = steam_sheet
-        self.play_status_choices = play_status_choices
         self.name_column = name_column
         self.installed_column = installed_column
+        self.play_status_choices = play_status_choices
         self.play_status_column = play_status_column
 
     def create_game_list(self, choices: list[str]) -> list[int]:
         """
         Returns a `game_list` that match the chosen restraints based on user input.
         """
-        msg = "\nWhat Play/Installed Status do you want a random game picked for?"
-        status_choice = pick(choices, msg)[0]
+        PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
+        status_choice = pick(choices, PROMPT)[0]
         self.console.print(
             f"\nPicking [secondary]{status_choice}[/] games"
             "\nPress [secondary]Enter[/] to pick another and [secondary]ESC[/] to Stop"
@@ -87,7 +87,7 @@ class RandomGame(Utils):
         """
         Allows you to pick a play_status or installed status to have a random game chosen from.
         """
-        play_statuses = list(self.play_status_choices.values())
+        play_statuses = list(self.play_status_choices)
         choices = ["Installed", *play_statuses]
         # get game choices
         game_list = self.create_game_list(choices)

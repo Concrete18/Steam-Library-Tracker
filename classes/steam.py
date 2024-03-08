@@ -145,10 +145,10 @@ class Steam(Utils):
             hidden_review_class = "app_tag"
             results = soup.find_all(class_=hidden_review_class)
             tags = []
-            ignore_tags = ["+"]
+            IGNORE_TAGS = ("+",)
             for tag in results:
                 string = tag.text.strip()
-                if string not in ignore_tags:
+                if string not in IGNORE_TAGS:
                     tags.append(string)
             return tags
 
@@ -266,7 +266,6 @@ class Steam(Utils):
         response = requests.get(url)
         if response.ok:
             data = response.json()
-            print(data)
             current_players = data.get("response", {}).get("player_count", "N/A")
             return current_players
         return None

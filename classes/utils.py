@@ -131,6 +131,8 @@ class Utils:
         """
         Converts `minutes_played` to a hours played in decimal form.
         """
+        if not minutes_played:
+            return None
         hours_played = round(minutes_played / 60, 1)
         if hours_played == 0.0:
             return None
@@ -216,31 +218,31 @@ class Utils:
         - "2.1 Years"
         """
         # converts all into hours
-        hours_in_day = 24
-        hours_in_week = 168
-        hours_in_month = 730
-        hours_in_year = 8760
+        HOURS_IN_DAY = 24
+        HOURS_IN_WEEK = 168
+        HOURS_IN_MONTH = 730
+        HOURS_IN_YEAR = 8760
         hours = (
             (minutes / 60)
             + hours
-            + (days * hours_in_day)
-            + (weeks * hours_in_week)
-            + (months * hours_in_month)
-            + (years * hours_in_year)
+            + (days * HOURS_IN_DAY)
+            + (weeks * HOURS_IN_WEEK)
+            + (months * HOURS_IN_MONTH)
+            + (years * HOURS_IN_YEAR)
         )
         rounded_hours = round(hours)
         # gets format
-        if rounded_hours >= hours_in_year:
-            total = round(hours / hours_in_year, 1)
+        if rounded_hours >= HOURS_IN_YEAR:
+            total = round(hours / HOURS_IN_YEAR, 1)
             time_passed = f"{total} Year"
-        elif rounded_hours >= hours_in_month:
-            total = round(hours / hours_in_month, 1)
+        elif rounded_hours >= HOURS_IN_MONTH:
+            total = round(hours / HOURS_IN_MONTH, 1)
             time_passed = f"{total} Month"
-        elif rounded_hours >= hours_in_week:
-            total = round(hours / hours_in_week, 1)
+        elif rounded_hours >= HOURS_IN_WEEK:
+            total = round(hours / HOURS_IN_WEEK, 1)
             time_passed = f"{total} Week"
-        elif rounded_hours >= hours_in_day:
-            total = round(hours / hours_in_day, 1)
+        elif rounded_hours >= HOURS_IN_DAY:
+            total = round(hours / HOURS_IN_DAY, 1)
             time_passed = f"{total} Day"
         elif hours >= 1:
             total = round(hours, 1)
@@ -252,15 +254,15 @@ class Utils:
         if total > 1:
             time_passed += "s"
         # fixes values that end up slightly off
-        fix_dict = {
+        CORRECTION_DICT = {
             "60.0 Minutes": "1.0 Hour",
             "24.0 Hours": "1.0 Day",
             "7.0 Days": "1.0 Week",
             "4.0 Weeks": "1.0 Month",
             "12.0 Months": "1.0 Year",
         }
-        if time_passed in fix_dict.keys():
-            time_passed = fix_dict[time_passed]
+        if time_passed in CORRECTION_DICT.keys():
+            time_passed = CORRECTION_DICT[time_passed]
         return time_passed
 
     @staticmethod
@@ -270,7 +272,7 @@ class Utils:
         """
         if type(string) != str:
             return string
-        replace_dict = {
+        UNICODE_CONVERSIONS = {
             # unicode character
             "â€": "'",
             "®": "",
@@ -295,9 +297,9 @@ class Utils:
             "&copy;": "",  # copyright sign
             "&reg;": "",  # trademark sign
         }
-        for unicode in replace_dict.keys():
+        for unicode in UNICODE_CONVERSIONS.keys():
             if unicode in string:
-                for unicode, sub in replace_dict.items():
+                for unicode, sub in UNICODE_CONVERSIONS.items():
                     string = string.replace(unicode, sub)
         conv_string = string.encode("ascii", "ignore").decode()
         return conv_string.strip()
@@ -388,22 +390,21 @@ class Utils:
         """
         Returns True if the `value` is an int, float or numeric string.
         """
-        val_type = type(value)
-        if val_type is str:
+        if isinstance(value, str):
             if value.replace(".", "", 1).isdigit():
                 return True
-        elif val_type is int or val_type is float:
+        elif isinstance(value, int) or isinstance(value, float):
             return True
         return False
 
     def is_response_yes(
-        self, msg: str, default_to_yes: bool = True
+        self, prompt: str, default_to_yes: bool = True
     ) -> bool:  # pragma: no cover
         """
         Asks for a Yes or No response. Yes returns True and No returns False.
         """
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
-        return pick(choices, msg)[0] == "Yes"
+        return pick(choices, prompt)[0] == "Yes"
 
     def save_json(self, new_data: dict, filename: str):
         """
