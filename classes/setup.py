@@ -60,15 +60,17 @@ class Setup:
         """
         newly_created_files = []
 
+        # TODO improve this so it is easier to add more
         # config file
         config_filename = "config.json"
         config_path = Path(f"configs/{config_filename}")
         if self.create_file(config_path, "config_template.json"):
-            info = {
-                "name": config_filename,
-                "instruction": "Open the config and update the following required entries:\nsteam_id\napi_key",
-            }
-            newly_created_files.append(info)
+            newly_created_files.append(
+                {
+                    "name": config_filename,
+                    "instruction": "Open the config and update the following required entries:\nsteam_id\napi_key",
+                }
+            )
         else:
             # gets excel file name
             excel_filename = "Game Library.xlsx"
@@ -79,31 +81,48 @@ class Setup:
             # excel file creation
             excel_path = Path(excel_filename)
             if self.create_file(excel_path, "Game_Library_Template.xlsx"):
-                info = {
-                    "name": excel_filename,
-                    "instruction": "This file was recreated using the template",
+                newly_created_files.append(
+                    {
+                        "name": excel_filename,
+                        "instruction": "This file was recreated using the template",
+                    }
+                )
+
+        # excel options
+        excel_options_filename = "excel_options.json"
+        excel_options_path = Path(f"configs/{excel_options_filename}")
+        if self.create_file(excel_options_path, "excel_options_template.json"):
+            newly_created_files.append(
+                {
+                    "name": excel_options_filename,
+                    "instruction": "Insert any game names or app id's that you do not want to me synced (Optional)",
                 }
-                newly_created_files.append(info)
+            )
+        else:
+            with open(excel_options_path) as file:
+                excel_options = json.load(file)
 
         # ignore file
         ignore_filename = "ignore.json"
         ignore_path = Path(f"configs/{ignore_filename}")
         if self.create_file(ignore_path, "ignore_template.json"):
-            info = {
-                "name": ignore_filename,
-                "instruction": "Insert any game names or app id's that you do not want to me synced (Optional)",
-            }
-            newly_created_files.append(info)
+            newly_created_files.append(
+                {
+                    "name": ignore_filename,
+                    "instruction": "Insert any game names or app id's that you do not want to me synced (Optional)",
+                }
+            )
+        else:
+            with open(ignore_path) as file:
+                ignore_data = json.load(file)
 
         if newly_created_files:
             for file in newly_created_files:
                 print(f"\n{file['name']} was missing\n{file['instruction']}")
         else:
             errors = self.validate_config(config_data)
-            with open(ignore_path) as file:
-                ignore_data = json.load(file)
             if not errors:
-                return config_path, config_data, ignore_data
+                return config_path, config_data, ignore_data, excel_options
             else:
                 print(errors)
         input("\nPress Enter to Close")

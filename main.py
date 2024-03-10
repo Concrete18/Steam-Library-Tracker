@@ -31,7 +31,7 @@ class Tracker(GetGameInfo, Steam, Utils):
 
     # config init
     setup = Setup()
-    config_path, config_data, ignore_data = setup.run()
+    config_path, config_data, ignore_data, excel_options = setup.run()
 
     # steam_data
     steam_key = config_data["steam_data"]["api_key"]
@@ -40,7 +40,6 @@ class Tracker(GetGameInfo, Steam, Utils):
     library_vdf_path = config_data["steam_data"]["library_vdf_path"]
 
     # settings
-    playstation_data_link = config_data["settings"]["playstation_data_link"]
     excel_filename = config_data["settings"]["excel_filename"]
     logging = config_data["settings"]["logging"]
 
@@ -69,44 +68,18 @@ class Tracker(GetGameInfo, Steam, Utils):
     )
     console = Console(theme=custom_theme)
 
-    # excel setup
-    # TODO move this to a config
-    OPTIONS = {
-        "shrink_to_fit_cell": True,
-        "header": {"bold": True, "font_size": 16},
-        "default_align": "center_align",
-        "left_align": [
-            "Name",
-            "Developers",
-            "Publishers",
-            "User Tags",
-            "Notes",
-            "Genre",
-        ],
-        # "light_grey_fill": [],
-        "percent": [
-            "%",
-            "Percent",
-            "Discount",
-        ],
-        "currency": ["Price", "MSRP", "Cost"],
-        "integer": ["App ID", "Number", "Release Year"],
-        "count_days": ["Days Till Release"],
-        "date": ["Last Updated", "Date"],
-        "decimal": ["Hours Played", "Linux Hours", "Time To Beat in Hours"],
-    }
     excel = Excel(excel_filename, use_logging=logging)
     steam = Sheet(
         excel_object=excel,
         sheet_name="Steam",
         column_name="App ID",
-        options=OPTIONS,
+        options=excel_options,
     )
     sales = Sheet(
         excel_object=excel,
         sheet_name="Sales",
         column_name="Name",
-        options=OPTIONS,
+        options=excel_options,
     )
     # sets play status choices for multiple functions
     PLAY_STATUS_CHOICES = (
@@ -120,8 +93,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         "Quit",
         "Ignore",
     )
-    # misc
-    ps_data = Path("configs/playstation_games.json")
 
     # columns
     EXCEL_COLUMNS = [
