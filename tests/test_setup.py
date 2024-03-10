@@ -1,6 +1,6 @@
 import pytest
 
-from classes.setup import Setup
+from setup import Setup
 
 
 class TestValidateSteamApiKey:

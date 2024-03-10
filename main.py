@@ -1,9 +1,8 @@
 import os, sys, math
-from difflib import SequenceMatcher
-from pathlib import Path
-from pick import pick
 import datetime as dt
 import pandas as pd
+from difflib import SequenceMatcher
+from pick import pick
 
 from rich.console import Console
 from rich.prompt import IntPrompt
@@ -12,8 +11,7 @@ from rich.table import Table
 from rich.theme import Theme
 
 # classes
-from classes.setup import Setup
-
+from setup import Setup
 from classes.steam import Steam
 from classes.game_info import Game, GetGameInfo
 from classes.random_game import RandomGame
@@ -141,9 +139,9 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         if not self.vanity_url:
             raise "Steam ID and Vanity URL is blank. Please enter at one of them"
-        steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
-        if steam_id:
-            self.config_data["settings"]["steam_id"] = steam_id
+        self.steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
+        if self.steam_id:
+            self.config_data["settings"]["steam_id"] = self.steam_id
             self.save_json(self.config_data, self.config_path)
 
     def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
