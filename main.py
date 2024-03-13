@@ -636,9 +636,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         total_games_played = len(played_games)
         table_title = f"Games Played: {len(played_games)}"
         if total_games_played > 1:
-            table_title += (
-                f"\nLast Session Playtime: {self.total_session_playtime:.1f} Hours"
-            )
+            table_title += f"\nLast Session: {self.total_session_playtime:.1f} Hours"
         table = Table(
             title=table_title,
             show_lines=True,
