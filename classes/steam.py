@@ -67,7 +67,7 @@ class Steam(Utils):
             return None  # handle request exceptions
 
     @retry()
-    def get_steam_friends(self, steam_key, steam_id):
+    def get_steam_friends(self, steam_key: str, steam_id: int) -> dict:
         """
         Gets a users Steam friends list.
         """

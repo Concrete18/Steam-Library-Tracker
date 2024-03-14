@@ -87,8 +87,7 @@ class RandomGame(Utils):
         """
         Allows you to pick a play_status or installed status to have a random game chosen from.
         """
-        play_statuses = list(self.play_status_choices)
-        choices = ["Installed", *play_statuses]
+        choices = ["Installed", *self.play_status_choices]
         # get game choices
         game_list = self.create_game_list(choices)
         # key setup
@@ -98,6 +97,7 @@ class RandomGame(Utils):
         while game_list:
             game_list = self.pick_game(game_list)
             allowed_keys = [continue_key, stop_key]
+            # FIXME holding ESC causes enter to be pressed multiple times
             released_key = self.wait_for_key_release(allowed_keys)
             # quits picking random games
             if released_key == stop_key:

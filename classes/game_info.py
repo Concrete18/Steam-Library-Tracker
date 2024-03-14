@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from howlongtobeatpy import HowLongToBeat
 import requests, time
 
-from classes.utils import Utils
+from classes.utils import Utils, retry
 from classes.steam import Steam
 
 
@@ -107,6 +107,7 @@ class GetGameInfo(Steam, Utils):
             time_to_beat = best_element.main_extra or best_element.main_story or "-"
         return time_to_beat
 
+    @retry()
     def get_app_details(self, app_id: int) -> dict | None:
         """
         Gets game details.
@@ -123,6 +124,8 @@ class GetGameInfo(Steam, Utils):
         """
         Creates a Game object with data from `game_data`.
         """
+        if not game_data:
+            return None
         app_id = game_data.get("steam_appid", None)
         game_name = game_data.get("name", None)
         if not app_id or not game_name:
