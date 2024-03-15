@@ -521,7 +521,6 @@ class Tracker(GetGameInfo, Steam, Utils):
             table.add_column(name, justify="center")
             row.append(str(stat))
         table.add_row(*row)
-
         self.console.print(table, new_line_start=True)
 
     def output_review_info(self, df: pd.DataFrame) -> None:
@@ -890,7 +889,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.steam.add_new_line(game_data)
         # logging
         if self.logging:
-            # TODO verify this works
             time_played_str = time_played or "no time"
             info = f"New Game: Added {game_name} with {time_played_str} played"
             self.main_log.info(info)

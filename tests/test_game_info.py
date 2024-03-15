@@ -14,28 +14,52 @@ class TestGame:
             app_id=APP_ID,
             developer="Dev",
             publisher="Pub",
-            genre="Testing",
+            genre=["Testing", "early access"],
             release_year=2024,
             price=12.34,
             discount=0.88,
-            on_sale=True,
             linux_compat="Verified",
-            categories="Tests",
+            categories=["Category 1"],
+            user_tags=["Tag 1"],
             drm_notice="Has DRM",
         )
+        assert len(vars(game)) == 22
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
         assert game.publisher == "Pub"
-        assert game.genre == "Testing"
+        assert game.early_access == "Yes"
+        assert game.genre == ["Testing", "early access"]
         assert game.release_year == 2024
         assert game.price == 12.34
         assert game.discount == 0.88
-        assert game.on_sale == True
+        assert game.on_sale
         assert game.linux_compat == "Verified"
-        assert game.categories == "Tests"
+        assert game.categories == ["Category 1"]
+        assert game.user_tags == ["Tag 1"]
         assert game.game_url == "https://store.steampowered.com/app/12345/"
         assert game.drm_notice == "Has DRM"
+
+    def test_not_on_sale(self):
+        NAME = "Test1"
+        APP_ID = 12345
+        game = Game(
+            name=NAME,
+            app_id=APP_ID,
+            price=10,
+            discount=0.0,
+        )
+        assert not game.on_sale
+
+    def test_not_early_access(self):
+        NAME = "Test1"
+        APP_ID = 12345
+        game = Game(
+            name=NAME,
+            app_id=APP_ID,
+            genre=["Testing"],
+        )
+        assert game.early_access == "No"
 
     def test_only_required_args(self):
         NAME = "Test1"
@@ -48,21 +72,19 @@ class TestGame:
         assert game.app_id == APP_ID
         # str
         assert game.game_url == "https://store.steampowered.com/app/12345/"
+        assert game.early_access == "No"
         # float
         assert game.discount == 0.0
         # false
         assert game.on_sale == False
         assert game.linux_compat == False
+        # list
+        assert game.genre == []
+        assert game.categories == []
+        assert game.user_tags == []
         # none
         assert game.developer is None
         assert game.publisher is None
-        assert game.early_access is None
-        assert game.genre is None
-        assert game.categories is None
-        assert game.categories_str is None
-        assert game.user_tags is None
-        assert game.tags_str is None
-        assert game.genre_str is None
         assert game.release_year is None
         assert game.steam_review_percent is None
         assert game.steam_review_total is None
@@ -70,6 +92,9 @@ class TestGame:
         assert game.drm_notice is None
         assert game.time_to_beat is None
         assert game.player_count is None
+        assert game.tags_str is None
+        assert game.categories_str is None
+        assert game.genre_str is None
 
     def test_no_args(self):
         with pytest.raises(TypeError):
@@ -101,18 +126,16 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount, on_sale = App.get_price_info(GAME_DATA)
+        price, discount = App.get_price_info(GAME_DATA)
         assert price == 29.99
         assert discount == 0.5
-        assert on_sale
 
     def test_insufficient_data(self):
         App = GetGameInfo()
 
-        price, discount, on_sale = App.get_price_info({})
+        price, discount = App.get_price_info({})
         assert not price
         assert not discount
-        assert not on_sale
 
 
 class TestGetTimeToBeat:

@@ -1,13 +1,10 @@
 howlongtobeatpy==1.0.5
 beautifulsoup4==4.11.1
-coverage==7.0.0
 openpyxl==3.0.10
 pandas==1.5.2
 matplotlib==3.6.2
 easierexcel
 rich==13.3.2
 pick==2.2.0
-pytest==8.0.1
-pytest-mock==3.12.0
 keyboard==0.13.5
 vdf==3.4
