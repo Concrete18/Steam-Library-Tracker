@@ -474,14 +474,13 @@ class Tracker(GetGameInfo, Steam, Utils):
         df_filtered = df[df["Play Status"] != "Ignore"]
         play_statuses = df_filtered["Play Status"].value_counts()
         total_games_excluding_ignore = len(df_filtered)
-
-        # TODO set order of play_statuses so it determines the order of columns
-        # TODO confirm calculations are correct
-
         # Row creation
         row1, row2 = [], []
-        for status, count in play_statuses.items():
-            table.add_column(status, justify="center")
+        for play_status in self.PLAY_STATUS_CHOICES:
+            if play_status == "Ignore":
+                continue
+            count = play_statuses[play_status]
+            table.add_column(play_status, justify="center")
             row1.append(str(count))
             row2.append(f"{count / total_games_excluding_ignore:.1%}")
         table.add_row(*row1)
@@ -508,13 +507,13 @@ class Tracker(GetGameInfo, Steam, Utils):
         median_hours = df_filtered["Hours Played"].median()
         max_hours = df_filtered["Hours Played"].max()
         data = {
-            "Total\nHours": round(total_hours_sum, 1),
-            "Total\nDays": round(total_hours_sum / 24, 1),
-            "Linux\nHours": round(linux_hours_sum, 1),
-            "% Linux\nHours": f"{linux_hours_sum / total_hours_sum:.1%}",
-            "Average\nHours": round(average_hours, 1),
-            "Median\nHours": round(median_hours, 1),
-            "Max\nHours": round(max_hours, 1),
+            "Total\nHours": self.format_floats(total_hours_sum, 1),
+            "Total\nDays": self.format_floats(total_hours_sum / 24, 1),
+            "Linux\nHours": self.format_floats(linux_hours_sum, 1),
+            "% Linux\nHours": self.format_floats(linux_hours_sum / total_hours_sum, 1),
+            "Average\nHours": self.format_floats(average_hours, 1),
+            "Median\nHours": self.format_floats(median_hours, 1),
+            "Max\nHours": self.format_floats(max_hours, 1),
         }
         # row creation
         row = []
@@ -979,7 +978,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an IntPrompt.ask after running.
         """
-        # TODO move to its own file
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         min_rating = IntPrompt.ask(
             "\nWhat is the minimum rating for this search? (1-10)",

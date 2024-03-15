@@ -175,6 +175,13 @@ class Utils:
         return delta.days
 
     @staticmethod
+    def format_floats(num, n_digits=None):
+        """
+        Formats floats to a specific rounding and adds commas for easier readability.
+        """
+        return f"{round(num, n_digits):,}"
+
+    @staticmethod
     def url_sanitize(string: str, space_replace: str = "-") -> str:
         """
         Removes all illegal URL characters from the given `string`.
@@ -221,7 +228,7 @@ class Utils:
         HOURS_IN_DAY = 24
         HOURS_IN_WEEK = 168
         HOURS_IN_MONTH = 730
-        HOURS_IN_YEAR = 8760
+        HOURS_IN_YEAR = 8_760
         hours = (
             (minutes / 60)
             + hours

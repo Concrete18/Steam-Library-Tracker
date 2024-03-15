@@ -19,11 +19,11 @@ class Game(Utils):
     release_year: int | None = None
     linux_compat: bool = False
     drm_notice: str | None = None
+    player_count: int | None = None
     # price
     price: float | None = None
     discount: float = 0.0
     on_sale: bool = False
-    player_count: int | None = None
     # lists
     genre: list | None = None
     user_tags: list | None = None
