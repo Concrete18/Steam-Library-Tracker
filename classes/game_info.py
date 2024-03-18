@@ -64,22 +64,20 @@ class GetGameInfo(Steam, Utils):
         return year or 0
 
     @staticmethod
-    def get_price_info(app_details: dict) -> tuple[float | None, float | None]:
+    def get_price_info(app_details: dict) -> tuple[float | None, float]:
         """
-        Gets price info from `game_info` and returns None if anything is set up
+        Gets price info from `app_details` and returns None if anything is set up
         wrong for any or all return values.
-        #"""
-        # TODO use .get() in this function
-        if "price_overview" not in app_details.keys():
+        """
+        if "price_overview" not in app_details:
             return None, None
         price_data = app_details["price_overview"]
         # price
-        price = None
-        if "final" in price_data:
-            price = round(price_data["final"] * 0.01, 2)
+        price = price_data.get("final", None)
+        final_price = round(price * 0.01, 2) if price else price
         # discount
         discount = float(price_data.get("discount_percent", 0.0))
-        return price, discount
+        return final_price, discount
 
     def get_time_to_beat(self, game_name: str) -> float | str:
         """
