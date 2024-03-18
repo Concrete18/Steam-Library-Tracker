@@ -2,6 +2,53 @@ import pytest
 
 # classes
 from main import Tracker
+from classes.game_info import Game
+
+
+class TestAppIdsToNames:
+    """
+    Tests `app_ids_to_names` function.
+    """
+
+    trackerObj = Tracker(save=False)
+
+    def test_success(self, mocker):
+        """
+        Tests average uses.
+        """
+        mocker.patch("easierexcel.Sheet.get_cell", return_value="Test")
+
+        app_ids = [12345, 456789]
+        names = ["Test", "Test"]
+        result = self.trackerObj.app_ids_to_names(app_ids)
+        assert result == names
+
+
+class TestGetGameColumnDict:
+    """
+    Tests `get_game_column_dict` function.
+    """
+
+    trackerObj = Tracker(save=False)
+
+    def test_success(self):
+        empty_game = Game()
+        column_dict = self.trackerObj.get_game_column_dict(empty_game)
+        assert column_dict == {
+            "Developers": "-",
+            "Publishers": "-",
+            "Steam Review Percent": "-",
+            "Steam Review Total": "-",
+            "Price": "-",
+            "Discount": "-",
+            "Player Count": "-",
+            "Genre": "-",
+            "User Tags": "-",
+            "Early Access": "No",
+            "Time To Beat in Hours": "-",
+            "Store Link": "-",
+            "Release Year": "-",
+        }
 
 
 class TestPlayStatus:

@@ -261,38 +261,37 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Returns a dict of column names and the value for that column.
         """
-        game_data = {
-            self.dev_col: game.developer,
-            self.pub_col: game.publisher,
-            self.steam_rev_per_col: game.steam_review_percent,
-            self.steam_rev_total_col: game.steam_review_total,
-            self.price_col: game.price,
-            self.discount_col: game.discount,
-            self.steam_player_count_col: game.player_count,
-            self.genre_col: game.genre_str,
-            self.user_tags_col: game.tags_str,
-            self.ea_col: game.early_access,
-            self.time_to_beat_col: game.time_to_beat,
-            self.store_link_col: self.create_hyperlink(game.game_url, "Store"),
-            self.release_col: game.release_year,
+        store_link = (
+            self.create_hyperlink(game.game_url, "Store") if game.game_url else "-"
+        )
+        return {
+            self.dev_col: game.developer or "-",
+            self.pub_col: game.publisher or "-",
+            self.steam_rev_per_col: game.steam_review_percent or "-",
+            self.steam_rev_total_col: game.steam_review_total or "-",
+            self.price_col: game.price or "-",
+            self.discount_col: game.discount or "-",
+            self.steam_player_count_col: game.player_count or "-",
+            self.genre_col: game.genre_str or "-",
+            self.user_tags_col: game.tags_str or "-",
+            self.ea_col: game.early_access or "-",
+            self.time_to_beat_col: game.time_to_beat or "-",
+            self.store_link_col: store_link,
+            self.release_col: game.release_year or "-",
         }
-        return {key: value for key, value in game_data.items() if value is not None}
 
     def update_extra_game_info(self, app_ids: list[int]):
         """
         Updates info that changes often enough that it needs to be updated manually.
         """
         save_every_nth = self.create_save_every_nth()
-        update_total = len(app_ids)
-        cur_itr = 0
         print()
+        cur_itr = 0
         desc = "Syncing Game Data"
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
-            # get new data from internet
+            # get new data from the internet
             app_details = self.get_app_details(app_id)
-            if not app_details:
-                continue
             game = self.get_game_info(app_details, self.steam_key)
             game_data = self.get_game_column_dict(game)
             # update data
@@ -301,13 +300,13 @@ class Tracker(GetGameInfo, Steam, Utils):
                     continue
                 if column == self.time_to_beat_col and game_row[self.time_to_beat_col]:
                     continue
-                self.steam.update_cell(game.app_id, column, data)
+                self.steam.update_cell(app_id, column, data)
             # saves data
             if self.save_to_file:
                 save_every_nth()
             # title progress percentage
             cur_itr += 1
-            progress = cur_itr / update_total * 100
+            progress = cur_itr / len(app_ids) * 100
             self.set_title(f"{progress:.1f}% - {self.APP_TITLE}")
         self.set_title()
 
@@ -329,6 +328,12 @@ class Tracker(GetGameInfo, Steam, Utils):
         recently_played = App.find_recent_games(df, self.date_updated_col, n_days)
         recently_played_app_ids = [game[self.app_id_col] for game in recently_played]
         return recently_played_app_ids
+
+    def app_ids_to_names(self, app_ids: list[int]) -> list[str]:
+        """
+        Converts a list of App ID's into a list of the games matching the ID's.
+        """
+        return [self.steam.get_cell(app_id, self.name_col) for app_id in app_ids]
 
     def updated_game_data(
         self,
@@ -382,7 +387,13 @@ class Tracker(GetGameInfo, Steam, Utils):
                 update_list.append(app_id)
         # checks if data should be updated
         if update_list:
-            msg = f"\nDo you want to update data for {len(update_list)} games?\n"
+            update_games_total = len(update_list)
+            if update_games_total <= 5:
+                game_names = self.app_ids_to_names(update_list)
+                game_list_str = self.list_to_sentence(game_names)
+                msg = f"\n{game_list_str}\n\nDo you want to update data for the above {update_games_total} games?"
+            else:
+                msg = f"\nDo you want to update data for {update_games_total} games?"
             if not self.is_response_yes(msg):
                 return
         else:
@@ -399,7 +410,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             print("\nCancelled")
         finally:
             if self.save_to_file:
-                self.excel.save(use_print=False)
+                self.excel.save(use_print=False, backup=False)
 
     def output_recently_played_games(self, df: pd.DataFrame, n_days: int = 7) -> None:
         """
@@ -894,7 +905,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.main_log.info(info)
         self.steam.format_row(app_id)
         if save_after_add and self.save_to_file:
-            self.excel.save(use_print=False)
+            self.excel.save(use_print=False, backup=False)
         return {
             "name": game_name,
             "total_playtime": hours_played or 0,
@@ -969,7 +980,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         # formats all cells and saves
         self.sales.format_all_cells()
         if self.save_to_file:
-            self.excel.save(use_print=False)
+            self.excel.save(use_print=False, backup=False)
 
     def sync_favorite_games_sales(self):
         """
@@ -1001,7 +1012,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         Choice picker using the advanced and less compatible Pick module.
         """
         options = [choice[0] for choice in choices]
-        selected_index = pick(options, prompt)[1]
+        selected_index = pick(options, prompt, indicator="->")[1]
         return choices[selected_index]
 
     def search_games(
@@ -1090,7 +1101,8 @@ class Tracker(GetGameInfo, Steam, Utils):
             "Update All Games",
             "Update One Game",
         ]
-        selected_action = pick(options, "What game(s) do you want to update?")[0]
+        PROMPT = "What game(s) do you want to update?"
+        selected_action = pick(options, PROMPT, indicator="->")[0]
         update_type = ""
         app_ids = []
         if selected_action == options[0]:
@@ -1108,7 +1120,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             else:
                 return
         self.bulk_update_player_count(app_ids, update_type)
-        self.excel.save(use_print=False)
+        self.excel.save(use_print=False, backup=False)
 
     def pick_game_to_update(self, games: list) -> None:
         """
@@ -1209,7 +1221,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             else:
                 print(name, app_id, correct_app_id)
                 self.steam.update_cell(app_id, self.app_id_col, "")
-        self.excel.save(use_print=False)
+        self.excel.save(use_print=False, backup=False)
 
     @keyboard_interrupt
     def main(self) -> None:

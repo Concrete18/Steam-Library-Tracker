@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from howlongtobeatpy import HowLongToBeat
 import requests, time
 
@@ -8,19 +8,17 @@ from classes.steam import Steam
 
 @dataclass()
 class Game(Utils):
-    app_id: int
-    name: str
-    developer: str | None = None
-    publisher: str | None = None
-    steam_review_percent: float | None = None
+    app_id: int = 0
+    name: str = ""
+    developer: str = ""
+    publisher: str = ""
+    steam_review_percent: float = 0.0
     steam_review_total: int | None = None
-    release_year: int | None = None
+    release_year: int = 0
     price: float | None = None
     discount: float = 0.0
-    linux_compat: bool = False
-    drm_notice: str | None = None
     player_count: int | None = None
-    time_to_beat: float | None = None
+    time_to_beat: float = 0.0
     # lists
     genre: list = field(default_factory=list)
     user_tags: list = field(default_factory=list)
@@ -35,38 +33,46 @@ class Game(Utils):
 
     def __post_init__(self):
         self.early_access = "Yes" if "early access" in self.genre else "No"
-        self.on_sale = False if not self.discount else self.discount > 0
-        self.game_url = self.get_game_url(self.app_id)
+        # on sale
+        self.on_sale = self.discount > 0 if self.discount else False
+        # game url
+        self.game_url = self.get_game_url(self.app_id) if self.app_id else self.app_id
         # create sentence strings
-        self.tags_str = self.convert_to_sentence(self.user_tags)
-        self.genre_str = self.convert_to_sentence(self.genre)
-        self.categories_str = self.convert_to_sentence(self.categories)
+        self.tags_str = self.list_to_sentence(self.user_tags)
+        self.genre_str = self.list_to_sentence(self.genre)
+        self.categories_str = self.list_to_sentence(self.categories)
 
-    def convert_to_sentence(self, items: list[str] | None) -> str | None:
-        """
-        Convert a list of items into a sentence.
-        """
-        if items:
-            return self.list_to_sentence(items)
-        return None
+    def __repr__(self):
+        string = "Game("
+        if self:
+            for field in fields(self):
+                string += f"\n  {field.name}: {getattr(self, field.name)}"
+            string += "\n)"
+        else:
+            string = "Game(\n  Invalid\n)"
+        return string
+
+    def __bool__(self):
+        return bool(self.app_id and self.name)
 
 
 class GetGameInfo(Steam, Utils):
 
-    def parse_release_date(self, game_data) -> int:
-        release_date = game_data["release_date"]["date"]
-        year = self.get_year(release_date)
-        return year or "-"
+    def parse_release_date(self, app_details: dict) -> int:
+        release_date = app_details.get("release_date", {}).get("date", {})
+        year = self.get_year(release_date) if release_date else None
+        return year or 0
 
     @staticmethod
-    def get_price_info(game_data: dict) -> tuple[float, float]:
+    def get_price_info(app_details: dict) -> tuple[float | None, float | None]:
         """
         Gets price info from `game_info` and returns None if anything is set up
         wrong for any or all return values.
-        """
-        if "price_overview" not in game_data.keys():
+        #"""
+        # TODO use .get() in this function
+        if "price_overview" not in app_details.keys():
             return None, None
-        price_data = game_data["price_overview"]
+        price_data = app_details["price_overview"]
         # price
         price = None
         if "final" in price_data:
@@ -98,7 +104,7 @@ class GetGameInfo(Steam, Utils):
         return time_to_beat
 
     @retry()
-    def get_app_details(self, app_id: int) -> dict | None:
+    def get_app_details(self, app_id: int) -> dict:
         """
         Gets game details.
         """
@@ -107,32 +113,33 @@ class GetGameInfo(Steam, Utils):
         self.api_sleeper("steam_app_details")
         response = requests.get(url, params=params)
         if response.ok:
-            return response.json().get(str(app_id), {}).get("data")
-        return None
+            return response.json().get(str(app_id), {}).get("data", {})
+        return {}
 
-    def get_game_info(self, game_data: dict, steam_api_key=None) -> Game | None:
+    def get_game_info(self, app_details: dict = {}, steam_api_key: str = "") -> Game:
         """
-        Creates a Game object with data from `game_data`.
+        Creates a Game object with `app_id`, `game_name` and data from `app_details`.
         """
-        if not game_data:
-            return None
-        app_id = game_data.get("steam_appid", None)
-        game_name = game_data.get("name", None)
-        if not app_id or not game_name:
-            return None
-        developer = ", ".join(game_data.get("developers", []))
-        publisher = ", ".join(game_data.get("publishers", []))
-        genre = [desc["description"] for desc in game_data.get("genres", [])]
-        release_year = self.parse_release_date(game_data)
-        price, discount = self.get_price_info(game_data)
-        linux_compat = game_data.get("platforms", {}).get("linux", False)
-        categories = [desc["description"] for desc in game_data.get("categories", [])]
-        drm_notice = game_data.get("drm_notice", None)
-        # extra internet checks
-        review_percent, review_total = self.get_steam_review(app_id=app_id)
+        if not app_details or not steam_api_key:
+            return Game()
+        app_id = app_details.get("steam_appid", 0)
+        game_name = app_details.get("name", "")
+        developer = ", ".join(app_details.get("developers", []))
+        publisher = ", ".join(app_details.get("publishers", []))
+        genre = [desc["description"] for desc in app_details.get("genres", [])]
+        release_year = self.parse_release_date(app_details)
+        price, discount = self.get_price_info(app_details)
+        categories = [desc["description"] for desc in app_details.get("categories", [])]
+        # review
+        review_dict = self.get_steam_review(app_id=app_id)
+        steam_review_percent = review_dict["percent"]
+        steam_review_total = review_dict["total"]
+        # user tags
         user_tags = self.get_steam_user_tags(app_id=app_id)
+        # time to beat
         game_name_no_unicode = self.unicode_remover(game_name)
         ttb = self.get_time_to_beat(game_name_no_unicode)
+        # player count
         player_count = (
             self.get_steam_game_player_count(app_id, steam_api_key)
             if steam_api_key
@@ -145,15 +152,13 @@ class GetGameInfo(Steam, Utils):
             developer=developer,
             publisher=publisher,
             genre=genre,
-            steam_review_percent=review_percent,
-            steam_review_total=review_total,
+            steam_review_percent=steam_review_percent,
+            steam_review_total=steam_review_total,
             user_tags=user_tags,
             time_to_beat=ttb,
             player_count=player_count,
             release_year=release_year,
             price=price,
             discount=discount,
-            linux_compat=linux_compat,
             categories=categories,
-            drm_notice=drm_notice,
         )

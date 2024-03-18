@@ -18,12 +18,10 @@ class TestGame:
             release_year=2024,
             price=12.34,
             discount=0.88,
-            linux_compat="Verified",
             categories=["Category 1"],
             user_tags=["Tag 1"],
-            drm_notice="Has DRM",
         )
-        assert len(vars(game)) == 22
+        assert len(vars(game)) == 20
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
@@ -34,11 +32,9 @@ class TestGame:
         assert game.price == 12.34
         assert game.discount == 0.88
         assert game.on_sale
-        assert game.linux_compat == "Verified"
         assert game.categories == ["Category 1"]
         assert game.user_tags == ["Tag 1"]
         assert game.game_url == "https://store.steampowered.com/app/12345/"
-        assert game.drm_notice == "Has DRM"
 
     def test_not_on_sale(self):
         NAME = "Test1"
@@ -66,7 +62,7 @@ class TestGame:
         APP_ID = 12345
         game = Game(app_id=APP_ID, name=NAME)
         # total attributes
-        assert len(vars(game)) == 22
+        assert len(vars(game)) == 20
         # required values
         assert game.name == NAME
         assert game.app_id == APP_ID
@@ -77,37 +73,40 @@ class TestGame:
         assert game.discount == 0.0
         # false
         assert game.on_sale == False
-        assert game.linux_compat == False
         # list
         assert game.genre == []
         assert game.categories == []
         assert game.user_tags == []
         # none
-        assert game.developer is None
-        assert game.publisher is None
-        assert game.release_year is None
-        assert game.steam_review_percent is None
+        assert game.developer == ""
+        assert game.publisher == ""
+        assert game.release_year == 0
+        assert game.steam_review_percent == 0.0
         assert game.steam_review_total is None
         assert game.price is None
-        assert game.drm_notice is None
-        assert game.time_to_beat is None
+        assert game.time_to_beat == 0.0
         assert game.player_count is None
-        assert game.tags_str is None
-        assert game.categories_str is None
-        assert game.genre_str is None
+        assert game.tags_str == ""
+        assert game.categories_str == ""
+        assert game.genre_str == ""
 
     def test_no_args(self):
-        with pytest.raises(TypeError):
-            Game()
+        assert not Game()
 
 
 class TestParseReleaseDate:
 
     def test_success(self):
         App = GetGameInfo()
-        GAME_DATA = {"release_date": {"date": "Feb 20, 2024"}}
-        year = App.parse_release_date(GAME_DATA)
+        APP_DETAILS = {"release_date": {"date": "Feb 20, 2024"}}
+        year = App.parse_release_date(APP_DETAILS)
         assert year == 2024
+
+    def test_insufficient_data(self):
+        App = GetGameInfo()
+        APP_DETAILS = {"release_date": {}}
+        year = App.parse_release_date(APP_DETAILS)
+        assert year == 0
 
 
 class TestGetPriceInfo:
@@ -115,7 +114,7 @@ class TestGetPriceInfo:
     def test_success(self):
         App = GetGameInfo()
 
-        GAME_DATA = {
+        APP_DETAILS = {
             "price_overview": {
                 "currency": "USD",
                 "initial": 5999,
@@ -126,13 +125,12 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount = App.get_price_info(GAME_DATA)
+        price, discount = App.get_price_info(APP_DETAILS)
         assert price == 29.99
         assert discount == 0.5
 
     def test_insufficient_data(self):
         App = GetGameInfo()
-
         price, discount = App.get_price_info({})
         assert not price
         assert not discount
@@ -158,17 +156,13 @@ class TestGetAppDetails:
 
     def test_success(self, mock_response, mocker):
         App = GetGameInfo()
-
         mocker.patch("requests.get", return_value=mock_response)
-
         assert App.get_app_details(2379780)
 
     def test_request_error(self, mock_response, mocker):
         App = GetGameInfo()
-
         mocker.patch("requests.get", return_value=mock_response)
-
-        assert App.get_app_details(None) is None
+        assert App.get_app_details(None) == {}
 
 
 class TestGetGameInfo(Utils):
@@ -178,30 +172,32 @@ class TestGetGameInfo(Utils):
 
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             app_details_json = json.load(file)
+        app_details = app_details_json.get(str(2379780), {}).get("data")
 
-        game_data = app_details_json.get(str(2379780), {}).get("data")
-
-        mocker.patch("classes.steam.Steam.get_steam_review", return_value=(0.97, 9856))
-        mocker.patch(
-            "classes.steam.Steam.get_steam_user_tags",
-            return_value=[
-                "Roguelike",
-                "Card Game",
-                "Deckbuilding",
-            ],
-        )
+        # mocks get_steam_review
+        result = {"total": 9856, "percent": 0.97}
+        mocker.patch("classes.steam.Steam.get_steam_review", return_value=result)
+        # mocks get_steam_user_tags
+        result = [
+            "Roguelike",
+            "Card Game",
+            "Deckbuilding",
+        ]
+        mocker.patch("classes.steam.Steam.get_steam_user_tags", return_value=result)
+        # mocks get_time_to_beat
         mocker.patch("classes.game_info.GetGameInfo.get_time_to_beat", return_value=20)
+        # mocks get_steam_game_player_count
         mocker.patch(
             "classes.steam.Steam.get_steam_game_player_count", return_value=600
         )
 
         api_key, _ = self.get_steam_api_key_and_id()
 
-        game = App.get_game_info(game_data, api_key)
+        game = App.get_game_info(app_details, api_key)
         assert isinstance(game, Game)
         # attribute check
-        assert game.name == "Balatro"
         assert game.app_id == 2379780
+        assert game.name == "Balatro"
         assert game.developer == "LocalThunk"
         assert game.publisher == "Playstack"
         assert game.genre == ["Casual", "Indie", "Strategy"]
@@ -215,7 +211,6 @@ class TestGetGameInfo(Utils):
         assert game.price == 14.99
         assert game.discount == 0.0
         assert game.on_sale == False
-        assert game.linux_compat == False
         assert game.categories == [
             "Single-player",
             "Steam Achievements",
@@ -223,14 +218,12 @@ class TestGetGameInfo(Utils):
             "Steam Cloud",
             "Family Sharing",
         ]
-        assert game.drm_notice is None
 
     def test_not_enough_data(self):
         App = GetGameInfo()
-
-        game_data = {}
-        game = App.get_game_info(game_data)
-        assert game is None
+        app_details = {}
+        game = App.get_game_info(app_details)
+        assert not game
 
 
 if __name__ == "__main__":

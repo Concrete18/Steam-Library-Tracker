@@ -96,7 +96,7 @@ class Steam(Utils):
             return None  # handle request exceptions
 
     @retry()
-    def get_steam_review(self, app_id: int) -> tuple[int] | None:
+    def get_steam_review(self, app_id: int) -> dict:
         """
         Scrapes the games review percent and total reviews from
         the steam store page using `app_id`.
@@ -104,8 +104,9 @@ class Steam(Utils):
         self.api_sleeper("steam_review_scrape")
         game_url = self.get_game_url(app_id)
         response = requests.get(game_url)
+        result_dict = {"total": None, "percent": None}
         if not response.ok:
-            return ("-", "-")
+            return result_dict
         soup = BeautifulSoup(response.text, "html.parser")
         hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
         results = soup.find_all(class_=hidden_review_class)
@@ -114,24 +115,20 @@ class Steam(Utils):
         elif len(results) > 1:
             text = results[1].text.strip()
         else:
-            return ("-", "-")
-        parsed_data = text[2:26].split("% of the ")
+            return result_dict
+        parsed_data = text[2:26].split(r"% of the ")
         # get percent
         review_percent = parsed_data[0]
         if review_percent.isnumeric():
             if review_percent == "100":
-                percent = 1
+                result_dict["percent"] = 1
             else:
-                percent = float(f".{review_percent}")
-        else:
-            percent = "-"
+                result_dict["percent"] = float(f".{review_percent}")
         # get total
         if len(parsed_data) > 1:
             cleaned_num = parsed_data[1].replace(",", "")
-            total = int(re.search(r"\d+", cleaned_num).group())
-        else:
-            total = "-"
-        return (percent, total)
+            result_dict["total"] = int(re.search(r"\d+", cleaned_num).group())
+        return result_dict
 
     @retry()
     def get_steam_user_tags(self, app_id: int):

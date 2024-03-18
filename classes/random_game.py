@@ -41,7 +41,7 @@ class RandomGame(Utils):
         Returns a `game_list` that match the chosen restraints based on user input.
         """
         PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
-        status_choice = pick(choices, PROMPT)[0]
+        status_choice = pick(choices, PROMPT, indicator="->")[0]
         self.console.print(
             f"\nPicking [secondary]{status_choice}[/] games"
             "\nPress [secondary]Enter[/] to pick another and [secondary]ESC[/] to Stop"

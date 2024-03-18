@@ -1,5 +1,4 @@
-import pytest
-import requests
+import pytest, requests
 
 # classes
 from classes.steam import Steam
@@ -56,15 +55,10 @@ class TestSteamReview:
     steam = Steam()
 
     def test_success(self):
-
         # TODO mock request
-        result = self.steam.get_steam_review(app_id=752590)
-        if result:
-            percent, total = result
-            assert isinstance(percent, float)
-            assert isinstance(total, int)
-        else:
-            assert False
+        review_dict = self.steam.get_steam_review(app_id=752590)
+        assert isinstance(review_dict["percent"], float)
+        assert isinstance(review_dict["total"], int)
 
 
 class TestGetGameUrl:

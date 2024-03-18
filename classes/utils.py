@@ -143,7 +143,9 @@ class Utils:
         """
         Generates a steam store url to the games page using it's `app_id`.
         """
-        return f"https://store.steampowered.com/app/{app_id}/"
+        if app_id:
+            return f"https://store.steampowered.com/app/{app_id}/"
+        return app_id
 
     @staticmethod
     def string_to_date(date: str) -> dt.datetime:
@@ -411,7 +413,7 @@ class Utils:
         Asks for a Yes or No response. Yes returns True and No returns False.
         """
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
-        return pick(choices, prompt)[0] == "Yes"
+        return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
 
     def save_json(self, new_data: dict, filename: str):
         """
