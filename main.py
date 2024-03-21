@@ -936,9 +936,9 @@ class Tracker(GetGameInfo, Steam, Utils):
             if rating is None:
                 continue
             if rating >= min_rating and app_id:
-                game_data = self.get_app_details(app_id)
-                game = self.get_game_info(game_data)
-                if not game or game.discount == 0:
+                app_details = self.get_app_details(app_id)
+                game = self.get_game_info(app_details, self.steam_key)
+                if not game.on_sale:
                     continue
                 games.append((game, rating))
         return games
@@ -1003,7 +1003,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             return
         total_sales = len(games)
         # prints info
-        print(f"\nFound {total_sales} Favorite Game Sales:\n")
+        print(f"\nFound {total_sales} Matching Game Sales")
         self.update_sales_sheet(games)
 
     @staticmethod

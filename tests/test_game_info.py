@@ -57,17 +57,16 @@ class TestGame:
         )
         assert game.early_access == "No"
 
-    def test_only_required_args(self):
-        NAME = "Test1"
-        APP_ID = 12345
-        game = Game(app_id=APP_ID, name=NAME)
+    def test_no_args(self):
+        game = Game()
+        assert not Game()
         # total attributes
         assert len(vars(game)) == 20
         # required values
-        assert game.name == NAME
-        assert game.app_id == APP_ID
+        assert game.name == ""
+        assert game.app_id == 0
         # str
-        assert game.game_url == "https://store.steampowered.com/app/12345/"
+        assert game.game_url == 0
         assert game.early_access == "No"
         # float
         assert game.discount == 0.0
@@ -89,9 +88,6 @@ class TestGame:
         assert game.tags_str == ""
         assert game.categories_str == ""
         assert game.genre_str == ""
-
-    def test_no_args(self):
-        assert not Game()
 
 
 class TestParseReleaseDate:
@@ -178,18 +174,13 @@ class TestGetGameInfo(Utils):
         result = {"total": 9856, "percent": 0.97}
         mocker.patch("classes.steam.Steam.get_steam_review", return_value=result)
         # mocks get_steam_user_tags
-        result = [
-            "Roguelike",
-            "Card Game",
-            "Deckbuilding",
-        ]
+        result = ["Roguelike", "Card Game", "Deckbuilding"]
         mocker.patch("classes.steam.Steam.get_steam_user_tags", return_value=result)
         # mocks get_time_to_beat
         mocker.patch("classes.game_info.GetGameInfo.get_time_to_beat", return_value=20)
         # mocks get_steam_game_player_count
-        mocker.patch(
-            "classes.steam.Steam.get_steam_game_player_count", return_value=600
-        )
+        func = "classes.steam.Steam.get_steam_game_player_count"
+        mocker.patch(func, return_value=600)
 
         api_key, _ = self.get_steam_api_key_and_id()
 
@@ -220,11 +211,13 @@ class TestGetGameInfo(Utils):
         ]
 
     def test_not_enough_data(self):
+        api_key, _ = self.get_steam_api_key_and_id()
         App = GetGameInfo()
         app_details = {}
-        game = App.get_game_info(app_details)
+        game = App.get_game_info(app_details, api_key)
         assert not game
 
-
-if __name__ == "__main__":
-    pytest.main([__file__])
+    def test_missing_args(self):
+        App = GetGameInfo()
+        with pytest.raises(TypeError):
+            App.get_game_info()

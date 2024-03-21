@@ -114,7 +114,7 @@ class GetGameInfo(Steam, Utils):
             return response.json().get(str(app_id), {}).get("data", {})
         return {}
 
-    def get_game_info(self, app_details: dict = {}, steam_api_key: str = "") -> Game:
+    def get_game_info(self, app_details: dict, steam_api_key: str) -> Game:
         """
         Creates a Game object with `app_id`, `game_name` and data from `app_details`.
         """
