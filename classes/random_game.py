@@ -36,17 +36,14 @@ class RandomGame(Utils):
         self.play_status_choices = play_status_choices
         self.play_status_column = play_status_column
 
-    def create_game_list(self, choices: list[str]) -> list[int]:
+    def create_game_list(self, status_choice: list[str]) -> list[int]:
         """
         Returns a `game_list` that match the chosen restraints based on user input.
         """
-        PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
-        status_choice = pick(choices, PROMPT, indicator="->")[0]
         self.console.print(
             f"\nPicking [secondary]{status_choice}[/] games"
             "\nPress [secondary]Enter[/] to pick another and [secondary]ESC[/] to Stop"
         )
-
         game_list = []
         for app_id in self.sheet.row_idx.keys():
             if status_choice == "Installed":
@@ -87,15 +84,20 @@ class RandomGame(Utils):
         """
         Allows you to pick a play_status or installed status to have a random game chosen from.
         """
-        choices = ["Installed", *self.play_status_choices]
+        status_choices = ["Installed", *self.play_status_choices]
         # get game choices
-        game_list = self.create_game_list(choices)
+        PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
+        status_choice = pick(status_choices, PROMPT, indicator="->")[0]
+        game_list = self.create_game_list(status_choice)
         # key setup
         continue_key = "enter"
         stop_key = "esc"
         # loop and pick random games till stop_key is used or game_list is emptied
         while game_list:
-            game_list = self.pick_game(game_list)
+
+            picked_game, game_list = self.get_random_game(game_list)
+            self.console.print(f"\nPicked: [primary]{picked_game}[/]")
+
             allowed_keys = [continue_key, stop_key]
             # FIXME holding ESC causes enter to be pressed multiple times
             released_key = self.wait_for_key_release(allowed_keys)

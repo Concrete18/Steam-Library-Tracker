@@ -106,7 +106,7 @@ class Utils:
         """
         while True:
             event = keyboard.read_event(suppress=suppress)
-            if event.event_type == "up" and event.name in allowed_keys:
+            if event.event_type == keyboard.KEY_UP and event.name in allowed_keys:
                 return event.name
 
     def create_hyperlink(self, url: str, label: str) -> str:

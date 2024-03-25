@@ -136,6 +136,5 @@ if __name__ == "__main__":
 
     # run
     stats = Stat(df)
-    stats.get_game_statistics()
     stats.my_rating_comparison()
     # stats.rating_release_comparison("Steam Review Percent")
