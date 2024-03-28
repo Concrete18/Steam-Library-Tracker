@@ -1,5 +1,5 @@
 from pathlib import Path
-import time, json, requests, re, heapq, keyboard
+import time, json, requests, re
 from requests.exceptions import RequestException
 from pick import pick
 import datetime as dt
@@ -97,17 +97,6 @@ class Utils:
         api_key = data["steam_data"]["api_key"]
         steam_id = str(data["steam_data"]["steam_id"])
         return api_key, steam_id
-
-    @staticmethod
-    def wait_for_key_release(allowed_keys: list[str], suppress: bool = False) -> None:
-        """
-        Waits for the press and release of keys and returns the key only if it is one of the `allowed_keys`.
-        Prevents keys from working anywhere but within the terminal if set to True.
-        """
-        while True:
-            event = keyboard.read_event(suppress=suppress)
-            if event.event_type == keyboard.KEY_UP and event.name in allowed_keys:
-                return event.name
 
     def create_hyperlink(self, url: str, label: str) -> str:
         """
@@ -328,84 +317,6 @@ class Utils:
             comma_separated = ", ".join(str_list[:-1])
             return f"{comma_separated} and {str_list[-1]}"
 
-    def levenshtein_distance(self, word1: str, word2: str, lower: bool = True) -> int:
-        """
-        Returns the Levenshtein distance of `word1` and `word2`.
-        """
-        if lower:
-            word1, word2 = word1.lower(), word2.lower()
-        cache = [[float("inf")] * (len(word2) + 1) for _ in range(len(word1) + 1)]
-        for j in range(len(word2) + 1):
-            cache[len(word1)][j] = len(word2) - j
-        for i in range(len(word1) + 1):
-            cache[i][len(word2)] = len(word1) - i
-        for i in range(len(word1) - 1, -1, -1):
-            for j in range(len(word2) - 1, -1, -1):
-                if word1[i] == word2[j]:
-                    cache[i][j] = cache[i + 1][j + 1]
-                else:
-                    min_change = min(
-                        cache[i + 1][j], cache[i][j + 1], cache[i + 1][j + 1]
-                    )
-                    cache[i][j] = 1 + min_change
-        return cache[0][0]
-
-    def lev_dist_matcher(
-        self,
-        base_string: str,
-        string_list: list,
-        max_distance: int = 0,
-        limit: int = 5,
-    ):
-        """
-        Finds a match for `base_string` in `string_list` using sequence matching.
-        """
-        if max_distance < 1:
-            max_distance = round(len(base_string) * 0.5)
-        matches = {}
-        for string in string_list:
-            distance = self.levenshtein_distance(base_string, string)
-            if distance < max_distance:
-                max_distance = distance
-                matches[string] = distance
-        sorted_keys = sorted(matches, key=matches.get)
-        if len(sorted_keys) > limit:
-            sorted_keys = sorted_keys[0:limit]  # pragma: no cover
-        return sorted_keys
-
-    def create_levenshtein_matcher(
-        self,
-        base_string: str,
-        n: int = 5,
-    ):
-        """
-        Creates a closure function for running multiple levenshtein distance checks and keeping the top n results.
-        """
-        best_matches = []
-
-        def matcher(new_string):
-            nonlocal best_matches
-            # Calculate Levenshtein distance
-            distance = self.levenshtein_distance(base_string, new_string)
-            # Add the distance and string to the list
-            heapq.heappush(best_matches, (distance, new_string))
-            # Keep only the top n best matches
-            best_matches = heapq.nsmallest(n, best_matches)
-            return [match[1] for match in best_matches]  # return only the strings
-
-        return matcher
-
-    def any_is_num(self, value: any):
-        """
-        Returns True if the `value` is an int, float or numeric string.
-        """
-        if isinstance(value, str):
-            if value.replace(".", "", 1).isdigit():
-                return True
-        elif isinstance(value, int) or isinstance(value, float):
-            return True
-        return False
-
     def is_response_yes(
         self, prompt: str, default_to_yes: bool = True
     ) -> bool:  # pragma: no cover
@@ -414,6 +325,14 @@ class Utils:
         """
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
         return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
+
+    def create_rich_date_and_time(self, date: dt.datetime = dt.datetime.now()) -> str:
+        """
+        Returns a formatted date and time for use with Rich Console print.
+        """
+        formatted_date = f"[secondary]{date.strftime('%A, %B %d, %Y')}[/]"
+        formatted_time = f"[secondary]{date.strftime('%I:%M %p')}[/]"
+        return f"{formatted_date} [dim]|[/] {formatted_time}"
 
     def save_json(self, new_data: dict, filename: str):
         """

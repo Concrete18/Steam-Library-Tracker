@@ -95,6 +95,18 @@ class Steam(Utils):
                 self.error_log.warning(msg)
             return None  # handle request exceptions
 
+    def get_friends_list_changes(
+        self,
+        prev_friend_ids: list[int],
+        cur_friend_ids: list[int],
+    ) -> tuple[list[int], list[int]]:
+        """
+        ph
+        """
+        additions = list(set(cur_friend_ids) - set(prev_friend_ids))
+        removals = list(set(prev_friend_ids) - set(cur_friend_ids))
+        return additions, removals
+
     @retry()
     def get_steam_review(self, app_id: int) -> dict:
         """

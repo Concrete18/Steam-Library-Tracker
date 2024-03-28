@@ -30,15 +30,14 @@ class Setup:
         Checks to see if the config data is usable.
         """
         errors = []
-
-        steam_id = config_data["steam_data"]["steam_id"]
+        # steam id check
+        steam_id = config_data.get("steam_data", {}).get("steam_id", "")
         if not self.validate_steam_id(steam_id):
             errors.append("Steam ID is Invalid")
-
-        api_key = config_data["steam_data"]["api_key"]
+        # steam api key
+        api_key = config_data.get("steam_data", {}).get("api_key", "")
         if not self.validate_steam_key(api_key):
             errors.append("Steam API Key is Invalid")
-
         return errors
 
     @staticmethod
@@ -46,7 +45,7 @@ class Setup:
         """
         Creates the `file` by copying the template from `temp_path` if it does not exist.
         """
-        if not file.exists():
+        if not file.exists():  # pragma: no cover
             config_template = Path(f"configs/templates/{temp_path}")
             shutil.copyfile(config_template, file)
             return True
@@ -129,6 +128,6 @@ class Setup:
         exit()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     setup = Setup()
     setup.run()

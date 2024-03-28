@@ -146,7 +146,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.config_data["settings"]["steam_id"] = self.steam_id
             self.save_json(self.config_data, self.config_path)
 
-    def get_friends_list_changes(self, check_freq_days: int = 7) -> None:
+    def sync_friends_list(self, check_freq_days: int = 7) -> None:
         """
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
@@ -159,14 +159,15 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.update_last_run(self.config_data, self.config_path, "friends_sync")
         # get friends
         print("\nStarting Steam Friends Sync")
-        prev_friends_ids = self.config_data["friend_ids"]
+        prev_friend_ids = self.config_data["friend_ids"]
         friend_data = self.get_steam_friends(self.steam_key, self.steam_id)
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
-        additions = list(set(cur_friend_ids) - set(prev_friends_ids))
-        removals = list(set(prev_friends_ids) - set(cur_friend_ids))
+        additions, removals = self.steam.get_friends_list_changes(
+            prev_friend_ids, cur_friend_ids
+        )
         if not additions and not removals:
-            self.console.print("No friends added or removed", style="secondary")
+            self.console.print("No friends were added or removed", style="secondary")
             return
         # view changes
         TABLE_TITLE = "Friends List Updates"
@@ -1149,16 +1150,6 @@ class Tracker(GetGameInfo, Steam, Utils):
             print(f"\nUpdated to {new_hours} Hours")
         self.set_date_updated(game_idx)
 
-    def print_date_and_time(self) -> None:
-        """
-        Prints date and time with Rich Console.
-        """
-        now = dt.datetime.now()
-        formatted_date = f"[secondary]{now.strftime('%A, %B %d, %Y')}[/]"
-        formatted_time = f"[secondary]{now.strftime('%I:%M %p')}[/]"
-        date = f"{formatted_date} [dim]|[/] {formatted_time}"
-        self.console.print(date)
-
     def open_log(self) -> None:
         osCommandString = f"notepad.exe {self.main_log_path}"
         os.system(osCommandString)
@@ -1196,7 +1187,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", self.update_all_game_data),
             ("Statistics Display", lambda: self.output_statistics(df)),
-            ("Steam Friends List Sync", lambda: self.get_friends_list_changes(0)),
+            ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             # ("Playstation Games Sync", self.sync_playstation_games),
         ]
         if self.logging:
@@ -1227,7 +1218,7 @@ class Tracker(GetGameInfo, Steam, Utils):
     def main(self) -> None:
         self.console.print(self.APP_TITLE, style="primary")
 
-        self.print_date_and_time()
+        self.console.print(self.create_rich_date_and_time())
 
         self.sync_steam_games(self.steam_key, self.steam_id)
 
@@ -1237,7 +1228,7 @@ class Tracker(GetGameInfo, Steam, Utils):
 
         # extra data updates
         self.updated_game_data(df)
-        self.get_friends_list_changes()
+        self.sync_friends_list()
 
         self.game_library_actions(df)
 

@@ -5,10 +5,6 @@ from classes.game_skipper import GameSkipper
 
 
 class TestSkipGame:
-    """
-    Tests `skip_game` function.
-    """
-
     NAME_IGNORE_LIST = ["Half-Life 2: Lost Coast"]
     APP_ID_IGNORE_LIST = [12345, 123458]
     game_skipper = GameSkipper(NAME_IGNORE_LIST, APP_ID_IGNORE_LIST)

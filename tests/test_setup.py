@@ -5,8 +5,7 @@ from setup import Setup
 
 class TestValidateSteamApiKey:
     """
-    Tests `validate_steam_key` function.
-    Steam ID's must be allnumbers and 17 characters long.
+    Steam ID's must all be numbers and 17 characters long.
     """
 
     setupObj = Setup()
@@ -22,8 +21,7 @@ class TestValidateSteamApiKey:
 
 class TestValidateSteamID:
     """
-    Tests `validate_steam_id` function.
-    Steam ID's must be allnumbers and 17 characters long.
+    Steam ID's must all be numbers and 17 characters long.
     """
 
     setupObj = Setup()
@@ -35,6 +33,30 @@ class TestValidateSteamID:
     def test_False(self):
         assert not self.setupObj.validate_steam_id(765611028793)
         assert not self.setupObj.validate_steam_id("not a steam id")
+
+
+class TestValidateConfig:
+    """
+    Steam ID's must all be numbers and 17 characters long.
+    """
+
+    setupObj = Setup()
+
+    def test_success(self):
+        config_data = {
+            "steam_data": {
+                "steam_id": 76561197960287930,
+                "api_key": "15D4C014D419C0642B1E707BED41G7D4",
+            }
+        }
+        errors = self.setupObj.validate_config(config_data)
+        assert not errors
+
+    def test_fail(self):
+        config_data = {}
+        errors = self.setupObj.validate_config(config_data)
+        answer = ["Steam ID is Invalid", "Steam API Key is Invalid"]
+        assert errors == answer
 
 
 if __name__ == "__main__":

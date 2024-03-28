@@ -48,8 +48,7 @@ class TestGetOwnedSteamGames(Utils):
 
 class TestSteamReview:
     """
-    Tests `get_steam_review`. Due to changing reviews, it only tests for acquiring
-    floats for percent and integers for total.
+    Due to changing reviews, it only tests for acquiring floats for percent and integers for total.
     """
 
     steam = Steam()
@@ -62,10 +61,6 @@ class TestSteamReview:
 
 
 class TestGetGameUrl:
-    """
-    Tests `get_game_url` function.
-    """
-
     steam = Steam()
 
     def test_get_game_url(self):
@@ -159,9 +154,6 @@ class TestGetSteamUsername(Utils):
 
 
 class TestGetProfileUsername:
-    """
-    Tests `extract_profile_username` function.
-    """
 
     steam = Steam()
 
@@ -177,9 +169,6 @@ class TestGetProfileUsername:
 
 
 class TestGetSteamID:
-    """
-    Tests `get_steam_id` function.
-    """
 
     @pytest.fixture
     def mock_response(self, mocker):
@@ -264,6 +253,25 @@ class TestGetSteamFriends:
         assert result is None
 
 
+class TestGetFriendsListChanges:
+
+    steam = Steam()
+
+    def test_success(self):
+        prev_friend_ids = [1234, 5678, 9999]
+        cur_friend_ids = [1234, 5678, 7777]
+        additions, removals = self.steam.get_friends_list_changes(
+            prev_friend_ids, cur_friend_ids
+        )
+        assert additions == [7777]
+        assert removals == [9999]
+
+    def test_empty_lists(self):
+        additions, removals = self.steam.get_friends_list_changes([], [])
+        assert additions == []
+        assert removals == []
+
+
 class TestGetSteamGamePlayerCount:
 
     @pytest.fixture
@@ -279,13 +287,30 @@ class TestGetSteamGamePlayerCount:
     STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
 
     def test_success(self, mock_response, mocker):
-        """
-        Tests `get_steam_game_player_count` function.
-        """
         mocker.patch("requests.get", return_value=mock_response)
         player_count = self.steam.get_steam_game_player_count(730, self.STEAM_KEY)
         assert isinstance(player_count, int)
         assert player_count == 5000
+
+
+class TestGetSteamGamePlayerCount:
+
+    @pytest.fixture
+    def mock_response(self, mocker):
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {
+            "response": {"player_count": 5000, "result": 1}
+        }
+        mock_response.ok = True
+        return mock_response
+
+    steam = Steam()
+
+    def test_success(self, mock_response, mocker):
+        mocker.patch("requests.get", return_value=mock_response)
+        user_tags = self.steam.get_steam_user_tags(730)
+        assert isinstance(user_tags, str)
+        assert user_tags == ""
 
 
 class TestGetAppList:
@@ -313,9 +338,6 @@ class TestGetAppList:
     steam = Steam()
 
     def test_success(self, mock_response, mocker):
-        """
-        Tests `get_app_list` function.
-        """
         mocker.patch("requests.get", return_value=mock_response)
 
         app_list = self.steam.get_app_list()

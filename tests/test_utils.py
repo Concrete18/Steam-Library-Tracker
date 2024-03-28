@@ -8,9 +8,6 @@ from classes.utils import Utils
 
 
 class TestHoursPlayed:
-    """
-    Tests `hours_played` function
-    """
 
     utils = Utils()
 
@@ -28,9 +25,6 @@ class TestHoursPlayed:
 
 
 class TestTimePassed:
-    """
-    Tests `convert_time_passed` function
-    """
 
     utils = Utils()
 
@@ -130,8 +124,7 @@ class TestTimePassed:
 
     def test_all_at_once(self):
         """
-        Tests function when given Minutes, Hours, Days, Months and
-        Years at the same time.
+        Tests function when given Minutes, Hours, Days, Months and Years at the same time.
         """
         # tests all args at once
         output = self.utils.convert_time_passed(
@@ -145,9 +138,6 @@ class TestTimePassed:
 
 
 class TestDaysSince:
-    """
-    Tests `days_since` function
-    """
 
     utils = Utils()
 
@@ -164,9 +154,6 @@ class TestDaysSince:
 
 
 class TestStringToDate:
-    """
-    Tests `string_to_date` function
-    """
 
     utils = Utils()
 
@@ -180,10 +167,6 @@ class TestStringToDate:
 
 
 class TestGetYear:
-    """
-    Tests `get_year` function.
-    """
-
     utils = Utils()
 
     def test_valid(self):
@@ -204,10 +187,6 @@ class TestGetYear:
 
 
 class TestUrlSanitize:
-    """
-    Tests `url_sanitize` function
-    """
-
     utils = Utils()
 
     def test_url_sanitize(self):
@@ -221,9 +200,6 @@ class TestUrlSanitize:
 
 
 class TestUnicodeRemover:
-    """
-    Tests `unicode_remover` function
-    """
 
     utils = Utils()
 
@@ -245,10 +221,6 @@ class TestUnicodeRemover:
 
 
 class TestCreateAndSentence:
-    """
-    Tests `list_to_sentence` function.
-    """
-
     utils = Utils()
 
     def test_list_to_sentence(self):
@@ -263,120 +235,7 @@ class TestCreateAndSentence:
             assert result == answer
 
 
-class TestLevenshteinDistance:
-    """
-    Tests `lev_distance` Function.
-    """
-
-    utils = Utils()
-
-    def test_levenshtein_distance_insert(self):
-        """
-        Tests Levenshtein Distance insert difference.
-        """
-        assert self.utils.levenshtein_distance("test", "tests") == 1
-        assert self.utils.levenshtein_distance("test", "the tests") == 5
-
-    def test_levenshtein_distance_delete(self):
-        """
-        Tests Levenshtein Distance delete difference.
-        """
-        assert self.utils.levenshtein_distance("bolt", "bot") == 1
-        assert self.utils.levenshtein_distance("bridges", "bride") == 2
-
-    def test_levenshtein_distance_replace(self):
-        """
-        Tests Levenshtein Distance replace difference.
-        """
-        assert self.utils.levenshtein_distance("spell", "spelt") == 1
-        assert self.utils.levenshtein_distance("car", "bat") == 2
-
-    def test_levenshtein_distance_all_change(self):
-        """
-        Tests Levenshtein Distance insert, delete and replace all at once.
-        """
-        assert self.utils.levenshtein_distance("Thinking", "Thoughts") == 6
-
-
-class TestSimilarityMatching:
-    utils = Utils()
-
-    def test_lev_dist_matcher(self):
-        TEST_LIST = [
-            "This is a test, yay",
-            "this is not it, arg",
-            "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
-            "The Last of Us",
-            "The Last of Us Part I",
-            "The Last of Us Part II",
-            "Waltz of the Wizard: Natural Magic",
-            "Life is Strange™",
-            "The Witcher 3: Wild Hunt",
-            "Marvel's Spider-Man: Miles Morales",
-            "Crypt Of The Necrodancer: Nintendo Switch Edition",
-        ]
-        STRING_TESTS = {
-            "This is a test": "This is a test, yay",
-            "Shadow Tactics Blade of the Shogun Aiko's Chosen": "Shadow Tactics: Blades of the Shogun - Aiko's Choice",
-            "the last of us": "The Last of Us",
-            "Walk of the Wizards: Natural Magic": "Waltz of the Wizard: Natural Magic",
-            "The last of us Part I": "The Last of Us Part I",
-            "Life is Strange 1": "Life is Strange™",
-            "Witcher 3: The Wild Hunt": "The Witcher 3: Wild Hunt",
-            "Spider-Man: Miles Morales": "Marvel's Spider-Man: Miles Morales",
-            "grave Of The deaddancer: Switch Edition": "Crypt Of The Necrodancer: Nintendo Switch Edition",
-        }
-        for string, answer in STRING_TESTS.items():
-            result = self.utils.lev_dist_matcher(string, TEST_LIST)[0]
-            assert result == answer
-
-
-class TestCreateLevenshteinMatcher:
-    utils = Utils()
-
-    def test_create_levenshtein_matcher(self):
-        # Example usage:
-        matcher = self.utils.create_levenshtein_matcher("base_string", n=3)
-
-        # Check multiple strings
-        STRINGS_TO_CHECK = [
-            "new_string1",
-            "new_string2",
-            "new_string3",
-            "other_string",
-            "example_string",
-        ]
-        best_matches = []
-        for string in STRINGS_TO_CHECK:
-            best_matches = matcher(string)
-
-        ANSWER = ["other_string", "example_string", "new_string1"]
-        assert best_matches == ANSWER
-
-
-class TestAnyIsNum:
-    """
-    Tests `any_is_num` function.
-    """
-
-    utils = Utils()
-
-    def test_true_num(self):
-        assert self.utils.any_is_num(155) is True
-        assert self.utils.any_is_num(45.15) is True
-
-    def test_true_string(self):
-        assert self.utils.any_is_num("1232") is True
-        assert self.utils.any_is_num("123.2") is True
-
-    def test_false(self):
-        assert self.utils.any_is_num("not a num") is False
-
-
 class TestSaveJson:
-    """
-    Tests `save_json` function.
-    """
 
     @classmethod
     def setup_class(cls):
@@ -421,9 +280,6 @@ class TestSaveJson:
 
 
 class TestRecentlyExecuted:
-    """
-    Tests `recently_executed` function.
-    """
 
     utils = Utils()
     SECS_IN_DAYS = 86400
@@ -452,6 +308,18 @@ class TestRecentlyExecuted:
         test = self.utils.recently_executed(data, name, n_days)
         assert test is False
 
+
+class TestCreateRichDateAndTime:
+
+    utils = Utils()
+
+    def test_success(self):
+        date = dt.datetime(2000, 1, 1, 1, 1)
+        rich_date = self.utils.create_rich_date_and_time(date)
+        answer = (
+            "[secondary]Saturday, January 01, 2000[/] [dim]|[/] [secondary]01:01 AM[/]"
+        )
+        assert rich_date == answer
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -6,12 +6,8 @@ steam = Sheet(excel_object=excel, sheet_name="Steam", column_name="App ID")
 
 
 class TestCreateGameList:
-    """
-    Tests `create_game_list` function.
-    """
 
     PLAY_STATUS_CHOICES = ["Played", "Unplayed"]
-
     Picker = RandomGame(
         steam_sheet=steam,
         name_column="Name",
@@ -21,20 +17,13 @@ class TestCreateGameList:
     )
 
     def test_success(self):
-        """
-        ph
-        """
         game_list = self.Picker.create_game_list("Played")
         assert game_list == ["1458140", "2342950", "1336490", "1627720"]
 
 
 class TestPickGame:
-    """
-    Tests `pick_game` function.
-    """
 
     PLAY_STATUS_CHOICES = ["Played", "Unplayed"]
-
     Picker = RandomGame(
         steam_sheet=steam,
         name_column="Name",
@@ -44,30 +33,41 @@ class TestPickGame:
     )
 
     def test_success(self):
-        """
-        ph
-        """
-        can_be_picked = [
-            "Balatro",
-            "ROUNDS",
-            "Pacific Drive",
-        ]
-        choice_list = [
-            2379780,
-            1557740,
-            1458140,
-        ]
+        can_be_picked = ["Balatro", "ROUNDS", "Pacific Drive"]
+        game_list = [2379780, 1557740, 1458140]
+        picked_game, game_list = self.Picker.pick_game(game_list)
+        assert picked_game in can_be_picked
 
-        choice_list = self.Picker.pick_game(choice_list)
+
+class TestRandomPickLoop:
+
+    PLAY_STATUS_CHOICES = ["Played", "Unplayed"]
+    Picker = RandomGame(
+        steam_sheet=steam,
+        name_column="Name",
+        installed_column="Installed",
+        play_status_choices=PLAY_STATUS_CHOICES,
+        play_status_column="Play Status",
+    )
+
+    def test_success(self, mocker):
+        game_list = [2379780, 1557740, 1458140]
+        mocker.patch("builtins.input", return_value="")
+        picked = self.Picker.random_pick_loop(game_list)
+        assert "Pacific Drive" in picked
+        assert "ROUNDS" in picked
+        assert "Balatro" in picked
+
+    def test_quit(self, mocker):
+        game_list = [2379780, 1557740]
+        mocker.patch("builtins.input", return_value="q")
+        picked = self.Picker.random_pick_loop(game_list)
+        assert picked == []
 
 
 class TestGetRandomGame:
-    """
-    Tests `get_random_game` function.
-    """
 
     PLAY_STATUS_CHOICES = ["Played", "Unplayed"]
-
     Picker = RandomGame(
         steam_sheet=steam,
         name_column="Name",
@@ -77,22 +77,16 @@ class TestGetRandomGame:
     )
 
     def test_success(self):
-        """
-        ph
-        """
-        can_be_picked = [
-            "Balatro",
-            "ROUNDS",
-            "Pacific Drive",
-        ]
-        choice_list = [
-            2379780,
-            1557740,
-            1458140,
-        ]
-        picks_left = len(choice_list)
-        for _ in choice_list:
-            picked_game, choice_list = self.Picker.get_random_game(choice_list)
+        can_be_picked = ["Balatro", "ROUNDS", "Pacific Drive"]
+        game_list = [2379780, 1557740, 1458140]
+        picks_left = len(game_list)
+        for _ in game_list:
+            picked_game, game_list = self.Picker.get_random_game(game_list)
             picks_left -= 1
             assert picked_game in can_be_picked
-            assert len(choice_list) == picks_left
+            assert len(game_list) == picks_left
+
+    def test_empty_list(self):
+        picked_game, game_list = self.Picker.get_random_game([])
+        assert picked_game is None
+        assert game_list == []

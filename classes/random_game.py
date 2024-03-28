@@ -42,7 +42,7 @@ class RandomGame(Utils):
         """
         self.console.print(
             f"\nPicking [secondary]{status_choice}[/] games"
-            "\nPress [secondary]Enter[/] to pick another and [secondary]ESC[/] to Stop"
+            "\nPress [secondary]Enter[/] to pick another and type [secondary]q[/] to stop"
         )
         game_list = []
         for app_id in self.sheet.row_idx.keys():
@@ -60,49 +60,48 @@ class RandomGame(Utils):
                     game_list.append(app_id)
         return game_list
 
-    def get_random_game(self, choice_list) -> tuple[str, list]:
+    def get_random_game(self, game_list) -> tuple[str, list]:
         """
-        Picks random game with the given `play_status` then removes it from the `choice_list` so it wont show up again during this session.
+        Picks random game with the given `play_status` then removes it from the `game_list` so it wont show up again during this session.
         """
-        if not choice_list:
-            return None, choice_list
-        picked_app_id = random.choice(choice_list)
-        choice_list.pop(choice_list.index(picked_app_id))
+        if not game_list:
+            return None, game_list
+        picked_app_id = random.choice(game_list)
+        game_list.pop(game_list.index(picked_app_id))
         picked_game = self.sheet.get_cell(picked_app_id, self.name_column)
-        return picked_game, choice_list
+        return picked_game, game_list
 
-    def pick_game(self, choice_list: list) -> list:
+    def pick_game(self, game_list: list) -> tuple[str, list]:
         """
-        Picks random game from `choice_list` with `choice`.
-        Returns `choice_list` with picked game removed.
+        Picks random game from `game_list` with `choice`.
+        Returns `game_list` with picked game removed.
         """
-        picked_game, choice_list = self.get_random_game(choice_list)
-        self.console.print(f"\nPicked: [primary]{picked_game}[/]")
-        return choice_list
+        picked_game, game_list = self.get_random_game(game_list)
+        self.console.print(f"Picked: [primary]{picked_game}[/]")
+        return picked_game, game_list
 
-    def random_game_picker(self) -> None:
+    def random_pick_loop(self, game_list: list) -> list:
+        """
+        Loops through random picks from the `game_list` until all games have
+        been picked or the user enters a stop command.
+        """
+        picked = []
+        quit_strings = ["quit", "q", "s", "stop", "end"]
+        while game_list:
+            response = input().lower()
+            if response in quit_strings:
+                return picked
+            picked_game, game_list = self.pick_game(game_list)
+            picked.append(picked_game)
+        print(f"All games have already been picked.\n")
+        return picked
+
+    def random_game_picker(self) -> None:  # pragma: no cover
         """
         Allows you to pick a play_status or installed status to have a random game chosen from.
         """
         status_choices = ["Installed", *self.play_status_choices]
-        # get game choices
         PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
         status_choice = pick(status_choices, PROMPT, indicator="->")[0]
         game_list = self.create_game_list(status_choice)
-        # key setup
-        continue_key = "enter"
-        stop_key = "esc"
-        # loop and pick random games till stop_key is used or game_list is emptied
-        while game_list:
-
-            picked_game, game_list = self.get_random_game(game_list)
-            self.console.print(f"\nPicked: [primary]{picked_game}[/]")
-
-            allowed_keys = [continue_key, stop_key]
-            # FIXME holding ESC causes enter to be pressed multiple times
-            released_key = self.wait_for_key_release(allowed_keys)
-            # quits picking random games
-            if released_key == stop_key:
-                return
-
-        print(f"No games left to pick.\n")
+        self.random_pick_loop(game_list)

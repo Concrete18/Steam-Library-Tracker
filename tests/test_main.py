@@ -6,10 +6,6 @@ from classes.game_info import Game
 
 
 class TestAppIdsToNames:
-    """
-    Tests `app_ids_to_names` function.
-    """
-
     trackerObj = Tracker(save=False)
 
     def test_success(self, mocker):
@@ -25,9 +21,6 @@ class TestAppIdsToNames:
 
 
 class TestGetGameColumnDict:
-    """
-    Tests `get_game_column_dict` function.
-    """
 
     trackerObj = Tracker(save=False)
 
@@ -52,9 +45,6 @@ class TestGetGameColumnDict:
 
 
 class TestPlayStatus:
-    """
-    Tests `play_status` function.
-    """
 
     trackerObj = Tracker(save=False)
 
