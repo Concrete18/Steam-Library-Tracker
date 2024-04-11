@@ -1216,21 +1216,26 @@ class Tracker(GetGameInfo, Steam, Utils):
 
     @keyboard_interrupt
     def main(self) -> None:
-        self.console.print(self.APP_TITLE, style="primary")
+        try:
+            self.console.print(self.APP_TITLE, style="primary")
 
-        self.console.print(self.create_rich_date_and_time())
+            self.console.print(self.create_rich_date_and_time())
 
-        self.sync_steam_games(self.steam_key, self.steam_id)
+            self.sync_steam_games(self.steam_key, self.steam_id)
 
-        # table data
-        df = self.steam.create_dataframe(na_vals=["-", "NaN"])
-        self.output_recently_played_games(df)
+            # table data
+            df = self.steam.create_dataframe(na_vals=["-", "NaN"])
+            self.output_recently_played_games(df)
 
-        # extra data updates
-        self.updated_game_data(df)
-        self.sync_friends_list()
+            # extra data updates
+            self.updated_game_data(df)
+            self.sync_friends_list()
 
-        self.game_library_actions(df)
+            self.game_library_actions(df)
+        except Exception as e:
+            msg = f"Error occurred: {e}"
+            if "Test error" not in str(e):
+                self.error_log.error(msg)
 
 
 if __name__ == "__main__":

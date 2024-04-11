@@ -41,7 +41,7 @@ class Setup:
         return errors
 
     @staticmethod
-    def create_file(file, temp_path) -> bool:
+    def create_file_if_missing(file, temp_path) -> bool:
         """
         Creates the `file` by copying the template from `temp_path` if it does not exist.
         """
@@ -57,13 +57,12 @@ class Setup:
 
         Once they exist, the data is returned.
         """
+        # TODO improve this so it is easier to add more files
         newly_created_files = []
-
-        # TODO improve this so it is easier to add more
         # config file
         config_filename = "config.json"
         config_path = Path(f"configs/{config_filename}")
-        if self.create_file(config_path, "config_template.json"):
+        if self.create_file_if_missing(config_path, "config_template.json"):
             newly_created_files.append(
                 {
                     "name": config_filename,
@@ -79,7 +78,7 @@ class Setup:
 
             # excel file creation
             excel_path = Path(excel_filename)
-            if self.create_file(excel_path, "Game_Library_Template.xlsx"):
+            if self.create_file_if_missing(excel_path, "Game_Library_Template.xlsx"):
                 newly_created_files.append(
                     {
                         "name": excel_filename,
@@ -90,7 +89,9 @@ class Setup:
         # excel options
         excel_options_filename = "excel_options.json"
         excel_options_path = Path(f"configs/{excel_options_filename}")
-        if self.create_file(excel_options_path, "excel_options_template.json"):
+        if self.create_file_if_missing(
+            excel_options_path, "excel_options_template.json"
+        ):
             newly_created_files.append(
                 {
                     "name": excel_options_filename,
@@ -104,7 +105,7 @@ class Setup:
         # ignore file
         ignore_filename = "ignore.json"
         ignore_path = Path(f"configs/{ignore_filename}")
-        if self.create_file(ignore_path, "ignore_template.json"):
+        if self.create_file_if_missing(ignore_path, "ignore_template.json"):
             newly_created_files.append(
                 {
                     "name": ignore_filename,
