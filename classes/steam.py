@@ -18,7 +18,6 @@ class Steam(Utils):
             response = requests.get(url, params)
             if response.ok:
                 data = response.json()
-                print(data)
                 if (
                     "response" in data
                     and "players" in data["response"]

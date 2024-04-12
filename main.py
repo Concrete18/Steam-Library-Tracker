@@ -163,7 +163,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         friend_data = self.get_steam_friends(self.steam_key, self.steam_id)
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
-        additions, removals = self.steam.get_friends_list_changes(
+        additions, removals = self.get_friends_list_changes(
             prev_friend_ids, cur_friend_ids
         )
         if not additions and not removals:
