@@ -1,4 +1,4 @@
-import os, sys, math
+import os, sys, math, traceback
 import datetime as dt
 import pandas as pd
 from difflib import SequenceMatcher
@@ -163,7 +163,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         friend_data = self.get_steam_friends(self.steam_key, self.steam_id)
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
-        additions, removals = self.get_friends_list_changes(
+        additions, removals = self.steam.get_friends_list_changes(
             prev_friend_ids, cur_friend_ids
         )
         if not additions and not removals:
@@ -1233,7 +1233,7 @@ class Tracker(GetGameInfo, Steam, Utils):
 
             self.game_library_actions(df)
         except Exception as e:
-            msg = f"Error occurred: {e}"
+            msg = f"Error occurred: {traceback.format_exc()}"
             if "Test error" not in str(e):
                 self.error_log.error(msg)
 
