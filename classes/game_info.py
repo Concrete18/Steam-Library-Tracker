@@ -32,7 +32,6 @@ class Game(Utils):
     categories_str: str = field(init=False)
 
     def __post_init__(self):
-        self.early_access = "Yes" if "early access" in self.genre else "No"
         # on sale
         self.on_sale = self.discount > 0 if self.discount else False
         # game url
@@ -41,6 +40,8 @@ class Game(Utils):
         self.tags_str = self.list_to_sentence(self.user_tags)
         self.genre_str = self.list_to_sentence(self.genre)
         self.categories_str = self.list_to_sentence(self.categories)
+        # early access
+        self.early_access = self.is_early_access()
 
     def __repr__(self):
         string = "Game("
@@ -54,6 +55,14 @@ class Game(Utils):
 
     def __bool__(self):
         return bool(self.app_id and self.name)
+
+    def is_early_access(self) -> str:
+        if (
+            "early access" in self.genre_str.lower()
+            or "early access" in self.tags_str.lower()
+        ):
+            return "Yes"
+        return "No"
 
 
 class GetGameInfo(Steam, Utils):
@@ -88,9 +97,13 @@ class GetGameInfo(Steam, Utils):
         try:
             results = beat.search(game_name)
         except:  # pragma: no cover
+            time.sleep(10)
             for _ in range(3):
-                time.sleep(10)
-                results = beat.search(game_name)
+                try:
+                    results = beat.search(game_name)
+                    break
+                except:
+                    time.sleep(10)
             return "-"
         if not results:
             self.api_sleeper("time_to_beat")

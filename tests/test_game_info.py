@@ -54,8 +54,25 @@ class TestGame:
             name=NAME,
             app_id=APP_ID,
             genre=["Testing"],
+            user_tags=["Testing"],
         )
         assert game.early_access == "No"
+
+    def test_is_early_access(self):
+        NAME = "Test1"
+        APP_ID = 12345
+        game1 = Game(
+            name=NAME,
+            app_id=APP_ID,
+            genre=["Testing", "Early Access"],
+        )
+        assert game1.early_access == "Yes"
+        game2 = Game(
+            name=NAME,
+            app_id=APP_ID,
+            user_tags=["Testing", "Early Access"],
+        )
+        assert game2.early_access == "Yes"
 
     def test_no_args(self):
         game = Game()

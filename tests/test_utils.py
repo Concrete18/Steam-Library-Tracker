@@ -321,5 +321,6 @@ class TestCreateRichDateAndTime:
         )
         assert rich_date == answer
 
+
 if __name__ == "__main__":
     pytest.main([__file__])
