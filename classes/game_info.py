@@ -43,7 +43,7 @@ class Game(Utils):
         # early access
         self.early_access = self.is_early_access()
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         string = "Game("
         if self:
             for field in fields(self):
@@ -105,7 +105,7 @@ class GetGameInfo(Steam, Utils):
                 except:
                     time.sleep(10)
             return "-"
-        if not results:
+        if not results:  # pragma: no cover
             self.api_sleeper("time_to_beat")
             results = beat.search(game_name, similarity_case_sensitive=False)
         time_to_beat = "-"

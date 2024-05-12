@@ -9,6 +9,7 @@ class TestGetOwnedSteamGames(Utils):
 
     @pytest.fixture
     def mock_response(self, mocker):
+        mocker.patch("classes.utils.Utils.api_sleeper", return_value=None)
         # Create a mock response object
         mock_response = mocker.Mock()
         # Set the JSON data for the response
@@ -77,6 +78,7 @@ class TestGetGameUrl:
 class TestGetRecentlyPlayedGames(Utils):
     @pytest.fixture
     def mock_response(self, mocker):
+        mocker.patch("classes.utils.Utils.api_sleeper", return_value=None)
         mock_response = mocker.Mock()
         mock_response.json.return_value = {
             "response": {
@@ -93,7 +95,7 @@ class TestGetRecentlyPlayedGames(Utils):
     STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
 
     def test_success(self, mock_response, mocker):
-
+        mocker.patch("classes.utils.Utils.api_sleeper", return_value=None)
         mocker.patch("requests.get", return_value=mock_response)
 
         result = self.steam.get_recently_played_steam_games(
@@ -106,7 +108,7 @@ class TestGetRecentlyPlayedGames(Utils):
         ]
 
     def test_request_error(self, mocker):
-
+        mocker.patch("classes.utils.Utils.api_sleeper", return_value=None)
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 

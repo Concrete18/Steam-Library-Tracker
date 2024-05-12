@@ -36,7 +36,7 @@ class RandomGame(Utils):
         self.play_status_choices = play_status_choices
         self.play_status_column = play_status_column
 
-    def create_game_list(self, status_choice: list[str]) -> list[int]:
+    def create_game_list(self, status_choice: str) -> list[int]:
         """
         Returns a `game_list` that match the chosen restraints based on user input.
         """
@@ -48,13 +48,13 @@ class RandomGame(Utils):
         for app_id in self.sheet.row_idx.keys():
             if status_choice == "Installed":
                 installed = self.sheet.get_cell(app_id, self.installed_column)
-                if not installed:
+                if not installed:  # pragma: no cover
                     continue
                 if installed.lower() == "yes":
                     game_list.append(app_id)
             else:
                 game_play_status = self.sheet.get_cell(app_id, self.play_status_column)
-                if not game_play_status:
+                if not game_play_status:  # pragma: no cover
                     continue
                 if game_play_status.lower() == status_choice.lower():
                     game_list.append(app_id)

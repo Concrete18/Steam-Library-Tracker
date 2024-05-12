@@ -16,9 +16,32 @@ class TestCreateGameList:
         play_status_column="Play Status",
     )
 
-    def test_success(self):
+    def test_played(self):
         game_list = self.Picker.create_game_list("Played")
         assert game_list == ["1458140", "2342950", "1336490", "1627720"]
+
+    def test_installed(self, mocker):
+        # sets everything to show as installed
+        mocker.patch("easierexcel.Sheet.get_cell", return_value="Yes")
+        game_list = self.Picker.create_game_list("Installed")
+        assert game_list == [
+            "553850",
+            "1364780",
+            "2379780",
+            "1557740",
+            "2321470",
+            "1172620",
+            "1326470",
+            "1458140",
+            "2342950",
+            "1336490",
+            "1627720",
+            "367500",
+            "383270",
+            "1888160",
+            "2054970",
+            "383180",
+        ]
 
 
 class TestPickGame:

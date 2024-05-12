@@ -8,25 +8,6 @@ from functools import wraps
 from classes.logger import Logger
 
 
-def keyboard_interrupt(func):  # pragma: no cover
-    """
-    Decorator to catch KeyboardInterrupt and EOFError exceptions.
-
-    Provides a delayed exit with an optional user confirmation.
-    """
-
-    def wrapped(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except (KeyboardInterrupt, EOFError):
-            delay = 0.1
-            print(f"\nClosing in {delay} second(s)")
-            time.sleep(delay)
-            exit()
-
-    return wrapped
-
-
 def benchmark(round_digits: int = 2) -> Callable[..., Any]:  # pragma: no cover
     """
     Prints `func` name and a benchmark for runtime.

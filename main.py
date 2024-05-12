@@ -1,4 +1,4 @@
-import os, sys, math, traceback
+import os, sys, math, traceback, time
 import datetime as dt
 import pandas as pd
 from difflib import SequenceMatcher
@@ -16,7 +16,7 @@ from classes.steam import Steam
 from classes.game_info import Game, GetGameInfo
 from classes.random_game import RandomGame
 from classes.game_skipper import GameSkipper
-from classes.utils import Utils, keyboard_interrupt
+from classes.utils import Utils
 from classes.logger import Logger
 
 # my package
@@ -707,6 +707,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         total_games = len(steam_games)
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
         installed_app_ids = self.get_installed_app_ids(self.library_vdf_path)
+        # TODO add a new print that shows the total hours tracked in the past 1 or 2 weeks
         for game in track(steam_games, description=desc):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -1214,7 +1215,6 @@ class Tracker(GetGameInfo, Steam, Utils):
                 self.steam.update_cell(app_id, self.app_id_col, "")
         self.excel.save(use_print=False, backup=False)
 
-    @keyboard_interrupt
     def main(self) -> None:
         try:
             self.console.print(self.APP_TITLE, style="primary")
@@ -1232,6 +1232,11 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.sync_friends_list()
 
             self.game_library_actions(df)
+        except (KeyboardInterrupt, EOFError):
+            delay = 0.1
+            print(f"\nClosing in {delay} second(s)")
+            time.sleep(delay)
+            exit()
         except Exception as e:
             msg = f"Error occurred: {traceback.format_exc()}"
             if "Test error" not in str(e):
