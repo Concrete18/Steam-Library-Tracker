@@ -73,7 +73,7 @@ class GetGameInfo(Steam, Utils):
         return year or 0
 
     @staticmethod
-    def get_price_info(app_details: dict) -> tuple[float | None, float]:
+    def get_price(app_details: dict) -> tuple[float | None, float]:
         """
         Gets price info from `app_details` and returns None if anything is set up
         wrong for any or all return values.
@@ -127,11 +127,11 @@ class GetGameInfo(Steam, Utils):
             return response.json().get(str(app_id), {}).get("data", {})
         return {}
 
-    def get_game_info(self, app_details: dict, steam_api_key: str) -> Game:
+    def get_game_info(self, app_details: dict, steam_key: str) -> Game:
         """
         Creates a Game object with `app_id`, `game_name` and data from `app_details`.
         """
-        if not app_details or not steam_api_key:
+        if not app_details or not steam_key:
             return Game()
         app_id = app_details.get("steam_appid", 0)
         game_name = app_details.get("name", "")
@@ -139,7 +139,7 @@ class GetGameInfo(Steam, Utils):
         publisher = ", ".join(app_details.get("publishers", []))
         genre = [desc["description"] for desc in app_details.get("genres", [])]
         release_year = self.parse_release_date(app_details)
-        price, discount = self.get_price_info(app_details)
+        price, discount = self.get_price(app_details)
         categories = [desc["description"] for desc in app_details.get("categories", [])]
         # review
         review_dict = self.get_steam_review(app_id=app_id)
@@ -151,11 +151,7 @@ class GetGameInfo(Steam, Utils):
         game_name_no_unicode = self.unicode_remover(game_name)
         ttb = self.get_time_to_beat(game_name_no_unicode)
         # player count
-        player_count = (
-            self.get_steam_game_player_count(app_id, steam_api_key)
-            if steam_api_key
-            else None
-        )
+        player_count = self.get_player_count(app_id, steam_key) if steam_key else None
 
         return Game(
             app_id=app_id,

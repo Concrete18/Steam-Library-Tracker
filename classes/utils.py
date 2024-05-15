@@ -67,7 +67,7 @@ class Utils:
             return False
 
     @staticmethod
-    def get_steam_api_key_and_id() -> tuple[str, int]:
+    def get_steam_key_and_id() -> tuple[str, int]:
         """
         Gets the steam key and steam id from the config file.
         """

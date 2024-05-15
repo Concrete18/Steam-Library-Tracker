@@ -26,7 +26,7 @@ class TestGetOwnedSteamGames(Utils):
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
         # Mock requests.get and return the mock response
@@ -92,7 +92,7 @@ class TestGetRecentlyPlayedGames(Utils):
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
         mocker.patch("classes.utils.Utils.api_sleeper", return_value=None)
@@ -136,7 +136,7 @@ class TestGetSteamUsername(Utils):
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
 
@@ -185,7 +185,7 @@ class TestGetSteamID:
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
         mocker.patch("requests.get", return_value=mock_response)
@@ -227,7 +227,7 @@ class TestGetSteamFriends:
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
         mocker.patch("requests.get", return_value=mock_response)
@@ -286,11 +286,11 @@ class TestGetSteamGamePlayerCount:
         return mock_response
 
     steam = Steam()
-    STEAM_KEY, STEAM_ID = steam.get_steam_api_key_and_id()
+    STEAM_KEY, STEAM_ID = steam.get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
         mocker.patch("requests.get", return_value=mock_response)
-        player_count = self.steam.get_steam_game_player_count(730, self.STEAM_KEY)
+        player_count = self.steam.get_player_count(730, self.STEAM_KEY)
         assert isinstance(player_count, int)
         assert player_count == 5000
 

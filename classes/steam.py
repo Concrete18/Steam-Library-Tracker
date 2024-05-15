@@ -264,13 +264,11 @@ class Steam(Utils):
         return None
 
     @retry()
-    def get_steam_game_player_count(
-        self, app_id: int, steam_api_key: int
-    ) -> int | None:
+    def get_player_count(self, app_id: int, steam_key: int) -> int | None:
         """
-        Gets a games current player count by `app_id` using the Steam API via the `steam_api_key`.
+        Gets a games current player count by `app_id` using the Steam API via the `steam_key`.
         """
-        url = f"http://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}&key={steam_api_key}"
+        url = f"http://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}&key={steam_key}"
         response = requests.get(url)
         if response.ok:
             data = response.json()

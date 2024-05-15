@@ -281,14 +281,14 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.release_col: game.release_year or "-",
         }
 
-    def update_extra_game_info(self, app_ids: list[int]):
+    def update_extra_game_info(self, app_ids: list[int], update_type: str):
         """
         Updates info that changes often enough that it needs to be updated manually.
         """
         save_every_nth = self.create_save_every_nth()
         print()
         cur_itr = 0
-        desc = "Syncing Game Data"
+        desc = f"Syncing {update_type} Game(s) Data"
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
             # get new data from the internet
@@ -311,12 +311,12 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.set_title(f"{progress:.1f}% - {self.APP_TITLE}")
         self.set_title()
 
-    def update_all_game_data(self):
+    def sync_game_data(self, df):
         """
         Gets app_ids and updates games using update_extra_game_info func.
         """
-        app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
-        self.update_extra_game_info(app_ids)
+        app_ids, update_type = self.game_select(df, last_num=50)
+        self.update_extra_game_info(app_ids, update_type)
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
@@ -608,6 +608,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.output_play_status_info(dataframe)
         self.output_playtime_info(dataframe)
         self.output_review_info(dataframe)
+        # TODO output a table for each play status with their play status and the count for each tag
 
     @staticmethod
     def decide_play_status(play_status: str, minutes_played: float) -> str:
@@ -1084,7 +1085,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         player_counts = []
         desc = f"Updating {update_type} Player Count(s)"
         for app_id in track(app_ids, description=desc):
-            player_count = self.get_steam_game_player_count(app_id, self.steam_key)
+            player_count = self.get_player_count(app_id, self.steam_key)
             player_counts.append(player_count)
             self.steam.update_cell(
                 app_id,
@@ -1094,9 +1095,10 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.api_sleeper("steam_player_count")
         return player_counts
 
-    def update_player_counts(self, df: pd.DataFrame, last_num: int = 15) -> None:
+    def game_select(self, df: pd.DataFrame, last_num: int = 15):
         """
-        Updates game player counts using the Steam API.
+        Allows you to get a list of app ids for recently played games, all games, 
+        or just one game.
         """
         options = [
             f"Update {last_num} Recently Played Games",
@@ -1120,7 +1122,14 @@ class Tracker(GetGameInfo, Steam, Utils):
             if game:
                 app_ids = [game["App ID"]]
             else:
-                return
+                return app_ids, None
+        return app_ids, update_type
+
+    def sync_player_counts(self, df: pd.DataFrame) -> None:
+        """
+        Updates game player counts using the Steam API.
+        """
+        app_ids, update_type = self.game_select(df, last_num=15)
         self.bulk_update_player_count(app_ids, update_type)
         self.excel.save(use_print=False, backup=False)
 
@@ -1184,9 +1193,9 @@ class Tracker(GetGameInfo, Steam, Utils):
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
-            ("Player Counts Sync", lambda: self.update_player_counts(df)),
+            ("Player Counts Sync", lambda: self.sync_player_counts(df)),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
-            ("Game Data Sync", self.update_all_game_data),
+            ("Game Data Sync", lambda: self.sync_game_data(df)),
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             # ("Playstation Games Sync", self.sync_playstation_games),

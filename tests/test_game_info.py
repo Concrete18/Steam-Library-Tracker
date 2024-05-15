@@ -138,13 +138,13 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount = App.get_price_info(APP_DETAILS)
+        price, discount = App.get_price(APP_DETAILS)
         assert price == 29.99
         assert discount == 0.5
 
     def test_insufficient_data(self):
         App = GetGameInfo()
-        price, discount = App.get_price_info({})
+        price, discount = App.get_price({})
         assert not price
         assert not discount
 
@@ -234,11 +234,11 @@ class TestGetGameInfo(Utils):
         mocker.patch("classes.steam.Steam.get_steam_user_tags", return_value=result)
         # mocks get_time_to_beat
         mocker.patch("classes.game_info.GetGameInfo.get_time_to_beat", return_value=20)
-        # mocks get_steam_game_player_count
-        func = "classes.steam.Steam.get_steam_game_player_count"
+        # mocks get_player_count
+        func = "classes.steam.Steam.get_player_count"
         mocker.patch(func, return_value=600)
 
-        api_key, _ = self.get_steam_api_key_and_id()
+        api_key, _ = self.get_steam_key_and_id()
 
         game = App.get_game_info(app_details, api_key)
         assert isinstance(game, Game)
@@ -267,7 +267,7 @@ class TestGetGameInfo(Utils):
         ]
 
     def test_not_enough_data(self):
-        api_key, _ = self.get_steam_api_key_and_id()
+        api_key, _ = self.get_steam_key_and_id()
         App = GetGameInfo()
         app_details = {}
         game = App.get_game_info(app_details, api_key)
