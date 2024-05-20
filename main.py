@@ -1215,7 +1215,6 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             ("Backup Excel File", lambda: self.backup.run()),
-            # ("Playstation Games Sync", self.sync_playstation_games),
         ]
         if self.logging:
             choices.append(("Open Log", self.open_log))

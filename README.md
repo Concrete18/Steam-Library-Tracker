@@ -1,9 +1,7 @@
 # Game Library Tracker
 
-Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc..
+Steam Library Tracker allows keeping up with what you have played and want to play etc..
 Many different types of information is auto retrieved using API's and Scraping.
-
-Adding PlayStation games is a side feature and is not as feature rich as Steam games due to lack of a Playstation API.
 
 ## Images
 
@@ -24,7 +22,6 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 
 - [Auto Updating Steam Data](#Auto-Updating-Steam-Data)
 - [Game Status Highlighting](#Game-Status-Highlighting)
-- [PlayStation Library Ownership Tracking](#Adding-PlayStation-Games)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
 - [Player Count Sync](#Player-Count-Sync)
@@ -54,8 +51,7 @@ pip install -r requirements.txt
   "settings": {
     "excel_filename": "Game Library.xlsx",
     "friends_list_check_freq": 7,
-    "logging": false,
-    "playstation_data_link": "Playstation Link"
+    "logging": false
   },
   "last_runs": {},
   "friend_ids": []
@@ -90,15 +86,6 @@ reordering columns.
 - Must Play
 - Quit
 - Ignore
-
-### Adding PlayStation Games
-
-In order to add PlayStation Games, you need to copy a JSON response from your browser into a text file.
-Your PlayStation account must be logged in for this to get your data.
-This is the easiest method I have found so far.
-It is faster than adding the games manually but I am unable to automate it yet.
-
-Note: Hours are not tracked like Steam due to a lack of an API.
 
 ### Favorite Game Sale Checker
 

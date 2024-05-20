@@ -13,7 +13,6 @@ class GameSkipper(Utils):
         "Media Player",
         "Spotify",
         "Netflix",
-        "PlayStationvue",
         "Plex",
         "Pluto",
         "YouTube VR",
