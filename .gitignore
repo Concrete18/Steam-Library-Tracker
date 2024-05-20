@@ -149,3 +149,4 @@ favorite_games.json
 logs/*
 outputs/
 commit.py
+/backup

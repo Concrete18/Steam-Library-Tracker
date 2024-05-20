@@ -1,17 +1,20 @@
+# standard library
 import os, sys, math, traceback, time
 import datetime as dt
+
+# third-party imports
 import pandas as pd
 from difflib import SequenceMatcher
 from pick import pick
-
 from rich.console import Console
 from rich.prompt import IntPrompt
 from rich.progress import track
 from rich.table import Table
 from rich.theme import Theme
 
-# classes
+# local application imports
 from setup import Setup
+from classes.backup import Backup
 from classes.steam import Steam
 from classes.game_info import Game, GetGameInfo
 from classes.random_game import RandomGame
@@ -19,7 +22,7 @@ from classes.game_skipper import GameSkipper
 from classes.utils import Utils
 from classes.logger import Logger
 
-# my package
+# my package imports
 from easierexcel import Excel, Sheet
 
 
@@ -39,6 +42,7 @@ class Tracker(GetGameInfo, Steam, Utils):
 
     # settings
     excel_filename = config_data["settings"]["excel_filename"]
+    backup = Backup(excel_filename, redundancy=4)
     logging = config_data["settings"]["logging"]
 
     # misc
@@ -145,6 +149,18 @@ class Tracker(GetGameInfo, Steam, Utils):
         if self.steam_id:
             self.config_data["settings"]["steam_id"] = self.steam_id
             self.save_json(self.config_data, self.config_path)
+
+    def auto_backup(self, check_freq_days: int = 7) -> None:
+        """
+        Auto backs up the excel file every `check_freq_days` days.
+        """
+        # check last run
+        config_entry = "excel_backup"
+        if not self.recently_executed(self.config_data, config_entry, check_freq_days):
+            success = self.backup.run()
+            if success:
+                self.console.print("\nBacked Up Excel File", style="secondary")
+                self.update_last_run(self.config_data, self.config_path, config_entry)
 
     def sync_friends_list(self, check_freq_days: int = 7) -> None:
         """
@@ -1097,7 +1113,7 @@ class Tracker(GetGameInfo, Steam, Utils):
 
     def game_select(self, df: pd.DataFrame, last_num: int = 15):
         """
-        Allows you to get a list of app ids for recently played games, all games, 
+        Allows you to get a list of app ids for recently played games, all games,
         or just one game.
         """
         options = [
@@ -1198,6 +1214,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Game Data Sync", lambda: self.sync_game_data(df)),
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
+            ("Backup Excel File", lambda: self.backup.run()),
             # ("Playstation Games Sync", self.sync_playstation_games),
         ]
         if self.logging:
@@ -1239,6 +1256,9 @@ class Tracker(GetGameInfo, Steam, Utils):
             # extra data updates
             self.updated_game_data(df)
             self.sync_friends_list()
+
+            # auto backup
+            self.auto_backup()
 
             self.game_library_actions(df)
         except (KeyboardInterrupt, EOFError):
