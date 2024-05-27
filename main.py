@@ -359,7 +359,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         skip_by_play_status: bool = False,
     ):
         """
-        Updates game data for games that were played recently and are missing data.
+        Updates game data for games that were played recently and/or are missing data.
 
         Use `skip_filled` to skip non blank entries.
 
@@ -369,7 +369,6 @@ class Tracker(GetGameInfo, Steam, Utils):
             return
         # starts the update list with recently played games
         update_list = self.get_recently_played_app_ids(df, n_days=30)
-        updated_recent = True if update_list else False
         column_list = [
             self.genre_col,
             self.pub_col,
@@ -417,8 +416,8 @@ class Tracker(GetGameInfo, Steam, Utils):
             return
         # updates game data
         try:
-            self.update_extra_game_info(update_list)
-            if updated_recent:
+            self.update_extra_game_info(update_list, "Recent")
+            if update_list:
                 self.update_last_run(
                     self.config_data, self.config_path, "recently_played"
                 )
@@ -538,7 +537,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             "Total\nHours": self.format_floats(total_hours_sum, 1),
             "Total\nDays": self.format_floats(total_hours_sum / 24, 1),
             "Linux\nHours": self.format_floats(linux_hours_sum, 1),
-            "% Linux\nHours": self.format_floats(linux_hours_sum / total_hours_sum, 1),
+            "% Linux\nHours": self.format_floats(linux_hours_sum / total_hours_sum, 2),
             "Average\nHours": self.format_floats(average_hours, 1),
             "Median\nHours": self.format_floats(median_hours, 1),
             "Max\nHours": self.format_floats(max_hours, 1),
