@@ -29,7 +29,15 @@ class Backup:
     def __eq__(self, other):
         return self.file == other.file
 
-    def _maintain_redundancy(self):
+    def create_backup_path(self):
+        """
+        Create a the backup path with a timestame.
+        """
+        timestamp = dt.datetime.now().strftime("%Y%m%d%H%M%S")
+        backup_filename = f"{self.file.stem}_{timestamp}{self.file.suffix}"
+        return self.backup_dir / backup_filename
+
+    def maintain_redundancy(self):
         """
         ph
         """
@@ -51,10 +59,7 @@ class Backup:
         if not self.backup_dir.exists():
             self.backup_dir.mkdir(parents=True, exist_ok=True)
 
-        # create a new backup file with a timestamp
-        timestamp = dt.datetime.now().strftime("%Y%m%d%H%M%S")
-        backup_filename = f"{self.file.stem}_{timestamp}{self.file.suffix}"
-        backup_path = self.backup_dir / backup_filename
+        backup_path = self.create_backup_path()
 
         # compresses or copies file
         if compress:
@@ -63,5 +68,5 @@ class Backup:
         else:
             shutil.copy(self.file, backup_path)
 
-        self._maintain_redundancy()
+        self.maintain_redundancy()
         return True
