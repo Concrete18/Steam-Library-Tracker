@@ -100,7 +100,7 @@ class Steam(Utils):
         cur_friend_ids: list[int],
     ) -> tuple[list[int], list[int]]:
         """
-        ph
+        Gets friends lists changes based on two lists of ID's.
         """
         additions = list(set(cur_friend_ids) - set(prev_friend_ids))
         removals = list(set(prev_friend_ids) - set(cur_friend_ids))
