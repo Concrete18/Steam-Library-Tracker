@@ -3,17 +3,16 @@ import time, json, requests, re
 from requests.exceptions import RequestException
 from pick import pick
 import datetime as dt
-from typing import Callable, Any
 from functools import wraps
 from classes.logger import Logger
 
 
-def benchmark(round_digits: int = 2) -> Callable[..., Any]:  # pragma: no cover
+def benchmark(round_digits: int = 2) -> callable:  # pragma: no cover
     """
     Prints `func` name and a benchmark for runtime.
     """
 
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+    def decorator(func: callable) -> callable:
         @wraps(func)
         def wrapped(*args, **kwargs):
             try:
@@ -147,11 +146,15 @@ class Utils:
         return delta.days
 
     @staticmethod
-    def format_floats(num, n_digits=None):
+    def format_floats(num, n_digits: int = 0):
         """
         Formats floats to a specific rounding and adds commas for easier readability.
         """
-        return f"{round(num, n_digits):,}"
+        if not isinstance(n_digits, int):
+            raise TypeError()
+        if n_digits > 0:
+            num = round(num, n_digits)
+        return f"{num:,}"
 
     @staticmethod
     def url_sanitize(string: str, space_replace: str = "-") -> str:

@@ -153,6 +153,21 @@ class TestDaysSince:
         assert days_since == 7
 
 
+class TestFormatFloats:
+
+    utils = Utils()
+
+    def test_valid(self):
+        string = self.utils.format_floats(1234.12345, 1)
+        assert string == "1,234.1"
+        string = self.utils.format_floats(1234.12345, 3)
+        assert string == "1,234.123"
+
+    def test_n_digits_not_valid(self):
+        with pytest.raises(TypeError):
+            self.utils.format_floats(1234.12345, "1")
+
+
 class TestStringToDate:
 
     utils = Utils()
