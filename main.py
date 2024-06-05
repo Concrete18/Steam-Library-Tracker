@@ -317,6 +317,8 @@ class Tracker(GetGameInfo, Steam, Utils):
                     continue
                 if column == self.time_to_beat_col and game_row[self.time_to_beat_col]:
                     continue
+                if column == self.ea_col and game_row[self.ea_col]:
+                    continue
                 self.steam.update_cell(app_id, column, data)
             # saves data
             if self.save_to_file:
@@ -1204,7 +1206,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Gives a choice of actions for the current game library.
         """
-        # choice picker
         choices = [
             ("Exit and Open the Excel File", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
@@ -1214,6 +1215,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             ("Backup Excel File", lambda: self.backup.run()),
+            # TODO create action to open main data folder
         ]
         if self.logging:
             choices.append(("Open Log", self.open_log))
