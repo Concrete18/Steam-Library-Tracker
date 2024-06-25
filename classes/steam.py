@@ -1,6 +1,6 @@
 from classes.utils import Utils, retry
 from bs4 import BeautifulSoup
-import re, requests, vdf
+import re, requests, vdf, os
 
 
 class Steam(Utils):
@@ -94,8 +94,8 @@ class Steam(Utils):
                 self.error_log.warning(msg)
             return None  # handle request exceptions
 
+    @staticmethod
     def get_friends_list_changes(
-        self,
         prev_friend_ids: list[int],
         cur_friend_ids: list[int],
     ) -> tuple[list[int], list[int]]:
@@ -238,8 +238,10 @@ class Steam(Utils):
             return response.json()
         return None
 
+    # TODO check if this breaks retry
+    @staticmethod
     @retry()
-    def get_app_list(self) -> list[dict]:
+    def get_app_list() -> list[dict]:
         """
         Gets the full Steam app list as a dict.
         """
@@ -263,8 +265,10 @@ class Steam(Utils):
                 return item["appid"]
         return None
 
+    # TODO check if this breaks retry
+    @staticmethod
     @retry()
-    def get_player_count(self, app_id: int, steam_key: int) -> int | None:
+    def get_player_count(app_id: int, steam_key: int) -> int | None:
         """
         Gets a games current player count by `app_id` using the Steam API via the `steam_key`.
         """
@@ -276,9 +280,11 @@ class Steam(Utils):
             return current_players
         return None
 
-    def get_installed_app_ids(self, library_vdf_path: str = None) -> list:
+    @staticmethod
+    def get_installed_app_ids(library_vdf_path: str = None) -> list:
         """
-        Returns a list of all app_ids among all libraries from the steam library VDF file in `library_vdf_path`.
+        Returns a list of all app_ids among all libraries from the steam library
+        VDF file in `library_vdf_path`.
         """
         if not library_vdf_path:
             return []
@@ -291,3 +297,25 @@ class Steam(Utils):
             for app_id in library["apps"].keys():
                 installed_app_ids.append(int(app_id))
         return installed_app_ids
+
+    def workshop_size(self, workshop_path, app_list):
+        """
+        Gets data about the size of the steam workshop files for each
+        game folder within `workshop_path`.
+        """
+        app_ids = os.listdir(workshop_path)
+
+        # TODO find out why some app_ids are not found sometimes
+        found_entries = filter(lambda entry: str(entry["appid"]) in app_ids, app_list)
+
+        entry_list = []
+        for entry in found_entries:
+            path = os.path.join(workshop_path, str(entry["appid"]))
+            dir_size = self.get_dir_size(path)
+            entry["bytes"] = dir_size
+            if dir_size:
+                entry_list.append(entry)
+
+        entry_list.sort(key=lambda entry: entry["bytes"], reverse=True)
+
+        return entry_list

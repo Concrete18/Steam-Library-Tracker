@@ -361,5 +361,37 @@ class TestGetInstalledAppIds:
         assert app_ids == [228980, 250820, 620, 228380]
 
 
+class TestworkshopSize:
+    steam = Steam()
+
+    workshop_folder = "tests/data/test_workshop"
+    app_list = [
+        {
+            "appid": 54321,
+            "name": "Test 1",
+        },
+        {
+            "appid": 12345,
+            "name": "Test 2",
+        },
+    ]
+
+    def test_success(self):
+        result = self.steam.workshop_size(self.workshop_folder, self.app_list)
+        answer = [
+            {
+                "appid": 12345,
+                "name": "Test 2",
+                "bytes": 91,
+            },
+            {
+                "appid": 54321,
+                "name": "Test 1",
+                "bytes": 81,
+            },
+        ]
+        assert result == answer
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

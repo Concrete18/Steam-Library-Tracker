@@ -1,5 +1,5 @@
 from pathlib import Path
-import time, json, requests, re
+import time, json, requests, re, os
 from requests.exceptions import RequestException
 from pick import pick
 import datetime as dt
@@ -78,13 +78,15 @@ class Utils:
         steam_id = str(data["steam_data"]["steam_id"])
         return api_key, steam_id
 
-    def create_hyperlink(self, url: str, label: str) -> str:
+    @staticmethod
+    def create_hyperlink(url: str, label: str) -> str:
         """
         Generates a steam an excel HYPERLINK to `url` with the `label`.
         """
         return f'=HYPERLINK("{url}","{label}")'
 
-    def api_sleeper(self, api, sleep_length=0.5, api_calls={}) -> None:
+    @staticmethod
+    def api_sleeper(api, sleep_length=0.5, api_calls={}) -> None:
         """
         Delays delays for a set period of time if the `api` was run too recently.
         Delay length is set by `sleep_length`.
@@ -248,7 +250,36 @@ class Utils:
         return time_passed
 
     @staticmethod
-    def unicode_remover(string) -> str:
+    def get_dir_size(directory: str) -> int:
+        """
+        Get size of directory in bytes.
+        """
+        if not os.path.exists(directory):
+            raise ValueError("Directory does not exist")
+        size = 0
+        for path, _, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(path, file)
+                size += os.path.getsize(file_path)
+        return size
+
+    @staticmethod
+    def convert_size(bytes: int) -> tuple[int, str]:
+        """
+        Converts bytes to a matched unit.
+        """
+        units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+        size = bytes
+        unit_index = 0
+
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+
+        return round(size, 1), units[unit_index]
+
+    @staticmethod
+    def unicode_remover(string: str) -> str:
         """
         Removes unicode from `string`.
         """
@@ -301,8 +332,9 @@ class Utils:
             comma_separated = ", ".join(str_list[:-1])
             return f"{comma_separated} and {str_list[-1]}"
 
+    @staticmethod
     def is_response_yes(
-        self, prompt: str, default_to_yes: bool = True
+        prompt: str, default_to_yes: bool = True
     ) -> bool:  # pragma: no cover
         """
         Asks for a Yes or No response. Yes returns True and No returns False.
@@ -310,7 +342,8 @@ class Utils:
         choices = ["Yes", "No"] if default_to_yes else ["No", "Yes"]
         return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
 
-    def create_rich_date_and_time(self, date: dt.datetime = dt.datetime.now()) -> str:
+    @staticmethod
+    def create_rich_date_and_time(date: dt.datetime = dt.datetime.now()) -> str:
         """
         Returns a formatted date and time for use with Rich Console print.
         """
@@ -318,7 +351,8 @@ class Utils:
         formatted_time = f"[secondary]{date.strftime('%I:%M %p')}[/]"
         return f"{formatted_date} [dim]|[/] {formatted_time}"
 
-    def save_json(self, new_data: dict, filename: str):
+    @staticmethod
+    def save_json(new_data: dict, filename: str):
         """
         Saves data into json format with the given filename.
         """
@@ -339,7 +373,8 @@ class Utils:
         data["last_runs"][name] = time.time()
         self.save_json(data, config_path)
 
-    def recently_executed(self, data: dict, name: str, n_days: int):
+    @staticmethod
+    def recently_executed(data: dict, name: str, n_days: int):
         """
         Check if a specific task named `name` was executed within the `n_days`.
         """

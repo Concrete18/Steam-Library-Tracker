@@ -38,7 +38,10 @@ class Tracker(GetGameInfo, Steam, Utils):
     steam_key = config_data["steam_data"]["api_key"]
     steam_id = config_data["steam_data"]["steam_id"]
     vanity_url = config_data["steam_data"]["vanity_url"]
-    library_vdf_path = config_data["steam_data"]["library_vdf_path"]
+    steam_folder = config_data["steam_data"]["steam_folder"]
+    steam_library = config_data["steam_data"]["steam_library"]
+    library_vdf_path = f"{steam_folder}/steamapps/libraryfolders.vdf"
+    workshop_path = f"{steam_library}/steamapps/workshop/content"
 
     # settings
     excel_filename = config_data["settings"]["excel_filename"]
@@ -335,6 +338,21 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         app_ids, update_type = self.game_select(df, last_num=50)
         self.update_extra_game_info(app_ids, update_type)
+
+    def check_workshop_size(self):
+        """
+        Checks the directory size for each games workshop folder.
+        """
+        print("\nStarting Workshop Size Check\n")
+        app_list = App.get_app_list()
+        entry_list = self.workshop_size(self.workshop_path, app_list)
+
+        for entry in entry_list:
+            name = entry["name"]
+            size, unit = self.convert_size(entry["bytes"])
+            str_size = f"{size:,} {unit}"
+            game = f"[primary]{name}[/]: {str_size}"
+            self.console.print(game)
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
@@ -1213,6 +1231,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", lambda: self.sync_game_data(df)),
             ("Statistics Display", lambda: self.output_statistics(df)),
+            ("Workshop Storage Check", self.check_workshop_size),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             ("Backup Excel File", lambda: self.backup.run()),
             # TODO create action to open main data folder

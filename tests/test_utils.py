@@ -137,6 +137,46 @@ class TestTimePassed:
         assert output == "2.0 Years"
 
 
+class TestConvertSize:
+
+    utils = Utils()
+
+    def test_bytes(self):
+        size = self.utils.convert_size(256)
+        assert size == (256, "B")
+
+    def test_kilobytes(self):
+        size = self.utils.convert_size(16_584)
+        assert size == (16.2, "KB")
+
+    def test_megabytes(self):
+        size = self.utils.convert_size(11_457_496)
+        assert size == (10.9, "MB")
+
+    def test_gigbytes(self):
+        size = self.utils.convert_size(3_845_845_531)
+        assert size == (3.6, "GB")
+
+    def test_terabytes(self):
+        size = self.utils.convert_size(5_323_845_845_531)
+        assert size == (4.8, "TB")
+
+
+class TestGetDirSize:
+
+    utils = Utils()
+
+    def test_success(self):
+        dir = "tests/data/test_workshop/12345"
+        bytes = self.utils.get_dir_size(dir)
+        assert bytes == 91
+
+    def test_error(self):
+        dir = "not real"
+        with pytest.raises(ValueError):
+            self.utils.get_dir_size(dir)
+
+
 class TestDaysSince:
 
     utils = Utils()

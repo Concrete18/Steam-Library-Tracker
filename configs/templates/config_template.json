@@ -3,7 +3,8 @@
     "vanity_url": "Insert Steam Vanity URL (Optional)",
     "steam_id": "Insert Steam ID",
     "api_key": "Insert API Key",
-    "library_vdf_path": "Insert Path to libraryfolders.vdf file"
+    "steam_folder": "Insert Path to Steam Folder Here",
+    "steam_library": "Insert Path to Steam Library Here"
   },
   "settings": {
     "excel_filename": "Game Library.xlsx",
