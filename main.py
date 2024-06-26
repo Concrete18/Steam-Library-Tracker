@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 from pick import pick
 from rich.console import Console
 from rich.prompt import IntPrompt
-from rich.progress import track
+from rich.progress import track, Progress
 from rich.table import Table
 from rich.theme import Theme
 
@@ -343,16 +343,35 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Checks the directory size for each games workshop folder.
         """
-        print("\nStarting Workshop Size Check\n")
-        app_list = App.get_app_list()
-        entry_list = self.workshop_size(self.workshop_path, app_list)
+        total = 0
+        with Progress(transient=True) as progress:
+            progress.add_task("Checking Workshop Size", total=None)
 
-        for entry in entry_list:
-            name = entry["name"]
-            size, unit = self.convert_size(entry["bytes"])
-            str_size = f"{size:,} {unit}"
-            game = f"[primary]{name}[/]: {str_size}"
-            self.console.print(game)
+            app_list = App.get_app_list()
+            entry_list = self.workshop_size(self.workshop_path, app_list)
+
+            table_title = f"Game Workshop Sizes"
+            table = Table(
+                title=table_title,
+                show_lines=True,
+                title_style="bold",
+                style="deep_sky_blue1",
+            )
+            table.add_column("Name", justify="left")
+            table.add_column("Size", justify="right")
+            # add rows
+            for entry in entry_list:
+                name = entry["name"]
+                size, unit = self.convert_size(entry["bytes"])
+                total += entry["bytes"]
+                file_size = f"{size:,} {unit}"
+                # row setup
+                row = [name, file_size]
+                table.add_row(*row)
+        # print table
+        self.console.print(table, new_line_start=True)
+        total_size, unit = self.convert_size(total)
+        self.console.print(f"[b]Total Workshop Size:[/] {total_size:,} {unit}")
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
         """
