@@ -304,10 +304,8 @@ class Steam(Utils):
         game folder within `workshop_path`.
         """
         app_ids = os.listdir(workshop_path)
-
         # TODO find out why some app_ids are not found sometimes
         found_entries = filter(lambda entry: str(entry["appid"]) in app_ids, app_list)
-
         entry_list = []
         for entry in found_entries:
             path = os.path.join(workshop_path, str(entry["appid"]))

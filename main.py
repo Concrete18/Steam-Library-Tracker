@@ -1282,23 +1282,19 @@ class Tracker(GetGameInfo, Steam, Utils):
     def main(self) -> None:
         try:
             self.console.print(self.APP_TITLE, style="primary")
-
-            self.console.print(self.create_rich_date_and_time())
-
+            rich_date = self.create_rich_date_and_time()
+            self.console.print(rich_date)
             self.sync_steam_games(self.steam_key, self.steam_id)
-
             # table data
-            df = self.steam.create_dataframe(na_vals=["-", "NaN"])
-            self.output_recently_played_games(df)
+            dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
+            self.output_recently_played_games(dataframe)
 
             # extra data updates
-            self.updated_game_data(df)
+            self.updated_game_data(dataframe)
             self.sync_friends_list()
 
-            # auto backup
             self.auto_backup()
-
-            self.game_library_actions(df)
+            self.game_library_actions(dataframe)
         except (KeyboardInterrupt, EOFError):
             delay = 0.1
             print(f"\nClosing in {delay} second(s)")
