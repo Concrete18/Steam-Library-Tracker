@@ -1,5 +1,5 @@
 # standard library
-import os, sys, math, traceback, time
+import os, sys, math, traceback, time, json
 import datetime as dt
 
 # third-party imports
@@ -347,7 +347,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         with Progress(transient=True) as progress:
             progress.add_task("Checking Workshop Size", total=None)
 
-            app_list = App.get_app_list()
+            app_list = self.get_app_list()
             entry_list = self.workshop_size(self.workshop_path, app_list)
 
             table_title = f"Game Workshop Sizes"
@@ -381,7 +381,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         if self.recently_executed(self.config_data, "recently_played", n_days):
             return []
         # get recently played games
-        recently_played = App.find_recent_games(df, self.date_updated_col, n_days)
+        recently_played = self.find_recent_games(df, self.date_updated_col, n_days)
         recently_played_app_ids = [game[self.app_id_col] for game in recently_played]
         return recently_played_app_ids
 
@@ -471,7 +471,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Creates a table with the recently played Games.
         """
-        recently_played_games = App.find_recent_games(df, "Date Updated", n_days)
+        recently_played_games = self.find_recent_games(df, "Date Updated", n_days)
         # creates table
         table_title = f"Recently Played Games\nWithin {n_days} Days"
         table = Table(
@@ -1165,7 +1165,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         app_ids = []
         if selected_action == options[0]:
             update_type = "Recent"
-            recently_played = App.find_recent_games(df, self.date_updated_col, 30)
+            recently_played = self.find_recent_games(df, self.date_updated_col, 30)
             app_ids = [game[self.app_id_col] for game in recently_played]
         elif selected_action == options[1]:
             update_type = "All"
@@ -1185,6 +1185,44 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         app_ids, update_type = self.game_select(df, last_num=15)
         self.bulk_update_player_count(app_ids, update_type)
+        self.excel.save(use_print=False, backup=False)
+
+    def update_add_dates(self):
+        """
+        Updates Games `Added Date` based on a json.
+        """
+        path = "configs\steam_purchase_history.json"
+        with open(path) as file:
+            purchase_data = json.load(file)
+            if purchase_data:
+                purchase_data.reverse()
+            else:
+                print("No purchase data found")
+                return
+
+        app_list = self.get_app_list()
+        to_update = {}
+        for entry in purchase_data:
+            purchase_date = entry.get("date")
+            for game_name in entry.get("games", []):
+                entry_type = entry.get("type")
+                app_id = self.get_app_id(game_name, app_list)
+                if entry_type == "Refund":
+                    to_update.pop(app_id, None)
+                else:
+                    to_update[app_id] = {
+                        "game_name": game_name,
+                        "purchase_date": purchase_date,
+                    }
+        for app_id, data in to_update.items():
+            current_date = self.steam.get_cell(app_id, self.date_added_col)
+            if type(current_date) != dt.datetime:
+                continue
+            game_name = data.get("game_name")
+            new_date = data.get("purchase_date")
+            purchase_datetime = dt.datetime.strptime(new_date, "%b %d, %Y")
+            if current_date.date() != purchase_datetime.date():
+                self.steam.update_cell(app_id, self.date_added_col, purchase_datetime)
         self.excel.save(use_print=False, backup=False)
 
     def pick_game_to_update(self, games: list) -> None:
@@ -1252,6 +1290,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             ("Statistics Display", lambda: self.output_statistics(df)),
             ("Workshop Storage Check", self.check_workshop_size),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
+            ("Update Library Add Dates", lambda: self.update_add_dates()),
             ("Backup Excel File", lambda: self.backup.run()),
             # TODO create action to open main data folder
         ]
