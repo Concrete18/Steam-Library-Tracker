@@ -1,9 +1,12 @@
 # standard library
-import json
 import datetime as dt
+import json
 
 # local application imports
 from classes.steam import Steam
+
+# my package imports
+from easierexcel import Sheet
 
 steam_class = Steam()
 
@@ -16,14 +19,19 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     with open(path) as file:
         purchase_data = json.load(file)
     if purchase_data:
-        # check if data is out of order first
+        # TODO check if data is out of order first
         purchase_data.reverse()
         return purchase_data
     else:
         return []
 
 
-def create_game_data(purchase_data, app_list):
+def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[dict]:
+    """
+    Creates a list of game data while removing entries that were purchased and then refunded
+
+    `purchase_data` must be in ascending purchase_date order to work properly.
+    """
     to_update = {}
     for entry in purchase_data:
         entry_type = entry.get("type")
@@ -41,7 +49,12 @@ def create_game_data(purchase_data, app_list):
     return to_update
 
 
-def get_dates_to_update(games_data, steam_sheet, date_added_col):
+def get_dates_to_update(
+    games_data: list[dict], steam_sheet: Sheet, date_added_col: str
+) -> list[dict]:
+    """
+    ph
+    """
     dates_to_update = {}
     for app_id, data in games_data.items():
         current_datetime = steam_sheet.get_cell(app_id, date_added_col)
@@ -54,12 +67,19 @@ def get_dates_to_update(games_data, steam_sheet, date_added_col):
     return dates_to_update
 
 
-def update_dates(dates_to_update, steam_sheet, date_added_col):  # pragma: no cover
+def update_dates(
+    dates_to_update: list[dict], steam_sheet, date_added_col
+):  # pragma: no cover
+    """
+    ph
+    """
     for app_id, purchase_datetime in dates_to_update.items():
         steam_sheet.update_cell(app_id, date_added_col, purchase_datetime)
 
 
-def update_purchase_date(app_list, steam_sheet, date_added_col):  # pragma: no cover
+def update_purchase_date(
+    app_list: list[dict], steam_sheet: Sheet, date_added_col: str
+):  # pragma: no cover
     """
     Updates Games `Added Date` based on a json.
     """
