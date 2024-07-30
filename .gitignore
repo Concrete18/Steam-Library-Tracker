@@ -142,6 +142,7 @@ config.json
 ignore.json
 excel_options.json
 favorite_games.json
+steam_purchase_history.json
 
 # custom directors
 .vscode/

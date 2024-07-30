@@ -1,5 +1,5 @@
 # standard library
-import os, sys, math, traceback, time, json
+import os, sys, math, traceback, time
 import datetime as dt
 
 # third-party imports
@@ -21,6 +21,9 @@ from classes.random_game import RandomGame
 from classes.game_skipper import GameSkipper
 from classes.utils import Utils
 from classes.logger import Logger
+
+# TODO rename classes folder
+from classes.date_updater import update_purchase_date
 
 # my package imports
 from easierexcel import Excel, Sheet
@@ -1189,40 +1192,10 @@ class Tracker(GetGameInfo, Steam, Utils):
 
     def update_add_dates(self):
         """
-        Updates Games `Added Date` based on a json.
+        Updates Games "Added Date".
         """
-        path = "configs\steam_purchase_history.json"
-        with open(path) as file:
-            purchase_data = json.load(file)
-            if purchase_data:
-                purchase_data.reverse()
-            else:
-                print("No purchase data found")
-                return
-
         app_list = self.get_app_list()
-        to_update = {}
-        for entry in purchase_data:
-            purchase_date = entry.get("date")
-            for game_name in entry.get("games", []):
-                entry_type = entry.get("type")
-                app_id = self.get_app_id(game_name, app_list)
-                if entry_type == "Refund":
-                    to_update.pop(app_id, None)
-                else:
-                    to_update[app_id] = {
-                        "game_name": game_name,
-                        "purchase_date": purchase_date,
-                    }
-        for app_id, data in to_update.items():
-            current_date = self.steam.get_cell(app_id, self.date_added_col)
-            if type(current_date) != dt.datetime:
-                continue
-            game_name = data.get("game_name")
-            new_date = data.get("purchase_date")
-            purchase_datetime = dt.datetime.strptime(new_date, "%b %d, %Y")
-            if current_date.date() != purchase_datetime.date():
-                self.steam.update_cell(app_id, self.date_added_col, purchase_datetime)
+        update_purchase_date(app_list, self.steam, self.date_added_col)
         self.excel.save(use_print=False, backup=False)
 
     def pick_game_to_update(self, games: list) -> None:

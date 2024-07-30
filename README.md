@@ -25,6 +25,7 @@ Many different types of information is auto retrieved using API's and Scraping.
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
 - [Player Count Sync](#Player-Count-Sync)
+- [Update Library Add Dates](#Update-Library-Add-Dates)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
 - [Omit games by name or App ID](#Omit-games-by-Name-or-App-ID)
@@ -99,6 +100,31 @@ Picks a random game based on the Play Status you select.
 ### Player Count Sync
 
 Allows syncing of player counts for all games, recent games or only 1 game.
+
+### Update Library Add Dates
+
+Update Dated Added dates using a json file. This is only needed due to the Steam API not providing purchase dates for games in any way I can find.
+
+#### Json Example
+
+```json
+[
+  {
+    "date": "Jul 11, 2024",
+    "games": ["Game 3"],
+    "type": "Purchase",
+    "total": 15.25
+  },
+  {
+    "date": "Jul 10, 2024",
+    "games": ["Game 1", "Game 2"],
+    "type": "Purchase",
+    "total": 13.06
+  }
+]
+```
+
+I wrote a script to pull this data from my steam purchase history page but the script is not currently released.
 
 ### Friends List Tracking
 
