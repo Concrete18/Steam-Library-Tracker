@@ -69,9 +69,15 @@ class Tracker(GetGameInfo, Steam, Utils):
         {
             "primary": "bold deep_sky_blue1",
             "secondary": "bold pale_turquoise1",
+            # error
             "info": "dim cyan",
-            "warning": "bold light_goldenrod1",
+            "warning": "bold magenta",
             "danger": "bold red",
+            # color scale
+            "top_scale": "bold green1",
+            "high_scale": "bold medium_spring_green",
+            "mid_scale": "bold cyan1",
+            "bottom_scale": "bold grey58",
         }
     )
     console = Console(theme=custom_theme)
@@ -156,17 +162,18 @@ class Tracker(GetGameInfo, Steam, Utils):
             self.config_data["settings"]["steam_id"] = self.steam_id
             self.save_json(self.config_data, self.config_path)
 
-    def auto_backup(self, check_freq_days: int = 7) -> None:
+    def auto_backup(self, check_freq_days: int = 14) -> None:
         """
         Auto backs up the excel file every `check_freq_days` days.
         """
-        # check last run
         config_entry = "excel_backup"
-        if not self.recently_executed(self.config_data, config_entry, check_freq_days):
-            success = self.backup.run()
-            if success:
-                self.console.print("\nBacked Up Excel File", style="secondary")
-                self.update_last_run(self.config_data, self.config_path, config_entry)
+        if self.recently_executed(self.config_data, config_entry, check_freq_days):
+            return
+        if self.backup.run():
+            self.console.print("\nBacked Up Excel File", style="secondary")
+            self.update_last_run(self.config_data, self.config_path, config_entry)
+        else:
+            self.console.print("\nFailed to backed Up Excel File", style="warning")
 
     def sync_friends_list(self, check_freq_days: int = 7) -> None:
         """
