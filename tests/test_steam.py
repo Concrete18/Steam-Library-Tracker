@@ -1,6 +1,6 @@
 import pytest, requests
 
-# classes
+# local application imports
 from classes.steam import Steam
 from classes.utils import Utils
 

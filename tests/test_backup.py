@@ -1,6 +1,6 @@
 import pytest
 
-# classes
+# local application imports
 from classes.backup import Backup
 
 
