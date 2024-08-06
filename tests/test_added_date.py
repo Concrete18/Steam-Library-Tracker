@@ -1,9 +1,38 @@
 import datetime as dt
 
 # local application imports
-from classes.date_updater import create_game_data, get_dates_to_update
+from classes.date_updater import (
+    sort_purchase_history,
+    create_game_data,
+    get_dates_to_update,
+)
 
 from easierexcel import Excel, Sheet
+
+
+class TestSortPurchaseHistory:
+
+    def test_success(self):
+        purchase_data = [
+            {"date": "Jul 11, 2024"},
+            {"date": "Jun 10, 2024"},
+            {"date": "Jul 15, 2024"},
+        ]
+        sorted_data = sort_purchase_history(purchase_data)
+        assert sorted_data == [
+            {"date": "Jun 10, 2024"},
+            {"date": "Jul 11, 2024"},
+            {"date": "Jul 15, 2024"},
+        ]
+
+    def test_fail(self):
+        purchase_data = [
+            {"test": "Jul 11, 2024"},
+            {"test": "Jun 10, 2024"},
+            {"test": "Jul 15, 2024"},
+        ]
+        sorted_data = sort_purchase_history(purchase_data)
+        assert sorted_data == []
 
 
 class TestCreateGameDict:

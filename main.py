@@ -13,17 +13,16 @@ from rich.table import Table
 from rich.theme import Theme
 
 # local application imports
+# TODO rename classes folder
 from setup import Setup
 from classes.backup import Backup
 from classes.steam import Steam
 from classes.game_info import Game, GetGameInfo
 from classes.random_game import RandomGame
 from classes.game_skipper import GameSkipper
+from classes.date_updater import *
 from classes.utils import Utils
 from classes.logger import Logger
-
-# TODO rename classes folder
-from classes.date_updater import update_purchase_date
 
 # my package imports
 from easierexcel import Excel, Sheet
@@ -317,7 +316,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         save_every_nth = self.create_save_every_nth()
         print()
         cur_itr = 0
-        desc = f"Syncing {update_type} Game(s) Data"
+        desc = f"Syncing {update_type} Game Data"
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
             # get new data from the internet
@@ -672,7 +671,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.output_play_status_info(dataframe)
         self.output_playtime_info(dataframe)
         self.output_review_info(dataframe)
-        # TODO output a table for each play status with their play status and the count for each tag
 
     @staticmethod
     def decide_play_status(play_status: str, minutes_played: float) -> str:
@@ -772,7 +770,6 @@ class Tracker(GetGameInfo, Steam, Utils):
         total_games = len(steam_games)
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
         installed_app_ids = self.get_installed_app_ids(self.library_vdf_path)
-        # TODO add a new print that shows the total hours tracked in the past 1 or 2 weeks
         for game in track(steam_games, description=desc):
             game_name, app_id = game["name"], game["appid"]
             # ignore check
@@ -1202,7 +1199,23 @@ class Tracker(GetGameInfo, Steam, Utils):
         Updates Games "Added Date".
         """
         app_list = self.get_app_list()
-        update_purchase_date(app_list, self.steam, self.date_added_col)
+
+        self.console.print("\nStarting Added Date Updater")
+        with Progress(transient=True) as progress:
+            progress.add_task("Updating Added Dates", total=None)
+
+            purchase_data = load_purchase_data()
+            games_data = create_game_data(purchase_data, app_list)
+
+            dates_to_update = get_dates_to_update(
+                games_data, self.steam, self.date_added_col
+            )
+            for app_id, purchase_datetime in dates_to_update.items():
+                self.steam.update_cell(app_id, self.date_added_col, purchase_datetime)
+
+            msg = f"\n{len(dates_to_update)} games Added dates were updated"
+            self.console.print(msg)
+
         self.excel.save(use_print=False, backup=False)
 
     def pick_game_to_update(self, games: list) -> None:

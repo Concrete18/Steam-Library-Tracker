@@ -1,6 +1,10 @@
 # standard library
+from pathlib import Path
 import datetime as dt
 import json
+
+# third-party imports
+from rich.progress import Progress
 
 # local application imports
 from classes.steam import Steam
@@ -11,19 +15,33 @@ from easierexcel import Sheet
 steam_class = Steam()
 
 
+def parse_date(entry):
+    """
+    Parses dates in the `Jan 10, 2024` format.
+    """
+    return dt.datetime.strptime(entry["date"], "%b %d, %Y")
+
+
+def sort_purchase_history(data: list[dict]) -> list[dict]:
+    """
+    Sorts purchase history by date.
+    """
+    if "date" not in data[0].keys():
+        return []
+    return sorted(data, key=lambda entry: parse_date(entry))
+
+
 def load_purchase_data() -> list[dict]:  # pragma: no cover
     """
     Loads purchase history from config folder.
     """
-    path = "configs\steam_purchase_history.json"
-    with open(path) as file:
-        purchase_data = json.load(file)
-    if purchase_data:
-        # TODO check if data is out of order first
-        purchase_data.reverse()
-        return purchase_data
-    else:
-        return []
+    path = Path("configs\steam_purchase_history.json")
+    if path.exists():
+        with open(path) as file:
+            purchase_data = json.load(file)
+        if purchase_data:
+            return sort_purchase_history(purchase_data)
+    return []
 
 
 def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[dict]:
@@ -65,25 +83,3 @@ def get_dates_to_update(
         if current_datetime.date() != purchase_datetime.date():
             dates_to_update[app_id] = purchase_datetime
     return dates_to_update
-
-
-def update_dates(
-    dates_to_update: list[dict], steam_sheet, date_added_col
-):  # pragma: no cover
-    """
-    ph
-    """
-    for app_id, purchase_datetime in dates_to_update.items():
-        steam_sheet.update_cell(app_id, date_added_col, purchase_datetime)
-
-
-def update_purchase_date(
-    app_list: list[dict], steam_sheet: Sheet, date_added_col: str
-):  # pragma: no cover
-    """
-    Updates Games `Added Date` based on a json.
-    """
-    purchase_data = load_purchase_data()
-    games_data = create_game_data(purchase_data, app_list)
-    dates_to_update = get_dates_to_update(games_data, steam_sheet, date_added_col)
-    update_dates(dates_to_update, steam_sheet, date_added_col)
