@@ -1,9 +1,15 @@
-from classes.utils import Utils, retry
+# standard library
+import re, os
+
+# third-party imports
 from bs4 import BeautifulSoup
-import re, requests, vdf, os
+import requests, vdf
+
+# local application imports
+from utils.utils import *
 
 
-class Steam(Utils):
+class Steam:
 
     @retry()
     def get_steam_username(self, steam_id: int, steam_key: int) -> str:
@@ -31,7 +37,9 @@ class Steam(Utils):
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
             if "Test error" not in str(e):
-                self.error_log.warning(msg)
+                # TODO add error logging back
+                # self.error_log.warning(msg)
+                pass
             return None  # handle request exceptions
 
     @staticmethod
@@ -62,7 +70,9 @@ class Steam(Utils):
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
             if "Test error" not in str(e):
-                self.error_log.warning(msg)
+                # TODO add error logging back
+                # self.error_log.warning(msg)
+                pass
             return None  # handle request exceptions
 
     @retry()
@@ -91,7 +101,9 @@ class Steam(Utils):
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
             if "Test error" not in str(e):
-                self.error_log.warning(msg)
+                # TODO add error logging back
+                # self.error_log.warning(msg)
+                pass
             return None  # handle request exceptions
 
     @staticmethod
@@ -112,7 +124,7 @@ class Steam(Utils):
         Scrapes the games review percent and total reviews from
         the steam store page using `app_id`.
         """
-        self.api_sleeper("steam_review_scrape")
+        api_sleeper("steam_review_scrape")
         game_url = self.get_game_url(app_id)
         response = requests.get(game_url)
         result_dict = {"total": None, "percent": None}
@@ -146,7 +158,7 @@ class Steam(Utils):
         """
         Gets a games user tags from Steam.
         """
-        self.api_sleeper("steam_review_scrape")
+        api_sleeper("steam_review_scrape")
         response = requests.get(self.get_game_url(app_id))
         if response.ok:
             soup = BeautifulSoup(response.text, "html.parser")
@@ -168,7 +180,7 @@ class Steam(Utils):
         base_url = "http://api.steampowered.com/"
         api_action = "IPlayerService/GetOwnedGames/v0001/"
         url = base_url + api_action
-        self.api_sleeper("steam_owned_games")
+        api_sleeper("steam_owned_games")
         params = {
             "key": steam_key,
             "steamid": steam_id,
@@ -190,7 +202,9 @@ class Steam(Utils):
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
             if "Test error" not in str(e):
-                self.error_log.warning(msg)
+                # TODO add error logging back
+                # self.error_log.warning(msg)
+                pass
             return None  # handle request exceptions
 
     @retry()
@@ -203,7 +217,7 @@ class Steam(Utils):
         base_url = "http://api.steampowered.com/"
         api_action = "IPlayerService/GetRecentlyPlayedGames/v1/"
         url = base_url + api_action
-        self.api_sleeper("steam_owned_games")
+        api_sleeper("steam_owned_games")
         params = {
             "key": steam_key,
             "steamid": steam_id,
@@ -222,8 +236,19 @@ class Steam(Utils):
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
             if "Test error" not in str(e):
-                self.error_log.warning(msg)
+                # TODO add error logging back
+                # self.error_log.warning(msg)
+                pass
             return None  # handle request exceptions
+
+    @staticmethod
+    def get_game_url(app_id: int) -> str:
+        """
+        Generates a steam store url to the games page using it's `app_id`.
+        """
+        if app_id:
+            return f"https://store.steampowered.com/app/{app_id}/"
+        return app_id
 
     @retry()
     def get_app_details(self, app_id) -> list[dict]:
@@ -231,7 +256,7 @@ class Steam(Utils):
         Gets game details.
         """
         url = "https://store.steampowered.com/api/appdetails"
-        self.api_sleeper("steam_app_details")
+        api_sleeper("steam_app_details")
         params = {"appids": app_id, "l": "english"}
         response = requests.get(url, params)
         if response.ok:
@@ -309,7 +334,7 @@ class Steam(Utils):
         entry_list = []
         for entry in found_entries:
             path = os.path.join(workshop_path, str(entry["appid"]))
-            dir_size = self.get_dir_size(path)
+            dir_size = get_dir_size(path)
             entry["bytes"] = dir_size
             if dir_size:
                 entry_list.append(entry)

@@ -13,22 +13,21 @@ from rich.table import Table
 from rich.theme import Theme
 
 # local application imports
-# TODO rename classes folder
 from setup import Setup
-from classes.backup import Backup
-from classes.steam import Steam
-from classes.game_info import Game, GetGameInfo
-from classes.random_game import RandomGame
-from classes.game_skipper import GameSkipper
-from classes.date_updater import *
-from classes.utils import Utils
-from classes.logger import Logger
+from utils.backup import Backup
+from utils.steam import Steam
+from utils.game_info import Game, GetGameInfo
+from utils.random_game import RandomGame
+from utils.game_skipper import GameSkipper
+from utils.date_updater import *
+from utils.utils import *
+from utils.logger import Logger
 
 # my package imports
 from easierexcel import Excel, Sheet
 
 
-class Tracker(GetGameInfo, Steam, Utils):
+class Tracker(GetGameInfo, Steam):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
@@ -58,6 +57,7 @@ class Tracker(GetGameInfo, Steam, Utils):
     # logging setup
     if logging:
         Log = Logger()
+        # Improve logging
         main_log_path = "logs/main.log"
         main_log = Log.create_log(name="main", log_path=main_log_path)
         friend_log = Log.create_log(name="friend", log_path="logs/friend.log")
@@ -146,7 +146,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.save_to_file = save
         if not self.steam_id:
             self.update_steam_id()
-        self.internet_connected = self.check_internet_connection()
+        self.internet_connected = check_internet_connection()
         if not self.internet_connected:
             self.console.print("\nNo Internet Detected", style="warning")
 
@@ -159,18 +159,18 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
         if self.steam_id:
             self.config_data["settings"]["steam_id"] = self.steam_id
-            self.save_json(self.config_data, self.config_path)
+            save_json(self.config_data, self.config_path)
 
     def auto_backup(self, check_freq_days: int = 14) -> None:
         """
         Auto backs up the excel file every `check_freq_days` days.
         """
         config_entry = "excel_backup"
-        if self.recently_executed(self.config_data, config_entry, check_freq_days):
+        if recently_executed(self.config_data, config_entry, check_freq_days):
             return
         if self.backup.run():
             self.console.print("\nBacked Up Excel File", style="secondary")
-            self.update_last_run(self.config_data, self.config_path, config_entry)
+            update_last_run(self.config_data, self.config_path, config_entry)
         else:
             self.console.print("\nFailed to backed Up Excel File", style="warning")
 
@@ -182,9 +182,9 @@ class Tracker(GetGameInfo, Steam, Utils):
         if not self.internet_connected:
             return
         # check last run
-        if self.recently_executed(self.config_data, "friends_sync", check_freq_days):
+        if recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
-        self.update_last_run(self.config_data, self.config_path, "friends_sync")
+        update_last_run(self.config_data, self.config_path, "friends_sync")
         # get friends
         print("\nStarting Steam Friends Sync")
         prev_friend_ids = self.config_data["friend_ids"]
@@ -235,7 +235,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         self.console.print(table, new_line_start=True)
         # update friend data in config
         self.config_data["friend_ids"] = cur_friend_ids
-        self.save_json(self.config_data, self.config_path)
+        save_json(self.config_data, self.config_path)
 
     def set_title(self, title: str = None) -> None:
         """
@@ -290,9 +290,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Returns a dict of column names and the value for that column.
         """
-        store_link = (
-            self.create_hyperlink(game.game_url, "Store") if game.game_url else "-"
-        )
+        store_link = create_hyperlink(game.game_url, "Store") if game.game_url else "-"
         return {
             self.dev_col: game.developer or "-",
             self.pub_col: game.publisher or "-",
@@ -352,6 +350,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         """
         Checks the directory size for each games workshop folder.
         """
+        print()
         total = 0
         with Progress(transient=True) as progress:
             progress.add_task("Checking Workshop Size", total=None)
@@ -371,15 +370,15 @@ class Tracker(GetGameInfo, Steam, Utils):
             # add rows
             for entry in entry_list:
                 name = entry["name"]
-                size, unit = self.convert_size(entry["bytes"])
+                size, unit = convert_size(entry["bytes"])
                 total += entry["bytes"]
                 file_size = f"{size:,} {unit}"
                 # row setup
                 row = [name, file_size]
                 table.add_row(*row)
         # print table
-        self.console.print(table, new_line_start=True)
-        total_size, unit = self.convert_size(total)
+        self.console.print(table, new_line_start=False)
+        total_size, unit = convert_size(total)
         self.console.print(f"[b]Total Workshop Size:[/] {total_size:,} {unit}")
 
     def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
@@ -387,7 +386,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         Gets the app_ids of the recently played games via a dataframe.
         """
         # check last run
-        if self.recently_executed(self.config_data, "recently_played", n_days):
+        if recently_executed(self.config_data, "recently_played", n_days):
             return []
         # get recently played games
         recently_played = self.find_recent_games(df, self.date_updated_col, n_days)
@@ -454,11 +453,11 @@ class Tracker(GetGameInfo, Steam, Utils):
             update_games_total = len(update_list)
             if update_games_total <= 5:
                 game_names = self.app_ids_to_names(update_list)
-                game_list_str = self.list_to_sentence(game_names)
+                game_list_str = list_to_sentence(game_names)
                 msg = f"\n{game_list_str}\n\nDo you want to update data for the above {update_games_total} games?"
             else:
                 msg = f"\nDo you want to update data for {update_games_total} games?"
-            if not self.is_response_yes(msg):
+            if not is_response_yes(msg):
                 return
         else:
             return
@@ -466,9 +465,7 @@ class Tracker(GetGameInfo, Steam, Utils):
         try:
             self.update_extra_game_info(update_list, "Recent")
             if update_list:
-                self.update_last_run(
-                    self.config_data, self.config_path, "recently_played"
-                )
+                update_last_run(self.config_data, self.config_path, "recently_played")
             print(f"\nUpdated Data for {len(update_list)} games")
         except KeyboardInterrupt:
             print("\nCancelled")
@@ -503,7 +500,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             last_updated = (
                 last_updated_dt.strftime("%a %b %d, %Y") if last_updated_dt else "-"
             )
-            days_since = str(abs(self.days_since(last_updated_dt)))
+            days_since = str(abs(get_days_since(last_updated_dt)))
             # last play time
             last_play_time = "-"
             if type(game[self.last_play_time_col]) is str:
@@ -582,13 +579,13 @@ class Tracker(GetGameInfo, Steam, Utils):
         median_hours = df_filtered["Hours Played"].median()
         max_hours = df_filtered["Hours Played"].max()
         data = {
-            "Total\nHours": self.format_floats(total_hours_sum, 1),
-            "Total\nDays": self.format_floats(total_hours_sum / 24, 1),
-            "Linux\nHours": self.format_floats(linux_hours_sum, 1),
-            "% Linux\nHours": self.format_floats(linux_hours_sum / total_hours_sum, 2),
-            "Average\nHours": self.format_floats(average_hours, 1),
-            "Median\nHours": self.format_floats(median_hours, 1),
-            "Max\nHours": self.format_floats(max_hours, 1),
+            "Total\nHours": format_floats(total_hours_sum, 1),
+            "Total\nDays": format_floats(total_hours_sum / 24, 1),
+            "Linux\nHours": format_floats(linux_hours_sum, 1),
+            "% Linux\nHours": format_floats(linux_hours_sum / total_hours_sum, 2),
+            "Average\nHours": format_floats(average_hours, 1),
+            "Median\nHours": format_floats(median_hours, 1),
+            "Max\nHours": format_floats(max_hours, 1),
         }
         # row creation
         row = []
@@ -700,7 +697,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             new_name = names_dict["new_name"]
             old_name = names_dict["old_name"]
             msg = f'Do you want to update "{old_name}"\'s name to {new_name}?:\n'
-            if self.is_response_yes(msg):
+            if is_response_yes(msg):
                 app_id = names_dict["app_id"]
                 self.steam.update_cell(app_id, self.name_col, new_name)
 
@@ -791,7 +788,7 @@ class Tracker(GetGameInfo, Steam, Utils):
                 )
             # sets play time earlier so it only needs to be set up once
             minutes_played = game["playtime_forever"]
-            time_played = self.convert_time_passed(minutes=minutes_played)
+            time_played = convert_time_passed(minutes=minutes_played)
             linux_minutes_played = ""
             if "playtime_linux_forever" in game.keys():
                 linux_minutes_played = game["playtime_linux_forever"]
@@ -847,8 +844,8 @@ class Tracker(GetGameInfo, Steam, Utils):
             removed_game_names = [
                 self.steam.get_cell(app_id, self.name_col) for app_id in sheet_games
             ]
-            removed_games_names_str = self.list_to_sentence(removed_game_names)
-            if self.is_response_yes(
+            removed_games_names_str = list_to_sentence(removed_game_names)
+            if is_response_yes(
                 f"\nDo you want to delete all the following games?\n{removed_games_names_str}"
             ):
                 for app_id in sheet_games:
@@ -897,16 +894,16 @@ class Tracker(GetGameInfo, Steam, Utils):
             prev_hours = float(prev_hours)
         except (TypeError, ValueError):
             prev_hours = 0.0
-        cur_hours = self.hours_played(minutes_played)
+        cur_hours = get_hours_played(minutes_played)
         if not cur_hours:
             return
         # only updates if new play time occurred
         if cur_hours > prev_hours:
             hours_played = cur_hours - prev_hours
             self.steam.update_cell(app_id, self.hours_played_col, cur_hours)
-            cur_linux_hours = self.hours_played(linux_minutes_played)
+            cur_linux_hours = get_hours_played(linux_minutes_played)
             self.steam.update_cell(app_id, self.linux_hours_col, cur_linux_hours)
-            added_time = self.convert_time_passed(hours=hours_played)
+            added_time = convert_time_passed(hours=hours_played)
             self.steam.update_cell(app_id, self.last_play_time_col, added_time)
             self.steam.update_cell(app_id, self.time_played_col, time_played)
             self.set_date_updated(app_id)
@@ -940,14 +937,14 @@ class Tracker(GetGameInfo, Steam, Utils):
 
         If save is True, it will save after adding the game.
         """
-        hours_played = self.hours_played(minutes_played)
+        hours_played = get_hours_played(minutes_played)
         cur_date = dt.datetime.now()
         base_data = {
             self.name_col: game_name,
             self.app_id_col: app_id,
             self.play_status_col: self.decide_play_status(play_status, minutes_played),
             self.hours_played_col: hours_played,
-            self.linux_hours_col: self.hours_played(linux_minutes_played),
+            self.linux_hours_col: get_hours_played(linux_minutes_played),
             self.time_played_col: time_played,
             self.installed_col: "Yes" if installed else "No",
             self.date_added_col: cur_date,
@@ -1038,7 +1035,7 @@ class Tracker(GetGameInfo, Steam, Utils):
                 self.release_col: game.release_year,
                 self.genre_col: game.genre_str,
                 self.ea_col: game.early_access,
-                self.store_link_col: self.create_hyperlink(game.game_url, "Store"),
+                self.store_link_col: create_hyperlink(game.game_url, "Store"),
             }
             self.sales.add_new_line(game_row)
         # formats all cells and saves
@@ -1117,7 +1114,7 @@ class Tracker(GetGameInfo, Steam, Utils):
             game_data = possible_games[0]
             game_name = game_data["Name"]
             prompt = f"\nIs this the game you are looking for?\n{game_name}"
-            if self.is_response_yes(prompt):
+            if is_response_yes(prompt):
                 print(f"\nSelected: {game_name}")
                 return game_data
             else:
@@ -1153,7 +1150,7 @@ class Tracker(GetGameInfo, Steam, Utils):
                 self.steam_player_count_col,
                 player_count,
             )
-            self.api_sleeper("steam_player_count")
+            api_sleeper("steam_player_count")
         return player_counts
 
     def game_select(self, df: pd.DataFrame, last_num: int = 15):
@@ -1314,7 +1311,7 @@ class Tracker(GetGameInfo, Steam, Utils):
     def main(self) -> None:
         try:
             self.console.print(self.APP_TITLE, style="primary")
-            rich_date = self.create_rich_date_and_time()
+            rich_date = create_rich_date_and_time()
             self.console.print(rich_date)
             self.sync_steam_games(self.steam_key, self.steam_id)
             # table data

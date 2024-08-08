@@ -1,9 +1,9 @@
 import re
 
-from classes.utils import Utils
+from utils.utils import *
 
 
-class GameSkipper(Utils):
+class GameSkipper:
     MEDIA_LIST = [
         "Amazon Prime Video",
         "HBO GO",
@@ -72,7 +72,7 @@ class GameSkipper(Utils):
         # ignore by name
         if game_name:
             # checks if name means it should be skipped
-            cleaned_name = self.unicode_remover(game_name).lower()
+            cleaned_name = unicode_remover(game_name).lower()
             if cleaned_name and cleaned_name in map(str.lower, self.name_ignore_list):
                 return True
             # keyword check

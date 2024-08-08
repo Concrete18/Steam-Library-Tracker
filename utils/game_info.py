@@ -2,12 +2,12 @@ from dataclasses import dataclass, field, fields
 from howlongtobeatpy import HowLongToBeat
 import requests, time
 
-from classes.utils import Utils, retry
-from classes.steam import Steam
+from utils.utils import *
+from utils.steam import Steam
 
 
 @dataclass()
-class Game(Utils):
+class Game(Steam):
     app_id: int = 0
     name: str = ""
     developer: str = ""
@@ -37,9 +37,9 @@ class Game(Utils):
         # game url
         self.game_url = self.get_game_url(self.app_id) if self.app_id else self.app_id
         # create sentence strings
-        self.tags_str = self.list_to_sentence(self.user_tags)
-        self.genre_str = self.list_to_sentence(self.genre)
-        self.categories_str = self.list_to_sentence(self.categories)
+        self.tags_str = list_to_sentence(self.user_tags)
+        self.genre_str = list_to_sentence(self.genre)
+        self.categories_str = list_to_sentence(self.categories)
         # early access
         self.early_access = self.is_early_access()
 
@@ -65,11 +65,11 @@ class Game(Utils):
         return "No"
 
 
-class GetGameInfo(Steam, Utils):
+class GetGameInfo(Steam):
 
     def parse_release_date(self, app_details: dict) -> int:
         release_date = app_details.get("release_date", {}).get("date", {})
-        year = self.get_year(release_date) if release_date else None
+        year = get_year(release_date) if release_date else None
         return year or 0
 
     @staticmethod
@@ -93,7 +93,7 @@ class GetGameInfo(Steam, Utils):
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
         beat = HowLongToBeat()
-        self.api_sleeper("time_to_beat")
+        api_sleeper("time_to_beat")
         try:
             results = beat.search(game_name)
         except:  # pragma: no cover
@@ -106,7 +106,7 @@ class GetGameInfo(Steam, Utils):
                     time.sleep(10)
             return "-"
         if not results:  # pragma: no cover
-            self.api_sleeper("time_to_beat")
+            api_sleeper("time_to_beat")
             results = beat.search(game_name, similarity_case_sensitive=False)
         time_to_beat = "-"
         if results and len(results) > 0:
@@ -121,7 +121,7 @@ class GetGameInfo(Steam, Utils):
         """
         url = "https://store.steampowered.com/api/appdetails"
         params = {"appids": app_id, "l": "english"}
-        self.api_sleeper("steam_app_details")
+        api_sleeper("steam_app_details")
         response = requests.get(url, params=params)
         if response.ok:
             return response.json().get(str(app_id), {}).get("data", {})
@@ -148,7 +148,7 @@ class GetGameInfo(Steam, Utils):
         # user tags
         user_tags = self.get_steam_user_tags(app_id=app_id)
         # time to beat
-        game_name_no_unicode = self.unicode_remover(game_name)
+        game_name_no_unicode = unicode_remover(game_name)
         ttb = self.get_time_to_beat(game_name_no_unicode)
         # player count
         player_count = self.get_player_count(app_id, steam_key) if steam_key else None

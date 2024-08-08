@@ -1,4 +1,4 @@
-from classes.random_game import RandomGame
+from utils.random_game import RandomGame
 from easierexcel import Excel, Sheet
 
 excel = Excel("tests/data/test_library.xlsx", use_logging=False)

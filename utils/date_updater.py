@@ -3,11 +3,8 @@ from pathlib import Path
 import datetime as dt
 import json
 
-# third-party imports
-from rich.progress import Progress
-
 # local application imports
-from classes.steam import Steam
+from utils.steam import Steam
 
 # my package imports
 from easierexcel import Sheet

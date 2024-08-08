@@ -4,14 +4,12 @@ import pytest, time, json, os
 
 
 # local application imports
-from classes.utils import Utils
+from utils.utils import *
 
 
 class TestHoursPlayed:
 
-    utils = Utils()
-
-    def test_hours_played(self):
+    def test_get_hours_played(self):
         HOURS_PLAYED_TESTS = {
             800: 13.3,
             30: 0.5,
@@ -20,13 +18,11 @@ class TestHoursPlayed:
             None: None,
         }
         for minutes_played, answer in HOURS_PLAYED_TESTS.items():
-            result = self.utils.hours_played(minutes_played)
+            result = get_hours_played(minutes_played)
             assert result == answer
 
 
 class TestTimePassed:
-
-    utils = Utils()
 
     def test_minutes(self):
         """
@@ -46,7 +42,7 @@ class TestTimePassed:
             525600: "1.0 Year",
         }
         for minutes, answer in MINUTE_TESTS.items():
-            output = self.utils.convert_time_passed(minutes=minutes)
+            output = convert_time_passed(minutes=minutes)
             assert output == answer
 
     def test_hours(self):
@@ -62,7 +58,7 @@ class TestTimePassed:
             48: "2.0 Days",
         }
         for hours, answer in HOUR_TESTS.items():
-            output = self.utils.convert_time_passed(hours=hours)
+            output = convert_time_passed(hours=hours)
             assert output == answer
 
     def test_days(self):
@@ -78,7 +74,7 @@ class TestTimePassed:
             365: "1.0 Year",
         }
         for days, answer in DAY_TESTS.items():
-            output = self.utils.convert_time_passed(days=days)
+            output = convert_time_passed(days=days)
             assert output == answer
 
     def test_weeks(self):
@@ -92,7 +88,7 @@ class TestTimePassed:
             52: "1.0 Year",
         }
         for weeks, answer in WEEK_TESTS.items():
-            output = self.utils.convert_time_passed(weeks=weeks)
+            output = convert_time_passed(weeks=weeks)
             assert output == answer
 
     def test_months(self):
@@ -106,7 +102,7 @@ class TestTimePassed:
             11.99: "1.0 Year",
         }
         for months, answer in MONTH_TESTS.items():
-            output = self.utils.convert_time_passed(months=months)
+            output = convert_time_passed(months=months)
             assert output == answer
 
     def test_years(self):
@@ -119,7 +115,7 @@ class TestTimePassed:
             5: "5.0 Years",
         }
         for years, answer in YEAR_TESTS.items():
-            output = self.utils.convert_time_passed(years=years)
+            output = convert_time_passed(years=years)
             assert output == answer
 
     def test_all_at_once(self):
@@ -127,7 +123,7 @@ class TestTimePassed:
         Tests function when given Minutes, Hours, Days, Months and Years at the same time.
         """
         # tests all args at once
-        output = self.utils.convert_time_passed(
+        output = convert_time_passed(
             minutes=60,
             hours=23,
             days=30,
@@ -139,90 +135,79 @@ class TestTimePassed:
 
 class TestConvertSize:
 
-    utils = Utils()
-
     def test_bytes(self):
-        size = self.utils.convert_size(256)
+        size = convert_size(256)
         assert size == (256, "B")
 
     def test_kilobytes(self):
-        size = self.utils.convert_size(16_584)
+        size = convert_size(16_584)
         assert size == (16.2, "KB")
 
     def test_megabytes(self):
-        size = self.utils.convert_size(11_457_496)
+        size = convert_size(11_457_496)
         assert size == (10.9, "MB")
 
     def test_gigbytes(self):
-        size = self.utils.convert_size(3_845_845_531)
+        size = convert_size(3_845_845_531)
         assert size == (3.6, "GB")
 
     def test_terabytes(self):
-        size = self.utils.convert_size(5_323_845_845_531)
+        size = convert_size(5_323_845_845_531)
         assert size == (4.8, "TB")
 
 
 class TestGetDirSize:
 
-    utils = Utils()
-
     def test_success(self):
         dir = "tests/data/test_workshop/12345"
-        bytes = self.utils.get_dir_size(dir)
+        bytes = get_dir_size(dir)
         assert bytes == 91
 
     def test_error(self):
         dir = "not real"
         with pytest.raises(ValueError):
-            self.utils.get_dir_size(dir)
+            get_dir_size(dir)
 
 
 class TestDaysSince:
 
-    utils = Utils()
-
     def test_set_date(self):
         past_date = dt.datetime(2022, 4, 22)
         current_date = dt.datetime(2022, 4, 24)
-        days_since = self.utils.days_since(past_date, current_date)
+        days_since = get_days_since(past_date, current_date)
         assert days_since == 2
 
     def test_todays_date(self):
         past_date = dt.datetime.now() - dt.timedelta(days=7)
-        days_since = self.utils.days_since(past_date)
+        days_since = get_days_since(past_date)
         assert days_since == 7
 
 
 class TestFormatFloats:
 
-    utils = Utils()
-
     def test_valid(self):
-        string = self.utils.format_floats(1234.12345, 1)
+        string = format_floats(1234.12345, 1)
         assert string == "1,234.1"
-        string = self.utils.format_floats(1234.12345, 3)
+        string = format_floats(1234.12345, 3)
         assert string == "1,234.123"
 
     def test_n_digits_not_valid(self):
         with pytest.raises(TypeError):
-            self.utils.format_floats(1234.12345, "1")
+            format_floats(1234.12345, "1")
 
 
 class TestStringToDate:
 
-    utils = Utils()
-
     def test_valid(self):
-        date = self.utils.string_to_date("02/24/2022")
+        date = string_to_date("02/24/2022")
         assert date == dt.datetime(2022, 2, 24, 0, 0)
 
     def test_not_valid(self):
         with pytest.raises(ValueError):
-            self.utils.string_to_date("")
+            string_to_date("")
 
 
 class TestGetYear:
-    utils = Utils()
 
     def test_valid(self):
         DATE_TESTS = {
@@ -233,16 +218,15 @@ class TestGetYear:
             "Apr , 2015": 2015,
         }
         for date, answer in DATE_TESTS.items():
-            year = self.utils.get_year(date)
+            year = get_year(date)
             assert year == answer
 
     def test_invalid(self):
-        year = self.utils.get_year("this is not a date")
+        year = get_year("this is not a date")
         assert year is None
 
 
 class TestUrlSanitize:
-    utils = Utils()
 
     def test_url_sanitize(self):
         URL_TESTS = {
@@ -251,32 +235,29 @@ class TestUrlSanitize:
             "Blade & Sorcery": "blade-sorcery",
         }
         for string, result in URL_TESTS.items():
-            assert self.utils.url_sanitize(string) == result
+            assert url_sanitize(string) == result
 
 
 class TestUnicodeRemover:
 
-    utils = Utils()
-
     def test_trademark(self):
-        new_string = self.utils.unicode_remover("Game Name™")
+        new_string = unicode_remover("Game Name™")
         assert new_string == "Game Name"
 
     def test_trim_removal(self):
-        new_string = self.utils.unicode_remover("® ® ® ö Test ® ® ®")
+        new_string = unicode_remover("® ® ® ö Test ® ® ®")
         assert new_string == "o Test"
 
     def test_trim_removal(self):
-        new_string = self.utils.unicode_remover("\u2122 \u2013Test\u2013 \u2122")
+        new_string = unicode_remover("\u2122 \u2013Test\u2013 \u2122")
         assert new_string == "-Test-"
 
     def test_not_string(self):
-        new_string = self.utils.unicode_remover(123)
+        new_string = unicode_remover(123)
         assert new_string == 123
 
 
 class TestCreateAndSentence:
-    utils = Utils()
 
     def test_list_to_sentence(self):
         LIST_TESTS = [
@@ -286,7 +267,7 @@ class TestCreateAndSentence:
             ([], ""),
         ]
         for list, answer in LIST_TESTS:
-            result = self.utils.list_to_sentence(list)
+            result = list_to_sentence(list)
             assert result == answer
 
 
@@ -296,7 +277,6 @@ class TestSaveJson:
     def setup_class(cls):
         print("\nSetup Class")
         cls.path = Path("tests/test.json")
-        cls.utils = Utils()
 
     @classmethod
     def teardown_class(cls):
@@ -326,7 +306,7 @@ class TestSaveJson:
         assert empty_data == {}
         # create data
         test_data = {}
-        self.utils.save_json(test_data, self.path)
+        save_json(test_data, self.path)
         # verify data
         with open(self.path) as file:
             empty_data = json.load(file)
@@ -336,7 +316,6 @@ class TestSaveJson:
 
 class TestRecentlyExecuted:
 
-    utils = Utils()
     SECS_IN_DAYS = 86400
 
     def test_true(self):
@@ -348,7 +327,7 @@ class TestRecentlyExecuted:
         }
         name = "test_run"
         n_days = 5
-        test = self.utils.recently_executed(data, name, n_days)
+        test = recently_executed(data, name, n_days)
         assert test is True
 
     def test_false(self):
@@ -360,17 +339,15 @@ class TestRecentlyExecuted:
         }
         name = "test_run"
         n_days = 5
-        test = self.utils.recently_executed(data, name, n_days)
+        test = recently_executed(data, name, n_days)
         assert test is False
 
 
 class TestCreateRichDateAndTime:
 
-    utils = Utils()
-
     def test_success(self):
         date = dt.datetime(2000, 1, 1, 1, 1)
-        rich_date = self.utils.create_rich_date_and_time(date)
+        rich_date = create_rich_date_and_time(date)
         answer = (
             "[secondary]Saturday, January 01, 2000[/] [dim]|[/] [secondary]01:01 AM[/]"
         )
