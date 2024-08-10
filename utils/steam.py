@@ -7,6 +7,10 @@ import requests, vdf
 
 # local application imports
 from utils.utils import *
+from utils.logger import Logger
+
+Log = Logger()
+error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
 
 class Steam:
@@ -31,16 +35,14 @@ class Steam:
                 ):
                     return data["response"]["players"][0]["personaname"]
                 else:
-                    return None  # handle missing keys in the JSON response
+                    return None
             else:
-                return None  # handle unsuccessful response
+                return None
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            if "Test error" not in str(e):
-                # TODO add error logging back
-                # self.error_log.warning(msg)
-                pass
-            return None  # handle request exceptions
+            if "Test error" in str(e):
+                return None
+            error_log.warning(msg)
 
     @staticmethod
     def extract_profile_username(vanity_url):
@@ -64,16 +66,14 @@ class Steam:
                 if "response" in data and "steamid" in data["response"]:
                     return int(data["response"]["steamid"])
                 else:
-                    return None  # handle missing keys in the JSON response
+                    return None
             else:
-                return None  # handle unsuccessful response
+                return None
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            if "Test error" not in str(e):
-                # TODO add error logging back
-                # self.error_log.warning(msg)
-                pass
-            return None  # handle request exceptions
+            if "Test error" in str(e):
+                return None
+            error_log.warning(msg)
 
     @retry()
     def get_steam_friends(self, steam_key: str, steam_id: int) -> dict:
@@ -95,16 +95,14 @@ class Steam:
                 if "friendslist" in data and "friends" in data["friendslist"]:
                     return data["friendslist"]["friends"]
                 else:
-                    return None  # handle missing keys in the JSON response
+                    return None
             else:
-                return None  # handle unsuccessful response
+                return None
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            if "Test error" not in str(e):
-                # TODO add error logging back
-                # self.error_log.warning(msg)
-                pass
-            return None  # handle request exceptions
+            if "Test error" in str(e):
+                return None
+            error_log.warning(msg)
 
     @staticmethod
     def get_friends_list_changes(
@@ -196,16 +194,14 @@ class Steam:
                 if "response" in data and "games" in data["response"]:
                     return data["response"]["games"]
                 else:
-                    return None  # handle missing keys in the JSON response
+                    return None
             else:
-                return None  # handle unsuccessful response
+                return None
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            if "Test error" not in str(e):
-                # TODO add error logging back
-                # self.error_log.warning(msg)
-                pass
-            return None  # handle request exceptions
+            if "Test error" in str(e):
+                return None
+            error_log.warning(msg)
 
     @retry()
     def get_recently_played_steam_games(
@@ -230,16 +226,14 @@ class Steam:
                 if "response" in data and "games" in data["response"]:
                     return data["response"]["games"]
                 else:
-                    return None  # handle missing keys in the JSON response
+                    return None
             else:
-                return None  # handle unsuccessful response
+                return None
         except requests.RequestException as e:
             msg = f"Error occurred: {e}"
-            if "Test error" not in str(e):
-                # TODO add error logging back
-                # self.error_log.warning(msg)
-                pass
-            return None  # handle request exceptions
+            if "Test error" in str(e):
+                return None
+            error_log.warning(msg)
 
     @staticmethod
     def get_game_url(app_id: int) -> str:

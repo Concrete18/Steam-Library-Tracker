@@ -3,12 +3,6 @@ import logging as lg
 
 
 class Logger:
-    def __init__(self) -> None:
-        """
-        Logger init.
-        """
-        pass
-
     base_format = "%(asctime)s %(levelname)s %(message)s"
     date_format = "%m-%d-%Y %I:%M:%S %p"
 
