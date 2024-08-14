@@ -1,6 +1,6 @@
 import pytest
 
-# local application imports
+# local imports
 from main import Tracker
 from utils.game_info import Game
 

@@ -5,7 +5,7 @@ import re, os
 from bs4 import BeautifulSoup
 import requests, vdf
 
-# local application imports
+# local imports
 from utils.utils import *
 from utils.logger import Logger
 

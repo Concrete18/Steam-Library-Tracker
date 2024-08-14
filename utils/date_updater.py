@@ -3,7 +3,7 @@ from pathlib import Path
 import datetime as dt
 import json
 
-# local application imports
+# local imports
 from utils.steam import Steam
 
 # my package imports

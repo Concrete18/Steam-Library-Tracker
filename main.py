@@ -12,7 +12,7 @@ from rich.progress import track, Progress
 from rich.table import Table
 from rich.theme import Theme
 
-# local application imports
+# local imports
 from setup import Setup
 from utils.backup import Backup
 from utils.steam import Steam

@@ -1,6 +1,6 @@
 import pytest, requests
 
-# local application imports
+# local imports
 from utils.steam import Steam
 from utils.utils import *
 

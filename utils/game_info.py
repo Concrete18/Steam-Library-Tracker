@@ -1,7 +1,12 @@
+# standard library
 from dataclasses import dataclass, field, fields
-from howlongtobeatpy import HowLongToBeat
-import requests, time
+import time
 
+# third-party imports
+import requests
+from howlongtobeatpy import HowLongToBeat
+
+# local imports
 from utils.utils import *
 from utils.steam import Steam
 

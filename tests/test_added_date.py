@@ -1,6 +1,6 @@
 import datetime as dt
 
-# local application imports
+# local imports
 from utils.date_updater import (
     sort_purchase_history,
     create_game_data,

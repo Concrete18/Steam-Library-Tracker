@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest, time, json, os
 
 
-# local application imports
+# local imports
 from utils.utils import *
 
 

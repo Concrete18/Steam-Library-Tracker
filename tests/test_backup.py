@@ -1,6 +1,6 @@
 import pytest
 
-# local application imports
+# local imports
 from utils.backup import Backup
 
 

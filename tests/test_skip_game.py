@@ -1,6 +1,6 @@
 import pytest
 
-# local application imports
+# local imports
 from utils.game_skipper import GameSkipper
 
 
