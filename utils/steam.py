@@ -44,14 +44,6 @@ class Steam:
                 return None
             error_log.warning(msg)
 
-    @staticmethod
-    def extract_profile_username(vanity_url):
-        if "steamcommunity.com/id" in vanity_url:
-            if vanity_url[-1] == "/":
-                vanity_url = vanity_url[:-1]
-            return vanity_url.split("/")[-1]
-        return None
-
     @retry()
     def get_steam_id(self, vanity_url, steam_key):
         """
@@ -316,6 +308,23 @@ class Steam:
             for app_id in library["apps"].keys():
                 installed_app_ids.append(int(app_id))
         return installed_app_ids
+
+    @staticmethod
+    def get_local_config_data(local_config_path: str = None) -> list:
+        """1
+        Gets the local config data for games from the Steam install data.
+        """
+        if not local_config_path:
+            return {}
+        with open(local_config_path, "r", encoding="utf-8") as file:
+            data = vdf.load(file)
+        return (
+            data.get("UserLocalConfigStore", {})
+            .get("Software", {})
+            .get("valve", {})
+            .get("Steam", {})
+            .get("apps", {})
+        )
 
     def workshop_size(self, workshop_path, app_list):
         """

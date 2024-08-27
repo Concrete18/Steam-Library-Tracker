@@ -36,12 +36,17 @@ class Tracker(GetGameInfo, Steam):
     config_path, config_data, ignore_data, excel_options = setup.run()
 
     # steam_data
-    steam_key = config_data["steam_data"]["api_key"]
-    steam_id = config_data["steam_data"]["steam_id"]
-    vanity_url = config_data["steam_data"]["vanity_url"]
-    steam_folder = config_data["steam_data"]["steam_folder"]
-    steam_library = config_data["steam_data"]["steam_library"]
-    library_vdf_path = f"{steam_folder}/steamapps/libraryfolders.vdf"
+    steam_data = config_data.get("steam_data", False)
+    if not steam_data:
+        input("Steam Config not found.")
+        exit()
+    steam_key = steam_data.get("api_key", None)
+    steam_id = steam_data.get("steam_id", None)
+    steam_id_3 = steam_data.get("steam_id_3", None)
+    steam_folder = steam_data.get("steam_folder", None)
+    steam_library = steam_data.get("steam_library", None)
+    library_path = f"{steam_folder}/steamapps/libraryfolders.vdf"
+    local_config_path = f"{steam_folder}/userdata/{steam_id_3}/config/localconfig.vdf"
     workshop_path = f"{steam_library}/steamapps/workshop/content"
 
     # settings
@@ -113,6 +118,7 @@ class Tracker(GetGameInfo, Steam):
     EXCEL_COLUMNS = [
         date_added_col := "Date Added",
         date_updated_col := "Date Updated",
+        last_played_col := "Last Played",
         my_rating_col := "My Rating",
         steam_rev_per_col := "Steam Review Percent",
         steam_rev_total_col := "Steam Review Total",
@@ -154,12 +160,12 @@ class Tracker(GetGameInfo, Steam):
         """
         Updates the steam id in the config using the given vanity url if present.
         """
-        if not self.vanity_url:
-            raise "Steam ID and Vanity URL is blank. Please enter at one of them"
-        self.steam_id = self.get_steam_id(self.vanity_url, self.steam_key)
         if self.steam_id:
             self.config_data["settings"]["steam_id"] = self.steam_id
             save_json(self.config_data, self.config_path)
+        else:
+            input("Steam ID is missing.")
+            exit()
 
     def auto_backup(self, check_freq_days: int = 14) -> None:
         """
@@ -487,7 +493,7 @@ class Tracker(GetGameInfo, Steam):
             style="deep_sky_blue1",
         )
         table.add_column("Days\nSince", justify="center")
-        table.add_column("Date Updated", justify="center")
+        table.add_column("Last Played", justify="center")
         table.add_column("Name", justify="left", min_width=30)
         table.add_column("Play\nStatus", justify="center")
         table.add_column("Hours\nPlayed", justify="right")
@@ -496,11 +502,11 @@ class Tracker(GetGameInfo, Steam):
         # add rows
         for game in recently_played_games[:10]:
             # days since
-            last_updated_dt = game[self.date_updated_col]
-            last_updated = (
-                last_updated_dt.strftime("%a %b %d, %Y") if last_updated_dt else "-"
+            last_played_dt = game[self.last_played_col]
+            last_played = (
+                last_played_dt.strftime("%a %b %d, %Y") if last_played_dt else "-"
             )
-            days_since = str(abs(get_days_since(last_updated_dt)))
+            days_since = str(abs(get_days_since(last_played_dt)))
             # last play time
             last_play_time = "-"
             if type(game[self.last_play_time_col]) is str:
@@ -520,7 +526,7 @@ class Tracker(GetGameInfo, Steam):
             # row setup
             row = [
                 days_since,
-                last_updated,
+                last_played,
                 game[self.name_col],
                 game[self.play_status_col],
                 hours_played,
@@ -766,9 +772,14 @@ class Tracker(GetGameInfo, Steam):
         print()
         total_games = len(steam_games)
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
-        installed_app_ids = self.get_installed_app_ids(self.library_vdf_path)
+        installed_app_ids = self.get_installed_app_ids(self.library_path)
+        local_config = self.get_local_config_data(self.local_config_path)
         for game in track(steam_games, description=desc):
             game_name, app_id = game["name"], game["appid"]
+            game_config_data = local_config.get(str(app_id), {})
+            last_played = game_config_data.get("LastPlayed", None)
+            if last_played:
+                last_played = dt.datetime.fromtimestamp(int(last_played))
             # ignore check
             if self.game_skipper.skip_game(game_name, app_id):
                 continue
@@ -807,6 +818,7 @@ class Tracker(GetGameInfo, Steam):
                     new_status=new_status,
                     cur_status=cur_status,
                     time_played=time_played,
+                    last_played=last_played,
                     installed=installed,
                 )
                 if update_info:
@@ -882,7 +894,8 @@ class Tracker(GetGameInfo, Steam):
         new_status: str,
         cur_status: str,
         installed: bool = False,
-        time_played: str = None,
+        time_played: str | None = None,
+        last_played: dt.datetime | None = None,
     ) -> dict | None:
         """
         Updates the games playtime and play status if they changed.
@@ -897,6 +910,8 @@ class Tracker(GetGameInfo, Steam):
         cur_hours = get_hours_played(minutes_played)
         if not cur_hours:
             return
+        if last_played:
+            self.steam.update_cell(app_id, self.last_played_col, last_played)
         # only updates if new play time occurred
         if cur_hours > prev_hours:
             hours_played = cur_hours - prev_hours

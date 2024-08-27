@@ -13,7 +13,6 @@ Many different types of information is auto retrieved using API's and Scraping.
 
 - Python Pandas
 - Rich Console
-- Matplotlib
 - API Requests
 - Web Scraping with Requests and BeautifulSoup
 - [EasierExcel](https://github.com/Concrete18/easierexcel) (my custom library based on OpenPyXL)
@@ -44,10 +43,11 @@ pip install -r requirements.txt
 ```json
 {
   "steam_data": {
-    "vanity_url": "Insert Steam Vanity URL (Optional)",
     "steam_id": "Insert Steam ID",
+    "steam_id_3": "Insert Steam ID3",
     "api_key": "Insert API Key",
-    "library_vdf_path": "Insert Path to libraryfolders.vdf file (Optional) - Example: C:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf"
+    "steam_folder": "Insert Path to Steam Folder Here",
+    "steam_library": "Insert Path to libraryfolders.vdf file (Optional) - Example: C:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf"
   },
   "settings": {
     "excel_filename": "Game Library.xlsx",
