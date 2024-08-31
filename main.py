@@ -20,6 +20,7 @@ from utils.game_info import Game, GetGameInfo
 from utils.random_game import RandomGame
 from utils.game_skipper import GameSkipper
 from utils.date_updater import *
+from utils.action_picker import action_picker
 from utils.utils import *
 from utils.logger import Logger
 
@@ -1082,15 +1083,6 @@ class Tracker(GetGameInfo, Steam):
         print(f"\nFound {total_sales} Matching Game Sales")
         self.update_sales_sheet(games)
 
-    @staticmethod
-    def advanced_picker(choices: list[tuple], prompt: str) -> list:
-        """
-        Choice picker using the advanced and less compatible Pick module.
-        """
-        options = [choice[0] for choice in choices]
-        selected_index = pick(options, prompt, indicator="->")[1]
-        return choices[selected_index]
-
     def search_games(
         self, search_query: str, exact: bool = False, min_match: float = 0.6
     ) -> list[dict]:
@@ -1261,27 +1253,6 @@ class Tracker(GetGameInfo, Steam):
         osCommandString = f"notepad.exe {self.main_log_path}"
         os.system(osCommandString)
 
-    def pick_task(self, choices: list[tuple], repeat: bool = True) -> None:
-        """
-        Allows picking a task using Arrow Keys and Enter.
-        """
-        if not sys.stdout.isatty():
-            # runs if it is not an interactable terminal
-            print("\nSkipping Task Picker.\nInput can't be used")
-            return
-        input("\nPress Enter to Pick Next Action:")
-        PROMPT = "What do you want to do? (Use Arrow Keys and Enter):"
-        selected = self.advanced_picker(choices, PROMPT)
-        if selected:
-            name, func = selected[0], selected[1]
-            msg = f"\n[b underline]{name}[/] Selected"
-            self.console.print(msg, highlight=False)
-            func()
-            if "exit" in name.lower():
-                return
-            if repeat:
-                self.pick_task(choices, repeat)
-
     def game_library_actions(self, df: pd.DataFrame) -> None:
         """
         Gives a choice of actions for the current game library.
@@ -1302,7 +1273,7 @@ class Tracker(GetGameInfo, Steam):
         if self.logging:
             choices.append(("Open Log", self.open_log))
         choices.append(("Exit", exit))
-        self.pick_task(choices)
+        action_picker(choices)
         exit()
 
     def fix_app_ids(self) -> None:
