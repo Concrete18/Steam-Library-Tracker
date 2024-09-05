@@ -1,10 +1,10 @@
 import re
 
-from classes.utils import Utils
+from utils.utils import *
 
 
-class GameSkipper(Utils):
-    media_list = [
+class GameSkipper:
+    MEDIA_LIST = [
         "Amazon Prime Video",
         "HBO GO",
         "HBO Max",
@@ -13,14 +13,13 @@ class GameSkipper(Utils):
         "Media Player",
         "Spotify",
         "Netflix",
-        "PlayStationvue",
         "Plex",
         "Pluto",
         "YouTube VR",
         "Youtube",
     ]
 
-    keyword_ignore_list = [
+    KEYWORD_IGNORE_LIST = (
         "demo",
         "youtube",
         "playtest",
@@ -40,7 +39,7 @@ class GameSkipper(Utils):
         "public test",
         "public testing",
         "directors' commentary",
-    ]
+    )
 
     def __init__(
         self,
@@ -50,16 +49,15 @@ class GameSkipper(Utils):
         """
         Game Skipping class that determines if a game should be skipped based on the games name or app ID.
         """
-        self.name_ignore_list = custom_names_to_ignore + self.media_list
+        self.name_ignore_list = custom_names_to_ignore + self.MEDIA_LIST
         self.app_id_ignore_list = app_id_ignore_list
 
     def skip_game(self, game_name: str = None, app_id: int = None) -> bool:
         """
-        TODO improve docstring
-        Checks if the item should be ignored based on `name` or `app_id`.
+        Checks if a game should be skipped based on `name` or `app_id`.
 
         Returns False if neither are given and
-        priortizes checking `app_id` if both are given.
+        prioritizes checking `app_id` if both are given.
 
         `Name` check looks for keywords and if the name is in the name_ignore_list or media list.
 
@@ -74,13 +72,11 @@ class GameSkipper(Utils):
         # ignore by name
         if game_name:
             # checks if name means it should be skipped
-            cleaned_name = self.unicode_remover(game_name).lower()
-            if cleaned_name and cleaned_name in (
-                name.lower() for name in self.name_ignore_list
-            ):
+            cleaned_name = unicode_remover(game_name).lower()
+            if cleaned_name and cleaned_name in map(str.lower, self.name_ignore_list):
                 return True
             # keyword check
-            for keyword in self.keyword_ignore_list:
+            for keyword in self.KEYWORD_IGNORE_LIST:
                 if re.search(rf"\b{keyword}\b", game_name.lower()):
                     return True
         return False

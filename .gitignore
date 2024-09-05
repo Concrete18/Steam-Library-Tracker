@@ -134,16 +134,19 @@ dmypy.json
 *.bak
 *.xml
 *.pkl
+*.old
 
 # custom files
 *.lnk
 config.json
 ignore.json
-playstation_games.json
+excel_options.json
 favorite_games.json
+steam_purchase_history.json
 
 # custom directors
 .vscode/
 logs/*
 outputs/
 commit.py
+/backup

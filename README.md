@@ -1,9 +1,7 @@
 # Game Library Tracker
 
-Steam and PlayStation Library Tracker allows keeping up with what you have played and want to play etc..
+Steam Library Tracker allows keeping up with what you have played and want to play etc..
 Many different types of information is auto retrieved using API's and Scraping.
-
-Adding PlayStation games is a side feature and is not as feature rich as Steam games due to lack of a Playstation API.
 
 ## Images
 
@@ -15,7 +13,6 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 
 - Python Pandas
 - Rich Console
-- Matplotlib
 - API Requests
 - Web Scraping with Requests and BeautifulSoup
 - [EasierExcel](https://github.com/Concrete18/easierexcel) (my custom library based on OpenPyXL)
@@ -24,10 +21,10 @@ Adding PlayStation games is a side feature and is not as feature rich as Steam g
 
 - [Auto Updating Steam Data](#Auto-Updating-Steam-Data)
 - [Game Status Highlighting](#Game-Status-Highlighting)
-- [PlayStation Library Ownership Tracking](#Adding-PlayStation-Games)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
 - [Player Count Sync](#Player-Count-Sync)
+- [Update Library Add Dates](#Update-Library-Add-Dates)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
 - [Omit games by name or App ID](#Omit-games-by-Name-or-App-ID)
@@ -46,15 +43,16 @@ pip install -r requirements.txt
 ```json
 {
   "steam_data": {
-    "vanity_url": "Insert Steam Vanity URL (Optional)",
     "steam_id": "Insert Steam ID",
-    "api_key": "Insert API Key"
+    "steam_id_3": "Insert Steam ID3",
+    "api_key": "Insert API Key",
+    "steam_folder": "Insert Path to Steam Folder Here",
+    "steam_library": "Insert Path to libraryfolders.vdf file (Optional) - Example: C:/Program Files (x86)/Steam/steamapps/libraryfolders.vdf"
   },
   "settings": {
     "excel_filename": "Game Library.xlsx",
     "friends_list_check_freq": 7,
-    "logging": false,
-    "playstation_data_link": "Playstation Link"
+    "logging": false
   },
   "last_runs": {},
   "friend_ids": []
@@ -90,15 +88,6 @@ reordering columns.
 - Quit
 - Ignore
 
-### Adding PlayStation Games
-
-In order to add PlayStation Games, you need to copy a JSON response from your browser into a text file.
-Your PlayStation account must be logged in for this to get your data.
-This is the easiest method I have found so far.
-It is faster than adding the games manually but I am unable to automate it yet.
-
-Note: Hours are not tracked like Steam due to a lack of an API.
-
 ### Favorite Game Sale Checker
 
 Allows choosing your own rating threshold so that a CSV can be made containing
@@ -111,6 +100,31 @@ Picks a random game based on the Play Status you select.
 ### Player Count Sync
 
 Allows syncing of player counts for all games, recent games or only 1 game.
+
+### Update Library Add Dates
+
+Update Dated Added dates using a json file. This is only needed due to the Steam API not providing purchase dates for games in any way I can find.
+
+#### Json Example
+
+```json
+[
+  {
+    "date": "Jul 11, 2024",
+    "games": ["Game 3"],
+    "type": "Purchase",
+    "total": 15.25
+  },
+  {
+    "date": "Jul 10, 2024",
+    "games": ["Game 1", "Game 2"],
+    "type": "Purchase",
+    "total": 13.06
+  }
+]
+```
+
+I wrote a script to pull this data from my steam purchase history page but the script is not currently released.
 
 ### Friends List Tracking
 

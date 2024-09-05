@@ -1,4 +1,9 @@
 {
-  "app_id_ignore_list": [123456, "123456"],
-  "name_ignore_list": ["Steam Deck Deposit"]
+  "app_id_ignore_list": [
+    123456,
+    "123456"
+  ],
+  "name_ignore_list": [
+    "Steam Deck Deposit"
+  ]
 }

@@ -1,0 +1,43 @@
+{
+  "shrink_to_fit_cell": true,
+  "header": {
+    "bold": true,
+    "font_size": 16
+  },
+  "default_align": "center_align",
+  "left_align": [
+    "Name",
+    "Developers",
+    "Publishers",
+    "User Tags",
+    "Notes",
+    "Genre"
+  ],
+  "percent": [
+    "%",
+    "Percent",
+    "Discount"
+  ],
+  "currency": [
+    "Price",
+    "MSRP",
+    "Cost"
+  ],
+  "integer": [
+    "App ID",
+    "Number",
+    "Release Year"
+  ],
+  "count_days": [
+    "Days Till Release"
+  ],
+  "date": [
+    "Last Updated",
+    "Date"
+  ],
+  "decimal": [
+    "Hours Played",
+    "Linux Hours",
+    "Time To Beat in Hours"
+  ]
+}

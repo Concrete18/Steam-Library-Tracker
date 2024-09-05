@@ -3,6 +3,6 @@ exclude_lines =
     pragma: no cover
 
 omit =
-    testing/*
+    tests/*
     classes/__init__.py
     classes/logger.py
