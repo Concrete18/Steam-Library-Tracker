@@ -1,4 +1,4 @@
-# Game Library Tracker
+# Steam Library Tracker
 
 Steam Library Tracker allows keeping up with what you have played and want to play etc..
 Many different types of information is auto retrieved using API's and Scraping.
