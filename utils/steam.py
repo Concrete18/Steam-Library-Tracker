@@ -311,7 +311,7 @@ class Steam:
 
     @staticmethod
     def get_local_config_data(local_config_path: str = None) -> list:
-        """1
+        """
         Gets the local config data for games from the Steam install data.
         """
         if not local_config_path:
