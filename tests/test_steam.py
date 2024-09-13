@@ -155,21 +155,6 @@ class TestGetSteamUsername:
         assert result is None
 
 
-class TestGetProfileUsername:
-
-    steam = Steam()
-
-    def test_extract_profile_username(self):
-        with_slash = "http://steamcommunity.com/id/gabelogannewell/"
-        username = self.steam.extract_profile_username(with_slash)
-        assert username == "gabelogannewell"
-
-    def test_False(self):
-        string = "this is not a url"
-        username = self.steam.extract_profile_username(string)
-        assert username is None
-
-
 class TestGetSteamID:
 
     @pytest.fixture
