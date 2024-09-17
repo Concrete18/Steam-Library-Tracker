@@ -8,22 +8,22 @@ from howlongtobeatpy import HowLongToBeat
 
 # local imports
 from utils.utils import *
-from utils.steam import Steam
+from utils.steam import *
 
 
 @dataclass()
-class Game(Steam):
+class Game:
     app_id: int = 0
     name: str = ""
     developer: str = ""
     publisher: str = ""
-    steam_review_percent: float = 0.0
-    steam_review_total: int | None = None
+    review_percent: float = 0.0
+    review_total: int | None = None
     release_year: int = 0
     price: float | None = None
     discount: float = 0.0
     player_count: int | None = None
-    time_to_beat: float = 0.0
+    # time_to_beat: float = 0.0
     # lists
     genre: list = field(default_factory=list)
     user_tags: list = field(default_factory=list)
@@ -40,7 +40,7 @@ class Game(Steam):
         # on sale
         self.on_sale = self.discount > 0 if self.discount else False
         # game url
-        self.game_url = self.get_game_url(self.app_id) if self.app_id else self.app_id
+        self.game_url = get_game_url(self.app_id) if self.app_id else self.app_id
         # create sentence strings
         self.tags_str = list_to_sentence(self.user_tags)
         self.genre_str = list_to_sentence(self.genre)
@@ -61,39 +61,12 @@ class Game(Steam):
     def __bool__(self):
         return bool(self.app_id and self.name)
 
-    def is_early_access(self) -> str:
-        if (
-            "early access" in self.genre_str.lower()
-            or "early access" in self.tags_str.lower()
-        ):
-            return "Yes"
-        return "No"
-
-
-class GetGameInfo(Steam):
-
-    def parse_release_date(self, app_details: dict) -> int:
-        release_date = app_details.get("release_date", {}).get("date", {})
-        year = get_year(release_date) if release_date else None
-        return year or 0
+    @property
+    def cleaned_name(self):
+        return unicode_remover(self.name)
 
     @staticmethod
-    def get_price(app_details: dict) -> tuple[float | None, float]:
-        """
-        Gets price info from `app_details` and returns None if anything is set up
-        wrong for any or all return values.
-        """
-        if "price_overview" not in app_details:
-            return None, None
-        price_data = app_details["price_overview"]
-        # price
-        price = price_data.get("final", None)
-        final_price = round(price * 0.01, 2) if price else price
-        # discount
-        discount = float(price_data.get("discount_percent", 0.0))
-        return final_price, discount
-
-    def get_time_to_beat(self, game_name: str) -> float | str:
+    def get_time_to_beat(game_name: str) -> float | str:
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
@@ -119,8 +92,41 @@ class GetGameInfo(Steam):
             time_to_beat = best_element.main_extra or best_element.main_story or "-"
         return time_to_beat
 
+    def is_early_access(self) -> str:
+        if (
+            "early access" in self.genre_str.lower()
+            or "early access" in self.tags_str.lower()
+        ):
+            return "Yes"
+        return "No"
+
+
+class GetGameInfo:
+
+    def parse_release_date(self, app_details: dict) -> int:
+        release_date = app_details.get("release_date", {}).get("date", {})
+        year = get_year(release_date) if release_date else None
+        return year or 0
+
+    @staticmethod
+    def get_price(app_details: dict) -> tuple[float | None, float]:
+        """
+        Gets price info from `app_details` and returns None if anything is set up
+        wrong for any or all return values.
+        """
+        if "price_overview" not in app_details:
+            return None, None
+        price_data = app_details["price_overview"]
+        # price
+        price = price_data.get("final", None)
+        final_price = round(price * 0.01, 2) if price else price
+        # discount
+        discount = float(price_data.get("discount_percent", 0.0))
+        return final_price, discount
+
+    @staticmethod
     @retry()
-    def get_app_details(self, app_id: int) -> dict:
+    def get_app_details(app_id: int) -> dict:
         """
         Gets game details.
         """
@@ -147,16 +153,11 @@ class GetGameInfo(Steam):
         price, discount = self.get_price(app_details)
         categories = [desc["description"] for desc in app_details.get("categories", [])]
         # review
-        review_dict = self.get_steam_review(app_id=app_id)
-        steam_review_percent = review_dict["percent"]
-        steam_review_total = review_dict["total"]
+        percent, total = get_steam_review(app_id)
         # user tags
-        user_tags = self.get_steam_user_tags(app_id=app_id)
-        # time to beat
-        game_name_no_unicode = unicode_remover(game_name)
-        ttb = self.get_time_to_beat(game_name_no_unicode)
+        user_tags = get_steam_user_tags(app_id)
         # player count
-        player_count = self.get_player_count(app_id, steam_key) if steam_key else None
+        player_count = get_player_count(app_id, steam_key) if steam_key else None
 
         return Game(
             app_id=app_id,
@@ -164,10 +165,9 @@ class GetGameInfo(Steam):
             developer=developer,
             publisher=publisher,
             genre=genre,
-            steam_review_percent=steam_review_percent,
-            steam_review_total=steam_review_total,
+            review_percent=percent,
+            review_total=total,
             user_tags=user_tags,
-            time_to_beat=ttb,
             player_count=player_count,
             release_year=release_year,
             price=price,

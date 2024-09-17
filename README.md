@@ -1,4 +1,4 @@
-# Game Library Tracker
+# Steam Library Tracker
 
 Steam Library Tracker allows keeping up with what you have played and want to play etc..
 Many different types of information is auto retrieved using API's and Scraping.
@@ -67,7 +67,7 @@ pip install -r requirements.txt
 
 ### Auto Updating Steam Data
 
-Anytime you run Game Library Tracker, it will auto update data for all Steam games if they have new hours
+Anytime you run Steam Library Tracker, it will auto update data for all Steam games if they have new hours
 to add or if any of columns are blank.
 
 If many games are missing columns above a certain threshold, it will ask if you want to update them.

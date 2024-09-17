@@ -38,7 +38,7 @@ class TestGetGameColumnDict:
             "Genre": "-",
             "User Tags": "-",
             "Early Access": "No",
-            "Time To Beat in Hours": "-",
+            # "Time To Beat in Hours": "-",
             "Store Link": "-",
             "Release Year": "-",
         }

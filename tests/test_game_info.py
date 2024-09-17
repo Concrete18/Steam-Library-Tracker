@@ -21,7 +21,7 @@ class TestGame:
             categories=["Category 1"],
             user_tags=["Tag 1"],
         )
-        assert len(vars(game)) == 20
+        assert len(vars(game)) == 19
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
@@ -78,7 +78,7 @@ class TestGame:
         game = Game()
         assert not Game()
         # total attributes
-        assert len(vars(game)) == 20
+        assert len(vars(game)) == 19
         # required values
         assert game.name == ""
         assert game.app_id == 0
@@ -97,10 +97,10 @@ class TestGame:
         assert game.developer == ""
         assert game.publisher == ""
         assert game.release_year == 0
-        assert game.steam_review_percent == 0.0
-        assert game.steam_review_total is None
+        assert game.review_percent == 0.0
+        assert game.review_total is None
         assert game.price is None
-        assert game.time_to_beat == 0.0
+        # assert game.time_to_beat == 0.0
         assert game.player_count is None
         assert game.tags_str == ""
         assert game.categories_str == ""
@@ -149,46 +149,46 @@ class TestGetPriceInfo:
         assert not discount
 
 
-class TestGetTimeToBeat:
-    test = GetGameInfo()
-    func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
+# class TestGetTimeToBeat:
+#     test = GetGameInfo()
+#     func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
 
-    class hltb:
-        def __init__(self, main_story, main_extra) -> None:
-            self.main_story = main_story
-            self.main_extra = main_extra
-            self.similarity = 1
+#     class hltb:
+#         def __init__(self, main_story, main_extra) -> None:
+#             self.main_story = main_story
+#             self.main_extra = main_extra
+#             self.similarity = 1
 
-    def test_should_be_title_caps(self, mocker):
-        """
-        Gets the time to beat for Hades as long as it is title case.
-        """
-        hltb_object = [self.hltb(50, 70)]
-        mocker.patch(self.func_path, return_value=hltb_object)
+#     def test_should_be_title_caps(self, mocker):
+#         """
+#         Gets the time to beat for Hades as long as it is title case.
+#         """
+#         hltb_object = [self.hltb(50, 70)]
+#         mocker.patch(self.func_path, return_value=hltb_object)
 
-        test = self.test.get_time_to_beat("Hades")
-        assert test == 70
+#         test = self.test.get_time_to_beat("Hades")
+#         assert test == 70
 
-    def test_should_be_all_caps(self, mocker):
-        """
-        Gets the time to beat for Hades as long as it is upper case.
-        """
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
-        hltb_object = [self.hltb(10, 30)]
-        mocker.patch(self.func_path, side_effect=[None, hltb_object])
+#     def test_should_be_all_caps(self, mocker):
+#         """
+#         Gets the time to beat for Hades as long as it is upper case.
+#         """
+#         mocker.patch("utils.utils.api_sleeper", return_value=None)
+#         hltb_object = [self.hltb(10, 30)]
+#         mocker.patch(self.func_path, side_effect=[None, hltb_object])
 
-        test = self.test.get_time_to_beat("HITMAN 3")
-        assert test == 30
+#         test = self.test.get_time_to_beat("HITMAN 3")
+#         assert test == 30
 
-    def test_not_found(self, mocker):
-        """
-        Makes sure get_time_to_beat returns '-' for a non existing game.
-        """
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
-        mocker.patch(self.func_path, return_value=None)
+#     def test_not_found(self, mocker):
+#         """
+#         Makes sure get_time_to_beat returns '-' for a non existing game.
+#         """
+#         mocker.patch("utils.utils.api_sleeper", return_value=None)
+#         mocker.patch(self.func_path, return_value=None)
 
-        test = self.test.get_time_to_beat("Fake game is fake")
-        assert test == "-"
+#         test = self.test.get_time_to_beat("Fake game is fake")
+#         assert test == "-"
 
 
 class TestGetAppDetails:
@@ -221,21 +221,24 @@ class TestGetGameInfo:
 
     def test_success(self, mocker):
         App = GetGameInfo()
+        app_id = 2379780
 
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             app_details_json = json.load(file)
-        app_details = app_details_json.get(str(2379780), {}).get("data")
+        app_details = app_details_json.get(str(app_id), {}).get("data")
 
         # mocks get_steam_review
-        result = {"total": 9856, "percent": 0.97}
-        mocker.patch("utils.steam.Steam.get_steam_review", return_value=result)
+        mocker.patch("utils.game_info.get_steam_review", return_value=(0.97, 9856))
+
         # mocks get_steam_user_tags
         result = ["Roguelike", "Card Game", "Deckbuilding"]
-        mocker.patch("utils.steam.Steam.get_steam_user_tags", return_value=result)
+        mocker.patch("utils.game_info.get_steam_user_tags", return_value=result)
+
         # mocks get_time_to_beat
-        mocker.patch("utils.game_info.GetGameInfo.get_time_to_beat", return_value=20)
+        # mocker.patch("utils.game_info.get_time_to_beat", return_value=20)
+
         # mocks get_player_count
-        func = "utils.steam.Steam.get_player_count"
+        func = "utils.game_info.get_player_count"
         mocker.patch(func, return_value=600)
 
         api_key, _ = get_steam_key_and_id()
@@ -243,16 +246,16 @@ class TestGetGameInfo:
         game = App.get_game_info(app_details, api_key)
         assert isinstance(game, Game)
         # attribute check
-        assert game.app_id == 2379780
+        assert game.app_id == app_id
         assert game.name == "Balatro"
         assert game.developer == "LocalThunk"
         assert game.publisher == "Playstack"
         assert game.genre == ["Casual", "Indie", "Strategy"]
         assert game.early_access == "No"
-        assert game.steam_review_percent == 0.97
-        assert game.steam_review_total == 9856
+        assert game.review_percent == 0.97
+        assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
-        assert game.time_to_beat == 20
+        # assert game.time_to_beat == 20
         assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99

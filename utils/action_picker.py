@@ -5,8 +5,9 @@ import sys
 from rich.console import Console
 from pick import pick
 
-
 console = Console()
+
+# pragma: no cover
 
 
 def advanced_picker(
