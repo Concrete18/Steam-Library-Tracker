@@ -32,11 +32,15 @@ class Tracker(GetGameInfo):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
+    APP_TITLE = "Steam Library Tracker"
+
     # config init
+    # -----------------------------
     setup = Setup()
     config_path, config_data, ignore_data, excel_options = setup.run()
 
     # steam_data
+    # -----------------------------
     steam_data = config_data.get("steam_data", False)
     if not steam_data:
         input("Steam Config not found.")
@@ -51,16 +55,19 @@ class Tracker(GetGameInfo):
     workshop_path = f"{steam_library}/steamapps/workshop/content"
 
     # settings
+    # -----------------------------
     excel_filename = config_data["settings"]["excel_filename"]
     backup = Backup(excel_filename, redundancy=4)
     logging = config_data["settings"]["logging"]
 
     # misc
+    # -----------------------------
     NAME_IGNORE_LIST = [string.lower() for string in ignore_data["name_ignore_list"]]
     APP_ID_IGNORE_LIST = ignore_data["app_id_ignore_list"]
     game_skipper = GameSkipper(NAME_IGNORE_LIST, APP_ID_IGNORE_LIST)
 
     # logging setup
+    # -----------------------------
     if logging:
         Log = Logger()
         # Improve logging
@@ -70,6 +77,7 @@ class Tracker(GetGameInfo):
         error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
     # rich console
+    # -----------------------------
     custom_theme = Theme(
         {
             "primary": "bold deep_sky_blue1",
@@ -88,6 +96,7 @@ class Tracker(GetGameInfo):
     console = Console(theme=custom_theme)
 
     # excel file setup
+    # -----------------------------
     excel = Excel(excel_filename, use_logging=logging)
     steam = Sheet(
         excel_object=excel,
@@ -103,6 +112,7 @@ class Tracker(GetGameInfo):
     )
 
     # sets play status choices for multiple functions
+    # -----------------------------
     PLAY_STATUS_CHOICES = (
         "Played",
         "Unplayed",
@@ -116,6 +126,7 @@ class Tracker(GetGameInfo):
     )
 
     # columns
+    # -----------------------------
     EXCEL_COLUMNS = [
         date_added_col := "Date Added",
         date_updated_col := "Date Updated",
@@ -144,7 +155,6 @@ class Tracker(GetGameInfo):
         release_col := "Release Year",
         app_id_col := "App ID",
     ]
-    APP_TITLE = "Steam Library Tracker"
 
     def __init__(self, save: bool) -> None:
         """
@@ -328,7 +338,7 @@ class Tracker(GetGameInfo):
             game_data = self.get_game_column_dict(game)
             # update data
             for column, data in game_data.items():
-                # TODO improve this so it is easier read and written better
+                # TODO improve this so it is written better and easier to read
                 if not data:
                     continue
                 if not game_row.get(self.time_to_beat_col):

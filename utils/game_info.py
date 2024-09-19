@@ -24,11 +24,15 @@ class Game:
     discount: float = 0.0
     player_count: int | None = None
     # time_to_beat: float = 0.0
+
     # lists
+    # -----------------------------
     genre: list = field(default_factory=list)
     user_tags: list = field(default_factory=list)
     categories: list = field(default_factory=list)
+
     # no init
+    # -----------------------------
     on_sale: bool = field(init=False)
     early_access: str = field(init=False)
     game_url: str = field(init=False)

@@ -282,9 +282,6 @@ def get_app_id(game: str, app_list: list[dict]) -> int | None:
     return None
 
 
-# TODO check if this breaks retry
-
-
 @retry()
 def get_player_count(app_id: int, steam_key: int) -> int | None:
     """

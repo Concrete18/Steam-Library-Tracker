@@ -147,6 +147,5 @@ steam_purchase_history.json
 # custom directors
 .vscode/
 logs/*
-outputs/
 commit.py
 /backup
