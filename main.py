@@ -20,7 +20,7 @@ from utils.game_info import Game, GetGameInfo
 from utils.random_game import RandomGame
 from utils.game_skipper import GameSkipper
 from utils.date_updater import *
-from utils.action_picker import action_picker, advanced_picker
+from utils.action_picker import advanced_picker, action_picker
 from utils.utils import *
 from utils.logger import Logger
 
@@ -377,8 +377,8 @@ class Tracker(GetGameInfo):
         with Progress(transient=True) as progress:
             progress.add_task("Checking Workshop Size", total=None)
 
-            app_list = self.get_app_list()
-            entry_list = self.workshop_size(self.workshop_path, app_list)
+            app_list = get_app_list()
+            entry_list = workshop_size(self.workshop_path, app_list)
 
             table_title = f"Game Workshop Sizes"
             table = Table(
@@ -1230,13 +1230,13 @@ class Tracker(GetGameInfo):
         """
         Updates Games "Added Date".
         """
-        app_list = self.get_app_list()
 
         self.console.print("\nStarting Added Date Updater")
         with Progress(transient=True) as progress:
             progress.add_task("Updating Added Dates", total=None)
 
             purchase_data = load_purchase_data()
+            app_list = get_app_list()
             games_data = create_game_data(purchase_data, app_list)
 
             dates_to_update = get_dates_to_update(
@@ -1245,7 +1245,7 @@ class Tracker(GetGameInfo):
             for app_id, purchase_datetime in dates_to_update.items():
                 self.steam.update_cell(app_id, self.date_added_col, purchase_datetime)
 
-            msg = f"\n{len(dates_to_update)} games Added dates were updated"
+            msg = f"\n\n{len(dates_to_update)} games Added dates were updated"
             self.console.print(msg)
 
         self.excel.save(use_print=False, backup=False)
@@ -1281,7 +1281,7 @@ class Tracker(GetGameInfo):
         """
         Created to fix steam ID's in case they get messed up.
         """
-        app_list = self.get_app_list()
+        app_list = get_app_list()
         for app_id in self.steam.row_idx:
             name = self.steam.get_cell(app_id, self.name_col)
             correct_app_id = self.get_app_id(name, app_list)
