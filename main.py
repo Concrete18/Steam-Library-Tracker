@@ -1074,7 +1074,7 @@ class Tracker(GetGameInfo):
                 self.steam_rev_total_col: game.review_total,
                 self.dev_col: game.developer,
                 self.pub_col: game.publisher,
-                self.time_to_beat_col: game.time_to_beat,
+                # self.time_to_beat_col: game.time_to_beat,
                 self.user_tags_col: game.tags_str,
                 self.release_col: game.release_year,
                 self.genre_col: game.genre_str,
