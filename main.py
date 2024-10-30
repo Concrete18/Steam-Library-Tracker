@@ -65,12 +65,12 @@ class Tracker(GetGameInfo):
     NAME_IGNORE_LIST = [string.lower() for string in ignore_data["name_ignore_list"]]
     APP_ID_IGNORE_LIST = ignore_data["app_id_ignore_list"]
     game_skipper = GameSkipper(NAME_IGNORE_LIST, APP_ID_IGNORE_LIST)
+    dataframe = None
 
     # logging setup
     # -----------------------------
     if logging:
         Log = Logger()
-        # Improve logging
         main_log_path = "logs/main.log"
         main_log = Log.create_log(name="main", log_path=main_log_path)
         friend_log = Log.create_log(name="friend", log_path="logs/friend.log")
@@ -94,22 +94,6 @@ class Tracker(GetGameInfo):
         }
     )
     console = Console(theme=custom_theme)
-
-    # excel file setup
-    # -----------------------------
-    excel = Excel(excel_filename, use_logging=logging)
-    steam = Sheet(
-        excel_object=excel,
-        sheet_name="Steam",
-        column_name="App ID",
-        options=excel_options,
-    )
-    sales = Sheet(
-        excel_object=excel,
-        sheet_name="Sales",
-        column_name="Name",
-        options=excel_options,
-    )
 
     # sets play status choices for multiple functions
     # -----------------------------
@@ -166,6 +150,25 @@ class Tracker(GetGameInfo):
         self.internet_connected = check_internet_connection()
         if not self.internet_connected:
             self.console.print("\nNo Internet Detected", style="warning")
+        self.load_excel_file()
+
+    def load_excel_file(self):
+        """
+        Loads Excel data from file.
+        """
+        self.excel = Excel(self.excel_filename, use_logging=self.logging)
+        self.steam = Sheet(
+            excel_object=self.excel,
+            sheet_name="Steam",
+            column_name="App ID",
+            options=self.excel_options,
+        )
+        self.sales = Sheet(
+            excel_object=self.excel,
+            sheet_name="Sales",
+            column_name="Name",
+            options=self.excel_options,
+        )
 
     def update_steam_id(self):
         """
@@ -259,6 +262,23 @@ class Tracker(GetGameInfo):
         """
         set_title = title or self.APP_TITLE
         os.system(f"title {set_title}")
+
+    def sync_all(self):
+        """
+        Runs Steam synchronization.
+        """
+        try:
+            self.sync_steam_games(self.steam_key, self.steam_id)
+            # table data
+            self.dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
+            self.output_recently_played_games(self.dataframe)
+            # extra data updates
+            self.updated_game_data(self.dataframe)
+            self.sync_friends_list()
+        except Exception:
+            error_message = f"\nError occurred: {traceback.format_exc()}"
+            print(error_message)
+        self.auto_backup()
 
     def create_save_every_nth(self, save_on_nth: int = 20):
         counter = 0
@@ -365,6 +385,7 @@ class Tracker(GetGameInfo):
         """
         Gets app_ids and updates games using update_extra_game_info func.
         """
+        self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=50)
         self.update_extra_game_info(app_ids, update_type)
 
@@ -445,7 +466,8 @@ class Tracker(GetGameInfo):
             self.steam_rev_per_col,
             self.steam_rev_total_col,
             self.user_tags_col,
-            self.time_to_beat_col,
+            # TODO add this back once time to beat is working again
+            # self.time_to_beat_col,
             self.release_col,
             self.ea_col,
         ]
@@ -521,7 +543,7 @@ class Tracker(GetGameInfo):
             last_played_dt = game.get(self.last_played_col)
             last_played = ""
             days_since = ""
-            # TODO fix bug related to this when a game is added without being played before
+            # BUG when a game is added without being played before
             # add a test once the problem is discovered
             try:
                 last_played = (
@@ -1021,7 +1043,7 @@ class Tracker(GetGameInfo):
         Allows you to pick a play_status or installed status to have a random game chosen from.
         """
         Picker = RandomGame(
-            steam_sheet=Tracker.steam,
+            steam_sheet=self.steam,
             name_column=self.name_col,
             installed_column=self.installed_col,
             play_status_choices=self.PLAY_STATUS_CHOICES,
@@ -1092,6 +1114,7 @@ class Tracker(GetGameInfo):
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an IntPrompt.ask after running.
         """
+        self.load_excel_file()
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         min_rating = IntPrompt.ask(
             "\nWhat is the minimum rating for this search? (1-10)",
@@ -1222,6 +1245,7 @@ class Tracker(GetGameInfo):
         """
         Updates game player counts using the Steam API.
         """
+        self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=15)
         self.bulk_update_player_count(app_ids, update_type)
         self.excel.save(use_print=False, backup=False)
@@ -1230,7 +1254,7 @@ class Tracker(GetGameInfo):
         """
         Updates Games "Added Date".
         """
-
+        self.load_excel_file()
         self.console.print("\nStarting Added Date Updater")
         with Progress(transient=True) as progress:
             progress.add_task("Updating Added Dates", total=None)
@@ -1250,31 +1274,82 @@ class Tracker(GetGameInfo):
 
         self.excel.save(use_print=False, backup=False)
 
+    def resync_all(self):
+        """
+        Reloads excel file and runs Steam sync again.
+        """
+        if self.excel.changes_made:
+            self.excel.save(use_print=False)
+        self.load_excel_file()
+        self.sync_all()
+
     def open_log(self) -> None:
         osCommandString = f"notepad.exe {self.main_log_path}"
         os.system(osCommandString)
 
-    def game_library_actions(self, df: pd.DataFrame) -> None:
+    def game_library_actions(self) -> None:
         """
         Gives a choice of actions for the current game library.
         """
+        # checks if datafame was created or not
+        valid_df = True
+        if not isinstance(self.dataframe, pd.DataFrame):
+            msg = "Dataframe failed to load.\nRemoving Options that required Dataframe."
+            print(msg)
+            valid_df = False
+        # creates choice list
         choices = [
-            ("Exit and Open the Excel File", self.excel.open_excel),
-            ("Random Game Explorer", self.start_random_game_picker),
-            ("Player Counts Sync", lambda: self.sync_player_counts(df)),
-            ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
-            ("Game Data Sync", lambda: self.sync_game_data(df)),
-            ("Statistics Display", lambda: self.output_statistics(df)),
-            ("Workshop Storage Check", self.check_workshop_size),
-            ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
-            ("Update Library Add Dates", lambda: self.update_add_dates()),
-            ("Backup Excel File", lambda: self.backup.run()),
-            # TODO create action to open main data folder
+            (
+                "Exit and Open the Excel File",
+                self.excel.open_excel,
+            ),
+            (
+                "Resync All",
+                self.resync_all,
+            ),
+            (
+                "Random Game Explorer",
+                self.start_random_game_picker,
+            ),
+            (
+                "Player Counts Sync",
+                lambda: self.sync_player_counts(self.dataframe) if valid_df else None,
+            ),
+            (
+                "Favorite Games Sales Sync",
+                self.sync_favorite_games_sales,
+            ),
+            (
+                "Game Data Sync",
+                lambda: self.sync_game_data(self.dataframe) if valid_df else None,
+            ),
+            (
+                "Statistics Display",
+                lambda: self.output_statistics(self.dataframe) if valid_df else None,
+            ),
+            (
+                "Workshop Storage Check",
+                self.check_workshop_size,
+            ),
+            (
+                "Steam Friends List Sync",
+                lambda: self.sync_friends_list(0),
+            ),
+            (
+                "Update Library Add Dates",
+                lambda: self.update_add_dates(),
+            ),
+            (
+                "Backup Excel File",
+                lambda: self.backup.run(),
+            ),
         ]
+        final_choices = [entry for entry in choices if entry is not None]
+
         if self.logging:
-            choices.append(("Open Log", self.open_log))
-        choices.append(("Exit", exit))
-        action_picker(choices)
+            final_choices.append(("Open Log", self.open_log))
+        final_choices.append(("Exit", exit))
+        action_picker(final_choices)
         exit()
 
     def fix_app_ids(self) -> None:
@@ -1301,27 +1376,22 @@ class Tracker(GetGameInfo):
             self.console.print(self.APP_TITLE, style="primary")
             rich_date = create_rich_date_and_time()
             self.console.print(rich_date)
-            self.sync_steam_games(self.steam_key, self.steam_id)
-            # table data
-            dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
-            self.output_recently_played_games(dataframe)
 
-            # extra data updates
-            self.updated_game_data(dataframe)
-            self.sync_friends_list()
-
+            # sync and backup
+            self.sync_all()
             self.auto_backup()
-            self.game_library_actions(dataframe)
+
+            self.game_library_actions()
         except (KeyboardInterrupt, EOFError):
             delay = 0.1
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
             exit()
         except Exception as e:
-            msg = f"Error occurred: {traceback.format_exc()}"
+            msg = f"\nError occurred: {traceback.format_exc()}"
             if "Test error" not in str(e):
                 self.error_log.error(msg)
-            print(msg)
+            input(msg)
 
 
 if __name__ == "__main__":
