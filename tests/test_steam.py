@@ -52,7 +52,7 @@ class TestSteamReview:
     """
 
     def test_success(self):
-        # TODO mock request
+        # WIP mock request
         percent, total = get_steam_review(app_id=752590)
         assert isinstance(percent, float)
         assert isinstance(total, int)
@@ -266,7 +266,7 @@ class TestGetSteamGamePlayerCount:
 # class TestGetSteamGameUserTags:
 
 #     def test_success(self):
-#         # TODO mock this web scrapping
+#         # WIP mock this web scrapping
 #         user_tags = get_steam_user_tags(730)
 #         assert isinstance(user_tags, list)
 

@@ -344,7 +344,7 @@ def workshop_size(workshop_path: str, app_list: list) -> list[dict]:
     game folder within `workshop_path`.
     """
     app_ids = os.listdir(workshop_path)
-    # TODO find out why some app_ids are not found sometimes
+    # BUG find out why some app_ids are not found sometimes
     found_entries = filter(lambda entry: str(entry["appid"]) in app_ids, app_list)
     entry_list = []
     for entry in found_entries:
