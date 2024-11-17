@@ -1280,8 +1280,9 @@ class Tracker(GetGameInfo):
         """
         if self.excel.changes_made:
             self.excel.save(use_print=False)
+        os.system("cls")
         self.load_excel_file()
-        self.sync_all()
+        self.main()
 
     def open_log(self) -> None:
         osCommandString = f"notepad.exe {self.main_log_path}"
