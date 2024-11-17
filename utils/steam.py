@@ -243,7 +243,7 @@ def get_game_url(app_id: int) -> str:
 
 
 @retry()
-def get_app_details(app_id) -> list[dict]:
+def get_app_details(app_id: int) -> list[dict]:
     """
     Gets game details.
     """
