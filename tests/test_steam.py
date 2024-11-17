@@ -59,7 +59,7 @@ class TestSteamReview:
 
 
 class TestGetGameUrl:
-    def test_get_game_url(self):
+    def test_success(self):
 
         store_link_tests = {
             "752590": "https://store.steampowered.com/app/752590/",
@@ -68,6 +68,10 @@ class TestGetGameUrl:
         for app_id, answer in store_link_tests.items():
             game_url = get_game_url(app_id)
             assert game_url == answer
+
+    def test_invalid(self):
+        game_url = get_game_url(None)
+        assert game_url == None
 
 
 class TestGetRecentlyPlayedGames:
@@ -297,9 +301,28 @@ class TestGetAppList:
         mocker.patch("requests.get", return_value=mock_response)
 
         app_list = get_app_list()
-        print(app_list)
         assert isinstance(app_list[0]["appid"], int)
         assert isinstance(app_list[0]["name"], str)
+
+
+class TestGetAppDetails:
+
+    @pytest.fixture
+    def mock_response(self, mocker):
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {"steam_appid": 12345, "name": "Test Game"}
+
+        mock_response.ok = True
+        return mock_response
+
+    def test_success(self, mock_response, mocker):
+        mocker.patch("requests.get", return_value=mock_response)
+        app_details = get_app_details(12345)
+
+        app_id = app_details.get("steam_appid", 0)
+        game_name = app_details.get("name", "")
+        assert app_id == 12345
+        assert game_name == "Test Game"
 
 
 class TestGetAppId:
