@@ -334,10 +334,12 @@ def is_response_yes(
     return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
 
 
-def create_rich_date_and_time(date: dt.datetime = dt.datetime.now()) -> str:
+def create_rich_date_and_time(date: dt.datetime = None) -> str:
     """
     Returns a formatted date and time for use with Rich Console print.
     """
+    if not isinstance(date, dt.datetime) or not date:
+        date = dt.datetime.now()
     formatted_date = f"[secondary]{date.strftime('%A, %B %d, %Y')}[/]"
     formatted_time = f"[secondary]{date.strftime('%I:%M %p')}[/]"
     return f"{formatted_date} [dim]|[/] {formatted_time}"
