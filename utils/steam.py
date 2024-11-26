@@ -335,6 +335,9 @@ def get_game_local_data(app_id: int, local_config: dict) -> tuple[int, int]:
     game_config_data = local_config.get(str(app_id), {})
     last_played = int(game_config_data.get("LastPlayed", 0))
     play_time = int(game_config_data.get("Playtime", 0))
+    # replaces zero values with None for both variables
+    last_played = None if last_played == 0 else last_played
+    play_time = None if play_time == 0 else play_time
     return last_played, play_time
 
 

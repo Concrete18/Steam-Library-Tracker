@@ -358,8 +358,8 @@ class TestGetGameLocalData:
     def test_fail(self):
         APP_ID = 999999999999999
         last_played, play_time = get_game_local_data(APP_ID, self.local_config)
-        assert last_played == 0
-        assert play_time == 0
+        assert last_played == None
+        assert play_time == None
 
 
 class TestworkshopSize:

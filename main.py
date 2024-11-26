@@ -432,7 +432,7 @@ class Tracker(GetGameInfo):
         if recently_executed(self.config_data, "recently_played", n_days):
             return []
         # get recently played games
-        recently_played = self.find_recent_games(df, self.date_updated_col, n_days)
+        recently_played = self.find_recent_games(df, self.last_played_col, n_days)
         recently_played_app_ids = [game[self.app_id_col] for game in recently_played]
         return recently_played_app_ids
 
@@ -521,7 +521,7 @@ class Tracker(GetGameInfo):
         """
         Creates a table with the recently played Games.
         """
-        recently_played_games = self.find_recent_games(df, "Date Updated", n_days)
+        recently_played_games = self.find_recent_games(df, self.last_played_col, n_days)
         # creates table
         table_title = f"Recently Played Games\nWithin {n_days} Days"
         table = Table(
@@ -812,7 +812,6 @@ class Tracker(GetGameInfo):
         added_games = []
         played_games = []
         name_changes = []
-        save_every_nth = self.create_save_every_nth()
         print()
         total_games = len(steam_games)
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
@@ -884,9 +883,6 @@ class Tracker(GetGameInfo):
                     installed=installed,
                 )
                 added_games.append(added_info)
-        # saves each time the checks count is divisible by num
-        if self.save_to_file:
-            save_every_nth()
         # prints the total games updated and added
         if 0 < len(played_games) < 50:
             self.output_played_games_info(played_games)
@@ -1227,7 +1223,7 @@ class Tracker(GetGameInfo):
         app_ids = []
         if selected_action == options[0]:
             update_type = "Recent"
-            recently_played = self.find_recent_games(df, self.date_updated_col, 30)
+            recently_played = self.find_recent_games(df, self.last_played_col, 30)
             app_ids = [game[self.app_id_col] for game in recently_played]
         elif selected_action == options[1]:
             update_type = "All"
