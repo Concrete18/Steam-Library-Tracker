@@ -5,7 +5,7 @@ import random
 from rich.console import Console
 from rich.theme import Theme
 
-from utils.utils import *
+from library.utils import *
 
 
 class RandomGame():

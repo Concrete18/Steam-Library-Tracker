@@ -4,7 +4,7 @@ import pytest, time, json, os
 
 
 # local imports
-from utils.utils import *
+from library.utils import *
 
 
 class TestCreateHyperlink:

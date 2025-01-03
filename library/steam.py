@@ -6,8 +6,8 @@ from bs4 import BeautifulSoup
 import requests, vdf
 
 # local imports
-from utils.utils import *
-from utils.logger import Logger
+from library.utils import *
+from library.logger import Logger
 
 Log = Logger()
 error_log = Log.create_log(name="base_error", log_path="logs/error.log")

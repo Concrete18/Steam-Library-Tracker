@@ -14,15 +14,15 @@ from rich.theme import Theme
 
 # local imports
 from setup import Setup
-from utils.backup import Backup
-from utils.steam import *
-from utils.game_info import Game, GetGameInfo
-from utils.random_game import RandomGame
-from utils.game_skipper import GameSkipper
-from utils.date_updater import *
-from utils.action_picker import advanced_picker, action_picker
-from utils.utils import *
-from utils.logger import Logger
+from library.backup import Backup
+from library.steam import *
+from library.game_info import Game, GetGameInfo
+from library.random_game import RandomGame
+from library.game_skipper import GameSkipper
+from library.date_updater import *
+from library.action_picker import advanced_picker, action_picker
+from library.utils import *
+from library.logger import Logger
 
 # my package imports
 from easierexcel import Excel, Sheet

@@ -1,7 +1,7 @@
 import pytest, json
 
-from utils.game_info import Game, GetGameInfo
-from utils.utils import *
+from library.game_info import Game, GetGameInfo
+from library.utils import *
 
 
 class TestGame:
@@ -173,7 +173,7 @@ class TestGetPriceInfo:
 #         """
 #         Gets the time to beat for Hades as long as it is upper case.
 #         """
-#         mocker.patch("utils.utils.api_sleeper", return_value=None)
+#         mocker.patch("library.utils.api_sleeper", return_value=None)
 #         hltb_object = [self.hltb(10, 30)]
 #         mocker.patch(self.func_path, side_effect=[None, hltb_object])
 
@@ -184,7 +184,7 @@ class TestGetPriceInfo:
 #         """
 #         Makes sure get_time_to_beat returns '-' for a non existing game.
 #         """
-#         mocker.patch("utils.utils.api_sleeper", return_value=None)
+#         mocker.patch("library.utils.api_sleeper", return_value=None)
 #         mocker.patch(self.func_path, return_value=None)
 
 #         test = self.test.get_time_to_beat("Fake game is fake")
@@ -195,7 +195,7 @@ class TestGetAppDetails:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_sleeper", return_value=None)
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             data = json.load(file)
         mock_response = mocker.Mock()
@@ -205,13 +205,13 @@ class TestGetAppDetails:
 
     def test_success(self, mock_response, mocker):
         App = GetGameInfo()
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_sleeper", return_value=None)
         mocker.patch("requests.get", return_value=mock_response)
         assert App.get_app_details(2379780)
 
     def test_request_error(self, mock_response, mocker):
         App = GetGameInfo()
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_sleeper", return_value=None)
         mock_response.ok = False
         mocker.patch("requests.get", return_value=mock_response)
         assert App.get_app_details(2379780) == {}
@@ -228,17 +228,17 @@ class TestGetGameInfo:
         app_details = app_details_json.get(str(app_id), {}).get("data")
 
         # mocks get_steam_review
-        mocker.patch("utils.game_info.get_steam_review", return_value=(0.97, 9856))
+        mocker.patch("library.game_info.get_steam_review", return_value=(0.97, 9856))
 
         # mocks get_steam_user_tags
         result = ["Roguelike", "Card Game", "Deckbuilding"]
-        mocker.patch("utils.game_info.get_steam_user_tags", return_value=result)
+        mocker.patch("library.game_info.get_steam_user_tags", return_value=result)
 
         # mocks get_time_to_beat
-        # mocker.patch("utils.game_info.get_time_to_beat", return_value=20)
+        # mocker.patch("library.game_info.get_time_to_beat", return_value=20)
 
         # mocks get_player_count
-        func = "utils.game_info.get_player_count"
+        func = "library.game_info.get_player_count"
         mocker.patch(func, return_value=600)
 
         api_key, _ = get_steam_key_and_id()

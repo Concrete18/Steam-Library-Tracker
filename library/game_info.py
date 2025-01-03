@@ -7,8 +7,8 @@ import requests
 from howlongtobeatpy import HowLongToBeat
 
 # local imports
-from utils.utils import *
-from utils.steam import *
+from library.utils import *
+from library.steam import *
 
 
 @dataclass()
