@@ -135,8 +135,8 @@ class GetGameInfo:
         Gets game details.
         """
         url = "https://store.steampowered.com/api/appdetails"
-        params = {"appids": app_id, "l": "english"}
-        api_sleeper("steam_app_details")
+        params = {"appids": app_id, "cc": "us", "l": "english"}
+        api_sleeper("steam_app_details", sleep_length=1)
         response = requests.get(url, params=params)
         if response.ok:
             return response.json().get(str(app_id), {}).get("data", {})
