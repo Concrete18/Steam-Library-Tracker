@@ -1,5 +1,5 @@
 # standard library
-import os, math, traceback, time
+import os, sys, math, traceback, time
 import datetime as dt
 
 # third-party imports
@@ -44,7 +44,7 @@ class Tracker(GetGameInfo):
     steam_data = config_data.get("steam_data", False)
     if not steam_data:
         input("Steam Config not found.")
-        exit()
+        sys.exit(0)
     steam_key = steam_data.get("api_key", None)
     steam_id = steam_data.get("steam_id", None)
     steam_id_3 = steam_data.get("steam_id_3", None)
@@ -179,7 +179,7 @@ class Tracker(GetGameInfo):
             save_json(self.config_data, self.config_path)
         else:
             input("Steam ID is missing.")
-            exit()
+            sys.exit(0)
 
     def auto_backup(self, check_freq_days: int = 14) -> None:
         """
@@ -928,7 +928,7 @@ class Tracker(GetGameInfo):
             return
         print("\nFailed to retrieve Steam Games\nSteam Servers may be down")
         input()
-        exit()
+        sys.exit(0)
 
     def update_steam_game(
         self,
@@ -1296,26 +1296,14 @@ class Tracker(GetGameInfo):
             valid_df = False
         # creates choice list
         choices = [
-            (
-                "Exit and Open the Excel File",
-                self.excel.open_excel,
-            ),
-            (
-                "Resync All",
-                self.resync_all,
-            ),
-            (
-                "Random Game Explorer",
-                self.start_random_game_picker,
-            ),
+            ("Resync", self.resync_all),
+            ("Open in Excel", self.excel.open_excel),
+            ("Random Game Explorer", self.start_random_game_picker),
             (
                 "Player Counts Sync",
                 lambda: self.sync_player_counts(self.dataframe) if valid_df else None,
             ),
-            (
-                "Favorite Games Sales Sync",
-                self.sync_favorite_games_sales,
-            ),
+            ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             (
                 "Game Data Sync",
                 lambda: self.sync_game_data(self.dataframe) if valid_df else None,
@@ -1324,30 +1312,17 @@ class Tracker(GetGameInfo):
                 "Statistics Display",
                 lambda: self.output_statistics(self.dataframe) if valid_df else None,
             ),
-            (
-                "Workshop Storage Check",
-                self.check_workshop_size,
-            ),
-            (
-                "Steam Friends List Sync",
-                lambda: self.sync_friends_list(0),
-            ),
-            (
-                "Update Library Add Dates",
-                lambda: self.update_add_dates(),
-            ),
-            (
-                "Backup Excel File",
-                lambda: self.backup.run(),
-            ),
+            ("Workshop Storage Check", self.check_workshop_size),
+            ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
+            ("Update Library Add Dates", lambda: self.update_add_dates()),
+            ("Backup Excel File", lambda: self.backup.run()),
         ]
         final_choices = [entry for entry in choices if entry is not None]
-
         if self.logging:
             final_choices.append(("Open Log", self.open_log))
-        final_choices.append(("Exit", exit))
+        final_choices.append(("Exit", lambda: sys.exit(0)))
         action_picker(final_choices)
-        exit()
+        sys.exit(0)
 
     def fix_app_ids(self) -> None:
         """
@@ -1383,7 +1358,7 @@ class Tracker(GetGameInfo):
             delay = 0.1
             print(f"\nClosing in {delay} second(s)")
             time.sleep(delay)
-            exit()
+            sys.exit(0)
         except Exception as e:
             msg = f"\nError occurred: {traceback.format_exc()}"
             if "Test error" not in str(e):

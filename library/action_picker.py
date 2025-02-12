@@ -39,7 +39,5 @@ def action_picker(choices: list[tuple], repeat: bool = True) -> None:
         msg = f"\n[b underline]{name}[/] Selected"
         console.print(msg, highlight=False)
         func()
-        if "exit" in name.lower():
-            return
         if repeat:
             action_picker(choices, repeat)

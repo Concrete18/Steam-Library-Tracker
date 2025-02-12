@@ -1,5 +1,5 @@
 from pathlib import Path
-import shutil, json, re
+import shutil, json, re, sys
 
 
 class Setup:
@@ -126,7 +126,7 @@ class Setup:
             else:
                 print(errors)
         input("\nPress Enter to Close")
-        exit()
+        sys.exit(0)
 
 
 if __name__ == "__main__":  # pragma: no cover
