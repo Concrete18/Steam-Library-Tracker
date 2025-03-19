@@ -1295,23 +1295,24 @@ class Tracker(GetGameInfo):
             print(msg)
             valid_df = False
         # creates choice list
+        player_count_sync = lambda: (
+            self.sync_player_counts(self.dataframe) if valid_df else None
+        )
+        game_data_sync = lambda: (
+            self.sync_game_data(self.dataframe) if valid_df else None
+        )
+        stat_display = lambda: (
+            self.output_statistics(self.dataframe) if valid_df else None
+        )
+
         choices = [
             ("Resync", self.resync_all),
             ("Open in Excel", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
-            (
-                "Player Counts Sync",
-                lambda: self.sync_player_counts(self.dataframe) if valid_df else None,
-            ),
+            ("Player Counts Sync", player_count_sync),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
-            (
-                "Game Data Sync",
-                lambda: self.sync_game_data(self.dataframe) if valid_df else None,
-            ),
-            (
-                "Statistics Display",
-                lambda: self.output_statistics(self.dataframe) if valid_df else None,
-            ),
+            ("Game Data Sync", game_data_sync),
+            ("Statistics Display", stat_display),
             ("Workshop Storage Check", self.check_workshop_size),
             ("Steam Friends List Sync", lambda: self.sync_friends_list(0)),
             ("Update Library Add Dates", lambda: self.update_add_dates()),
@@ -1320,7 +1321,12 @@ class Tracker(GetGameInfo):
         final_choices = [entry for entry in choices if entry is not None]
         if self.logging:
             final_choices.append(("Open Log", self.open_log))
-        final_choices.append(("Exit", lambda: sys.exit(0)))
+        final_choices.extend(
+            [
+                ("Cancel", lambda: None),
+                ("Exit", lambda: sys.exit(0)),
+            ]
+        )
         action_picker(final_choices)
         sys.exit(0)
 
