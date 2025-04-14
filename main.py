@@ -920,15 +920,15 @@ class Tracker(GetGameInfo):
         if not self.internet_connected:
             return
         owned_games = get_owned_steam_games(steam_key, steam_id)
-        if owned_games:
-            sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
-            if not sheet_app_ids:
-                print(f"\nStarting First Steam Sync")
-            self.sync_steam_games_with_sheet(owned_games, sheet_app_ids)
+        if not owned_games:
+            text="\nFailed to retrieve Steam Games\nSteam Servers may be down"
+            print("\nFailed to retrieve Steam Games\nSteam Servers may be down")
+            input()
             return
-        print("\nFailed to retrieve Steam Games\nSteam Servers may be down")
-        input()
-        sys.exit(0)
+        sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
+        if not sheet_app_ids:
+            print(f"\nStarting First Steam Sync")
+        self.sync_steam_games_with_sheet(owned_games, sheet_app_ids)
 
     def update_steam_game(
         self,
@@ -1251,7 +1251,7 @@ class Tracker(GetGameInfo):
         Updates Games "Added Date".
         """
         self.load_excel_file()
-        self.console.print("\nStarting Added Date Updater")
+        print()
         with Progress(transient=True) as progress:
             progress.add_task("Updating Added Dates", total=None)
 
