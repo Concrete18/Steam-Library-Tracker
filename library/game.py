@@ -142,7 +142,7 @@ class GetGameInfo:
         """
         url = "https://store.steampowered.com/api/appdetails"
         params = {"appids": app_id, "cc": "us", "l": "english"}
-        throttler.wait_if("steam_app_details")
+        throttler.wait_if("steam_store")
         response = requests.get(url, params=params)
         if response.ok:
             return response.json().get(str(app_id), {}).get("data", {})

@@ -119,7 +119,7 @@ def get_owned_steam_games(steam_key: str, steam_id: int) -> list | None:
     base_url = "http://api.steampowered.com/"
     api_action = "IPlayerService/GetOwnedGames/v0001/"
     url = base_url + api_action
-    throttler.wait_if("steam_owned_games", 0.5)
+    throttler.wait_if("steam_api")
     params = {
         "key": steam_key,
         "steamid": steam_id,
@@ -155,7 +155,7 @@ def get_recently_played_steam_games(
     base_url = "http://api.steampowered.com/"
     api_action = "IPlayerService/GetRecentlyPlayedGames/v1/"
     url = base_url + api_action
-    throttler.wait_if("steam_owned_games", 0.5)
+    throttler.wait_if("steam_api")
     params = {
         "key": steam_key,
         "steamid": steam_id,
@@ -176,20 +176,6 @@ def get_recently_played_steam_games(
         if "Test error" in str(e):
             return None
         error_log.warning(msg)
-
-
-@retry()
-def get_app_details(app_id: int) -> list[dict]:
-    """
-    Gets game details.
-    """
-    url = "https://store.steampowered.com/api/appdetails"
-    throttler.wait_if("steam_app_details", 0.5)
-    params = {"appids": app_id, "l": "english"}
-    response = requests.get(url, params)
-    if response.ok:
-        return response.json()
-    return None
 
 
 @retry()

@@ -76,7 +76,7 @@ class Scraper:
         """
         Gets some extra data by scraping the Steam Store page found using it's `app_id`.
         """
-        throttler.wait_if("store_page_scrape", 0.75)
+        throttler.wait_if("steam_store", 0.75)
         response = requests.get(f"{self.url}{app_id}")
         if not response.ok:
             return StoreData()

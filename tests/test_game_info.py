@@ -199,7 +199,13 @@ class TestGetAppDetails:
             "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
         )
         mocker.patch("requests.get", return_value=mock_response)
-        assert App.get_app_details(2379780)
+        app_details = App.get_app_details(2379780)
+        assert app_details
+
+        app_id = app_details.get("steam_appid", 0)
+        game_name = app_details.get("name", "")
+        assert app_id == 2379780
+        assert game_name == "Balatro"
 
     def test_request_error(self, mock_response, mocker):
         App = GetGameInfo()

@@ -291,26 +291,6 @@ class TestGetAppList:
         assert isinstance(app_list[0]["name"], str)
 
 
-class TestGetAppDetails:
-
-    @pytest.fixture
-    def mock_response(self, mocker):
-        mock_response = mocker.Mock()
-        mock_response.json.return_value = {"steam_appid": 12345, "name": "Test Game"}
-
-        mock_response.ok = True
-        return mock_response
-
-    def test_success(self, mock_response, mocker):
-        mocker.patch("requests.get", return_value=mock_response)
-        app_details = get_app_details(12345)
-
-        app_id = app_details.get("steam_appid", 0)
-        game_name = app_details.get("name", "")
-        assert app_id == 12345
-        assert game_name == "Test Game"
-
-
 class TestGetAppId:
     app_list = [{"appid": 12345, "name": "Hades"}]
 
