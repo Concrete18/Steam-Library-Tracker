@@ -282,7 +282,6 @@ class Tracker(GetGameInfo):
         except Exception:
             error_message = f"\nError occurred: {traceback.format_exc()}"
             print(error_message)
-        self.auto_backup()
 
     def create_save_every_nth(self, save_on_nth: int = 20):
         counter = 0
@@ -1193,6 +1192,9 @@ class Tracker(GetGameInfo):
             return {}
 
     def bulk_update_player_count(self, app_ids: list[int], update_type: str) -> list:
+        """
+        Bulk updates player counts.
+        """
         print()  # forced new line due to how track() works
         player_counts = []
         desc = f"Updating {update_type} Player Count(s)"
@@ -1213,11 +1215,11 @@ class Tracker(GetGameInfo):
         or just one game.
         """
         options = [
-            f"Update {last_num} Recently Played Games",
-            "Update All Games",
-            "Update One Game",
+            f"{last_num} Recently Played Games",
+            "All Games",
+            "One Game",
         ]
-        PROMPT = "What game(s) do you want to update?"
+        PROMPT = "What game(s) do you want to select?"
         selected_action = pick(options, PROMPT, indicator="->")[0]
         update_type = ""
         app_ids = []
