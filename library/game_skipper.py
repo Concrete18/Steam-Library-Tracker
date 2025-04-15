@@ -1,6 +1,6 @@
 import re
 
-from library.utils import *
+from library.utils.utils import *
 
 
 class GameSkipper:

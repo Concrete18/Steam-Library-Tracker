@@ -1,16 +1,18 @@
 # standard library
-import re, os
+import os
 
 # third-party imports
-from bs4 import BeautifulSoup
 import requests, vdf
 
 # local imports
-from library.utils import *
+from library.utils.utils import *
 from library.logger import Logger
+from library.utils.api_throttler import ApiThrottler
 
 Log = Logger()
 error_log = Log.create_log(name="base_error", log_path="logs/error.log")
+
+throttler = ApiThrottler()
 
 
 @retry()
@@ -110,63 +112,6 @@ def get_friends_list_changes(
 
 
 @retry()
-def get_steam_review(app_id: int) -> tuple[int | None, int | None]:
-    """
-    Scrapes the games review percent and total reviews from
-    the steam store page using `app_id`.
-    """
-    api_sleeper("steam_review_scrape")
-    game_url = get_game_url(app_id)
-    response = requests.get(game_url)
-    # TODO improve this code so it is not so weirdly written
-    percent, total = None, None
-    if not response.ok:
-        return percent, total
-    soup = BeautifulSoup(response.text, "html.parser")
-    hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
-    results = soup.find_all(class_=hidden_review_class)
-    if len(results) == 1:
-        text = results[0].text.strip()
-    elif len(results) > 1:
-        text = results[1].text.strip()
-    else:
-        return percent, total
-    parsed_data = text[2:26].split(r"% of the ")
-    # get percent
-    review_percent = parsed_data[0]
-    if review_percent.isnumeric():
-        if review_percent == "100":
-            percent = 1
-        else:
-            percent = float(f".{review_percent}")
-    # get total
-    if len(parsed_data) > 1:
-        cleaned_num = parsed_data[1].replace(",", "")
-        total = int(re.search(r"\d+", cleaned_num).group())
-    return percent, total
-
-
-@retry()
-def get_steam_user_tags(app_id: int):
-    """
-    Gets a games user tags from Steam.
-    """
-    api_sleeper("steam_review_scrape")
-    response = requests.get(get_game_url(app_id))
-    if response.ok:
-        soup = BeautifulSoup(response.text, "html.parser")
-        hidden_review_class = "app_tag"
-        results = soup.find_all(class_=hidden_review_class)
-        tags = []
-        IGNORE_TAGS = ("+",)
-        for tag in results:
-            string = tag.text.strip()
-            if string not in IGNORE_TAGS:
-                tags.append(string)
-        return tags
-
-
-@retry()
 def get_owned_steam_games(steam_key: str, steam_id: int) -> list | None:
     """
     Gets the games owned by the given `steam_id`.
@@ -174,7 +119,7 @@ def get_owned_steam_games(steam_key: str, steam_id: int) -> list | None:
     base_url = "http://api.steampowered.com/"
     api_action = "IPlayerService/GetOwnedGames/v0001/"
     url = base_url + api_action
-    api_sleeper("steam_owned_games")
+    throttler.wait_if("steam_owned_games", 0.5)
     params = {
         "key": steam_key,
         "steamid": steam_id,
@@ -210,7 +155,7 @@ def get_recently_played_steam_games(
     base_url = "http://api.steampowered.com/"
     api_action = "IPlayerService/GetRecentlyPlayedGames/v1/"
     url = base_url + api_action
-    api_sleeper("steam_owned_games")
+    throttler.wait_if("steam_owned_games", 0.5)
     params = {
         "key": steam_key,
         "steamid": steam_id,
@@ -233,22 +178,13 @@ def get_recently_played_steam_games(
         error_log.warning(msg)
 
 
-def get_game_url(app_id: int) -> str:
-    """
-    Generates a steam store url to the games page using it's `app_id`.
-    """
-    if app_id:
-        return f"https://store.steampowered.com/app/{app_id}/"
-    return app_id
-
-
 @retry()
 def get_app_details(app_id: int) -> list[dict]:
     """
     Gets game details.
     """
     url = "https://store.steampowered.com/api/appdetails"
-    api_sleeper("steam_app_details")
+    throttler.wait_if("steam_app_details", 0.5)
     params = {"appids": app_id, "l": "english"}
     response = requests.get(url, params)
     if response.ok:

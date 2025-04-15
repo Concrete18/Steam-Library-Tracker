@@ -1,15 +1,16 @@
 import pytest, requests
 
 # local imports
-from library.steam import *
-from library.utils import *
+from library.steam.steam import *
+from library.steam.scraper import *
+from library.utils.utils import *
 
 
 class TestGetOwnedSteamGames:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_throttler", return_value=None)
         # Create a mock response object
         mock_response = mocker.Mock()
         # Set the JSON data for the response
@@ -46,38 +47,23 @@ class TestGetOwnedSteamGames:
         assert result is None
 
 
-class TestSteamReview:
-    """
-    Due to changing reviews, it only tests for acquiring floats for percent and integers for total.
-    """
+# class TestSteamReview:
+#     """
+#     Due to changing reviews, it only tests for acquiring floats for percent and integers for total.
+#     """
 
-    def test_success(self):
-        # WIP mock request
-        percent, total = get_steam_review(app_id=752590)
-        assert isinstance(percent, float)
-        assert isinstance(total, int)
-
-
-class TestGetGameUrl:
-    def test_success(self):
-
-        store_link_tests = {
-            "752590": "https://store.steampowered.com/app/752590/",
-            "629730": "https://store.steampowered.com/app/629730/",
-        }
-        for app_id, answer in store_link_tests.items():
-            game_url = get_game_url(app_id)
-            assert game_url == answer
-
-    def test_invalid(self):
-        game_url = get_game_url(None)
-        assert game_url == None
+#     def test_success(self):
+#         scraper = Scraper()
+#         # WIP mock request
+#         percent, total = scraper.get_review_data(app_id=752590)
+#         assert isinstance(percent, float)
+#         assert isinstance(total, int)
 
 
 class TestGetRecentlyPlayedGames:
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_throttler", return_value=None)
         mock_response = mocker.Mock()
         mock_response.json.return_value = {
             "response": {
@@ -93,7 +79,7 @@ class TestGetRecentlyPlayedGames:
     STEAM_KEY, STEAM_ID = get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_throttler", return_value=None)
         mocker.patch("requests.get", return_value=mock_response)
 
         result = get_recently_played_steam_games(
@@ -106,7 +92,7 @@ class TestGetRecentlyPlayedGames:
         ]
 
     def test_request_error(self, mocker):
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch("library.utils.api_throttler", return_value=None)
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 

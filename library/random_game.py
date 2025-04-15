@@ -5,10 +5,10 @@ import random
 from rich.console import Console
 from rich.theme import Theme
 
-from library.utils import *
+from library.utils.utils import *
 
 
-class RandomGame():
+class RandomGame:
 
     # rich console
     custom_theme = Theme(

@@ -4,7 +4,7 @@ import datetime as dt
 import json
 
 # local imports
-from library.steam import *
+from library.steam.steam import *
 
 # my package imports
 from easierexcel import Sheet

@@ -2,7 +2,7 @@ import pytest
 
 # local imports
 from main import Tracker
-from library.game_info import Game
+from library.game import Game
 
 
 class TestAppIdsToNames:

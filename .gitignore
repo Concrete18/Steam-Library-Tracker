@@ -149,3 +149,9 @@ steam_purchase_history.json
 logs/*
 commit.py
 /backup
+test.py
+
+# temp
+word_cloud.py
+IMDB-Dataset.csv
+table.py

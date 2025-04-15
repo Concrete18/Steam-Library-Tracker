@@ -7,8 +7,12 @@ import requests
 from howlongtobeatpy import HowLongToBeat
 
 # local imports
-from library.utils import *
-from library.steam import *
+from library.utils.utils import *
+from library.steam.steam import *
+from library.steam.scraper import Scraper
+
+scraper = Scraper()
+throttler = ApiThrottler()
 
 
 @dataclass()
@@ -20,6 +24,7 @@ class Game:
     review_percent: float = 0.0
     review_total: int | None = None
     release_year: int = 0
+    early_access: bool = False
     price: float | None = None
     discount: float = 0.0
     player_count: int | None = None
@@ -34,8 +39,6 @@ class Game:
     # no init
     # -----------------------------
     on_sale: bool = field(init=False)
-    early_access: str = field(init=False)
-    game_url: str = field(init=False)
     genre_str: str = field(init=False)
     tags_str: str = field(init=False)
     categories_str: str = field(init=False)
@@ -43,14 +46,10 @@ class Game:
     def __post_init__(self):
         # on sale
         self.on_sale = self.discount > 0 if self.discount else False
-        # game url
-        self.game_url = get_game_url(self.app_id) if self.app_id else self.app_id
         # create sentence strings
         self.tags_str = list_to_sentence(self.user_tags)
         self.genre_str = list_to_sentence(self.genre)
         self.categories_str = list_to_sentence(self.categories)
-        # early access
-        self.early_access = self.is_early_access()
 
     def __repr__(self):  # pragma: no cover
         string = "Game("
@@ -69,13 +68,28 @@ class Game:
     def cleaned_name(self):
         return unicode_remover(self.name)
 
-    @staticmethod
-    def get_time_to_beat(game_name: str) -> float | str:
+    @property
+    def early_access_str(self):
+        """
+        Returns Yes/No depending on the early_access property value.
+        """
+        return "Yes" if self.early_access else "No"
+
+    @property
+    def store_link(self) -> str:
+        """
+        Generates a steam store url to the games page using it's `app_id`.
+        """
+        if self.app_id:
+            return f"https://store.steampowered.com/app/{self.app_id}/"
+        return None
+
+    def get_time_to_beat(self, game_name: str) -> float | str:
         """
         Uses howlongtobeatpy to get the time to beat for entered game.
         """
         beat = HowLongToBeat()
-        api_sleeper("time_to_beat")
+        throttler.wait_if("time_to_beat", 0.5)
         try:
             results = beat.search(game_name)
         except:  # pragma: no cover
@@ -88,21 +102,13 @@ class Game:
                     time.sleep(10)
             return "-"
         if not results:  # pragma: no cover
-            api_sleeper("time_to_beat")
+            throttler.wait_if("time_to_beat", 0.5)
             results = beat.search(game_name, similarity_case_sensitive=False)
         time_to_beat = "-"
         if results and len(results) > 0:
             best_element = max(results, key=lambda element: element.similarity)
             time_to_beat = best_element.main_extra or best_element.main_story or "-"
         return time_to_beat
-
-    def is_early_access(self) -> str:
-        if (
-            "early access" in self.genre_str.lower()
-            or "early access" in self.tags_str.lower()
-        ):
-            return "Yes"
-        return "No"
 
 
 class GetGameInfo:
@@ -136,7 +142,7 @@ class GetGameInfo:
         """
         url = "https://store.steampowered.com/api/appdetails"
         params = {"appids": app_id, "cc": "us", "l": "english"}
-        api_sleeper("steam_app_details", sleep_length=1)
+        throttler.wait_if("steam_app_details")
         response = requests.get(url, params=params)
         if response.ok:
             return response.json().get(str(app_id), {}).get("data", {})
@@ -156,10 +162,13 @@ class GetGameInfo:
         release_year = self.parse_release_date(app_details)
         price, discount = self.get_price(app_details)
         categories = [desc["description"] for desc in app_details.get("categories", [])]
-        # review
-        percent, total = get_steam_review(app_id)
-        # user tags
-        user_tags = get_steam_user_tags(app_id)
+
+        page_data = scraper.get_store_page_data(app_id)
+        percent = page_data.review_percent
+        total = page_data.review_total
+        user_tags = page_data.user_tags
+        early_access = page_data.early_access
+
         # player count
         player_count = get_player_count(app_id, steam_key) if steam_key else None
 
@@ -174,6 +183,7 @@ class GetGameInfo:
             user_tags=user_tags,
             player_count=player_count,
             release_year=release_year,
+            early_access=early_access,
             price=price,
             discount=discount,
             categories=categories,

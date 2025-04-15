@@ -1,7 +1,12 @@
-import pytest, json
+# standard library
+import json
 
-from library.game_info import Game, GetGameInfo
-from library.utils import *
+# third-party imports
+import pytest
+
+# local imports
+from library.game import Game, GetGameInfo
+from library.utils.utils import *
 
 
 class TestGame:
@@ -16,17 +21,18 @@ class TestGame:
             publisher="Pub",
             genre=["Testing", "early access"],
             release_year=2024,
+            early_access=True,
             price=12.34,
             discount=0.88,
             categories=["Category 1"],
             user_tags=["Tag 1"],
         )
-        assert len(vars(game)) == 19
+        assert len(vars(game)) == 18
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
         assert game.publisher == "Pub"
-        assert game.early_access == "Yes"
+        assert game.early_access_str == "Yes"
         assert game.genre == ["Testing", "early access"]
         assert game.release_year == 2024
         assert game.price == 12.34
@@ -34,7 +40,6 @@ class TestGame:
         assert game.on_sale
         assert game.categories == ["Category 1"]
         assert game.user_tags == ["Tag 1"]
-        assert game.game_url == "https://store.steampowered.com/app/12345/"
 
     def test_not_on_sale(self):
         NAME = "Test1"
@@ -56,35 +61,18 @@ class TestGame:
             genre=["Testing"],
             user_tags=["Testing"],
         )
-        assert game.early_access == "No"
-
-    def test_is_early_access(self):
-        NAME = "Test1"
-        APP_ID = 12345
-        game1 = Game(
-            name=NAME,
-            app_id=APP_ID,
-            genre=["Testing", "Early Access"],
-        )
-        assert game1.early_access == "Yes"
-        game2 = Game(
-            name=NAME,
-            app_id=APP_ID,
-            user_tags=["Testing", "Early Access"],
-        )
-        assert game2.early_access == "Yes"
+        assert game.early_access_str == "No"
 
     def test_no_args(self):
         game = Game()
         assert not Game()
         # total attributes
-        assert len(vars(game)) == 19
+        assert len(vars(game)) == 18
         # required values
         assert game.name == ""
         assert game.app_id == 0
         # str
-        assert game.game_url == 0
-        assert game.early_access == "No"
+        assert game.early_access_str == "No"
         # float
         assert game.discount == 0.0
         # false
@@ -173,7 +161,7 @@ class TestGetPriceInfo:
 #         """
 #         Gets the time to beat for Hades as long as it is upper case.
 #         """
-#         mocker.patch("library.utils.api_sleeper", return_value=None)
+#         mocker.patch("library.utils.api_throttler", return_value=None)
 #         hltb_object = [self.hltb(10, 30)]
 #         mocker.patch(self.func_path, side_effect=[None, hltb_object])
 
@@ -184,7 +172,7 @@ class TestGetPriceInfo:
 #         """
 #         Makes sure get_time_to_beat returns '-' for a non existing game.
 #         """
-#         mocker.patch("library.utils.api_sleeper", return_value=None)
+#         mocker.patch("library.utils.api_throttler", return_value=None)
 #         mocker.patch(self.func_path, return_value=None)
 
 #         test = self.test.get_time_to_beat("Fake game is fake")
@@ -195,7 +183,9 @@ class TestGetAppDetails:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch(
+            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=None
+        )
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             data = json.load(file)
         mock_response = mocker.Mock()
@@ -205,13 +195,17 @@ class TestGetAppDetails:
 
     def test_success(self, mock_response, mocker):
         App = GetGameInfo()
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch(
+            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
+        )
         mocker.patch("requests.get", return_value=mock_response)
         assert App.get_app_details(2379780)
 
     def test_request_error(self, mock_response, mocker):
         App = GetGameInfo()
-        mocker.patch("library.utils.api_sleeper", return_value=None)
+        mocker.patch(
+            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
+        )
         mock_response.ok = False
         mocker.patch("requests.get", return_value=mock_response)
         assert App.get_app_details(2379780) == {}
@@ -227,18 +221,22 @@ class TestGetGameInfo:
             app_details_json = json.load(file)
         app_details = app_details_json.get(str(app_id), {}).get("data")
 
-        # mocks get_steam_review
-        mocker.patch("library.game_info.get_steam_review", return_value=(0.97, 9856))
+        # mocks get_review_data
+        mocker.patch(
+            "library.steam.scraper.Scraper.get_review_data", return_value=(0.97, 9856)
+        )
 
         # mocks get_steam_user_tags
         result = ["Roguelike", "Card Game", "Deckbuilding"]
-        mocker.patch("library.game_info.get_steam_user_tags", return_value=result)
+        mocker.patch(
+            "library.steam.scraper.Scraper.get_steam_user_tags", return_value=result
+        )
 
         # mocks get_time_to_beat
-        # mocker.patch("library.game_info.get_time_to_beat", return_value=20)
+        # mocker.patch("library.game.get_time_to_beat", return_value=20)
 
         # mocks get_player_count
-        func = "library.game_info.get_player_count"
+        func = "library.game.get_player_count"
         mocker.patch(func, return_value=600)
 
         api_key, _ = get_steam_key_and_id()
@@ -251,7 +249,7 @@ class TestGetGameInfo:
         assert game.developer == "LocalThunk"
         assert game.publisher == "Playstack"
         assert game.genre == ["Casual", "Indie", "Strategy"]
-        assert game.early_access == "No"
+        assert game.early_access_str == "No"
         assert game.review_percent == 0.97
         assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]

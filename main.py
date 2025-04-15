@@ -15,13 +15,14 @@ from rich.theme import Theme
 # local imports
 from setup import Setup
 from library.backup import Backup
-from library.steam import *
-from library.game_info import Game, GetGameInfo
+from library.steam.steam import *
+from library.game import Game, GetGameInfo
 from library.random_game import RandomGame
 from library.game_skipper import GameSkipper
+from library.utils.api_throttler import ApiThrottler
 from library.date_updater import *
 from library.action_picker import advanced_picker, action_picker
-from library.utils import *
+from library.utils.utils import *
 from library.logger import Logger
 
 # my package imports
@@ -94,6 +95,9 @@ class Tracker(GetGameInfo):
         }
     )
     console = Console(theme=custom_theme)
+
+    # misc
+    throttler = ApiThrottler()
 
     # sets play status choices for multiple functions
     # -----------------------------
@@ -325,7 +329,6 @@ class Tracker(GetGameInfo):
         """
         Returns a dict of column names and the value for that column.
         """
-        store_link = create_hyperlink(game.game_url, "Store") if game.game_url else "-"
         return {
             self.dev_col: game.developer or "-",
             self.pub_col: game.publisher or "-",
@@ -336,9 +339,9 @@ class Tracker(GetGameInfo):
             self.steam_player_count_col: game.player_count or "-",
             self.genre_col: game.genre_str or "-",
             self.user_tags_col: game.tags_str or "-",
-            self.ea_col: game.early_access or "-",
+            self.ea_col: game.early_access_str or "-",
             # self.time_to_beat_col: game.time_to_beat or "-",
-            self.store_link_col: store_link,
+            self.store_link_col: create_hyperlink(game.store_link, "Store") or "-",
             self.release_col: game.release_year or "-",
         }
 
@@ -359,17 +362,14 @@ class Tracker(GetGameInfo):
             # update data
             for column, data in game_data.items():
                 # TODO improve this so it is written better and easier to read
+                columns_to_skip = [self.time_to_beat_col]
+                if column in columns_to_skip:
+                    continue
                 if not data:
                     continue
                 if not game_row.get(self.time_to_beat_col):
                     continue
                 if not game_row.get(self.ea_col):
-                    continue
-                columns_to_skip = [
-                    self.time_to_beat_col,
-                    self.ea_col,
-                ]
-                if column in columns_to_skip:
                     continue
                 self.steam.update_cell(app_id, column, data)
             # saves data
@@ -379,6 +379,7 @@ class Tracker(GetGameInfo):
             cur_itr += 1
             progress = cur_itr / len(app_ids) * 100
             self.set_title(f"{progress:.1f}% - {self.APP_TITLE}")
+        self.excel.save(use_print=False)
         self.set_title()
 
     def sync_game_data(self, df):
@@ -921,9 +922,8 @@ class Tracker(GetGameInfo):
             return
         owned_games = get_owned_steam_games(steam_key, steam_id)
         if not owned_games:
-            text="\nFailed to retrieve Steam Games\nSteam Servers may be down"
-            print("\nFailed to retrieve Steam Games\nSteam Servers may be down")
-            input()
+            text = "\nFailed to retrieve Steam Games\nSteam Servers may be down"
+            input(text)
             return
         sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
         if not sheet_app_ids:
@@ -1096,8 +1096,8 @@ class Tracker(GetGameInfo):
                 self.user_tags_col: game.tags_str,
                 self.release_col: game.release_year,
                 self.genre_col: game.genre_str,
-                self.ea_col: game.early_access,
-                self.store_link_col: create_hyperlink(game.game_url, "Store"),
+                self.ea_col: game.early_access_str,
+                self.store_link_col: create_hyperlink(game.store_link, "Store"),
             }
             self.sales.add_new_line(game_row)
         # formats all cells and saves
@@ -1204,7 +1204,7 @@ class Tracker(GetGameInfo):
                 self.steam_player_count_col,
                 player_count,
             )
-            api_sleeper("steam_player_count")
+            self.throttler.wait_if("steam_player_count")
         return player_counts
 
     def game_select(self, df: pd.DataFrame, last_num: int = 15):
