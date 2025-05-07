@@ -107,7 +107,6 @@ class Tracker(GetGameInfo):
         "Finished",
         "Endless",
         "Replay",
-        "Must Play",
         "Waiting",
         "Quit",
         "Ignore",
@@ -189,12 +188,12 @@ class Tracker(GetGameInfo):
         """
         Auto backs up the excel file every `check_freq_days` days.
         """
-        config_entry = "excel_backup"
-        if recently_executed(self.config_data, config_entry, check_freq_days):
+        CONFIG_ENTRY = "excel_backup"
+        if recently_executed(self.config_data, CONFIG_ENTRY, check_freq_days):
             return
         if self.backup.run():
             self.console.print("\nBacked Up Excel File", style="secondary")
-            update_last_run(self.config_data, self.config_path, config_entry)
+            update_last_run(self.config_data, self.config_path, CONFIG_ENTRY)
         else:
             self.console.print("\nFailed to backed Up Excel File", style="warning")
 
@@ -232,7 +231,7 @@ class Tracker(GetGameInfo):
         table.add_column("Steam ID", justify="left")
         # removals
         for steam_id in removals:
-            username = get_steam_username(steam_id, self.steam_key)
+            username = get_steam_username(steam_id, self.steam_key) or "Unknown"
             row = [
                 "Removed",
                 username,
@@ -259,29 +258,15 @@ class Tracker(GetGameInfo):
         self.config_data["friend_ids"] = cur_friend_ids
         save_json(self.config_data, self.config_path)
 
-    def set_title(self, title: str = None) -> None:
-        """
-        Sets the CLI window title to the specified title if provided.
-        If no title is given, it sets the title back to the default.
-        """
-        set_title = title or self.APP_TITLE
-        os.system(f"title {set_title}")
-
     def sync_all(self):
         """
         Runs Steam synchronization.
         """
-        try:
-            self.sync_steam_games(self.steam_key, self.steam_id)
-            # table data
-            self.dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
-            self.output_recently_played_games(self.dataframe)
-            # extra data updates
-            self.updated_game_data(self.dataframe)
-            self.sync_friends_list()
-        except Exception:
-            error_message = f"\nError occurred: {traceback.format_exc()}"
-            print(error_message)
+        self.sync_steam_games(self.steam_key, self.steam_id)
+        self.dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
+        self.output_recently_played_games(self.dataframe)
+        self.updated_game_data(self.dataframe)
+        self.sync_friends_list()
 
     def create_save_every_nth(self, save_on_nth: int = 20):
         counter = 0
@@ -377,9 +362,9 @@ class Tracker(GetGameInfo):
             # title progress percentage
             cur_itr += 1
             progress = cur_itr / len(app_ids) * 100
-            self.set_title(f"{progress:.1f}% - {self.APP_TITLE}")
+            set_title(f"{progress:.1f}% - {self.APP_TITLE}")
         self.excel.save(use_print=False)
-        self.set_title()
+        set_title(self.APP_TITLE)
 
     def sync_game_data(self, df):
         """
@@ -582,103 +567,6 @@ class Tracker(GetGameInfo):
         # print table
         self.console.print(table, new_line_start=True)
 
-    def output_play_status_info(self, df: pd.DataFrame) -> None:
-        """
-        Creates a table with counts and percentage of each play status.
-        """
-        table = Table(
-            title="Play Status Stats",
-            show_lines=True,
-            title_style="bold",
-            style="deep_sky_blue1",
-            caption="Excludes Ignored",
-        )
-        # filters out games with "Ignore" play status
-        df_filtered = df[df["Play Status"] != "Ignore"]
-        play_statuses = df_filtered["Play Status"].value_counts()
-        total_games_excluding_ignore = len(df_filtered)
-        # Row creation
-        row1, row2 = [], []
-        for play_status in self.PLAY_STATUS_CHOICES:
-            if play_status == "Ignore":
-                continue
-            count = play_statuses[play_status]
-            table.add_column(play_status, justify="center")
-            row1.append(str(count))
-            row2.append(f"{count / total_games_excluding_ignore:.1%}")
-        table.add_row(*row1)
-        table.add_row(*row2)
-        self.console.print(table, new_line_start=True)
-
-    def output_playtime_info(self, df: pd.DataFrame) -> None:
-        """
-        Creates a table with counts and percentage of each play status.
-        """
-        table = Table(
-            title="Playtime Stats",
-            show_lines=True,
-            title_style="bold",
-            style="deep_sky_blue1",
-            caption="Excludes Ignored",
-        )
-        # filters out games with "Ignore" play status
-        df_filtered = df[df["Play Status"] != "Ignore"]
-
-        total_hours_sum = df_filtered["Hours Played"].sum()
-        linux_hours_sum = df_filtered["Linux Hours"].sum()
-        average_hours = df_filtered["Hours Played"].mean()
-        median_hours = df_filtered["Hours Played"].median()
-        max_hours = df_filtered["Hours Played"].max()
-        data = {
-            "Total\nHours": format_floats(total_hours_sum, 1),
-            "Total\nDays": format_floats(total_hours_sum / 24, 1),
-            "Linux\nHours": format_floats(linux_hours_sum, 1),
-            "% Linux\nHours": format_floats(linux_hours_sum / total_hours_sum, 2),
-            "Average\nHours": format_floats(average_hours, 1),
-            "Median\nHours": format_floats(median_hours, 1),
-            "Max\nHours": format_floats(max_hours, 1),
-        }
-        # row creation
-        row = []
-        for name, stat in data.items():
-            table.add_column(name, justify="center")
-            row.append(str(stat))
-        table.add_row(*row)
-        self.console.print(table, new_line_start=True)
-
-    def output_review_info(self, df: pd.DataFrame) -> None:
-        """
-        Outputs a table of review stats.
-        """
-        table = Table(
-            title="Rating Stats",
-            show_lines=True,
-            title_style="bold",
-            style="deep_sky_blue1",
-            caption="Excludes Ignored",
-        )
-        # filters out games with "Ignore" play status
-        df_filtered = df[df["Play Status"] != "Ignore"]
-
-        data = {}
-        # my ratings
-        my_ratings = df_filtered["My Rating"]
-        data["My\nTotal"] = my_ratings.count()
-        data["My\nAverage"] = round(my_ratings.mean(), 1)
-        # steam ratings
-        steam_ratings = df_filtered["Steam Review Percent"].astype("float")
-        data["Steam\nTotal"] = steam_ratings.count()
-        steam_avg = round(steam_ratings.mean(), 1)
-        data["Steam\nAverage"] = f"{round(steam_avg*100)}%"
-        # row creation
-        row = []
-        for name, stat in data.items():
-            table.add_column(name, justify="center")
-            row.append(str(stat))
-        table.add_row(*row)
-
-        self.console.print(table, new_line_start=True)
-
     def find_tag_rating_avg(self, df: pd.DataFrame):
         """
         Finds the average library owner rating for each game tag.
@@ -716,9 +604,8 @@ class Tracker(GetGameInfo):
         """
         Outputs tables of game library statistics.
         """
-        self.output_play_status_info(dataframe)
-        self.output_playtime_info(dataframe)
-        self.output_review_info(dataframe)
+        # TODO switch to new system
+        pass
 
     @staticmethod
     def decide_play_status(play_status: str, minutes_played: float) -> str:
@@ -808,6 +695,7 @@ class Tracker(GetGameInfo):
         """
         Checks for new games or game updates from `steam_games` based on `sheet_games`.
         """
+        # TODO break this down into smaller function
         self.total_session_playtime = 0
         added_games = []
         played_games = []
@@ -921,6 +809,7 @@ class Tracker(GetGameInfo):
             return
         owned_games = get_owned_steam_games(steam_key, steam_id)
         if not owned_games:
+            # TODO find out why this occurs more often lately
             text = "\nFailed to retrieve Steam Games\nSteam Servers may be down"
             input(text)
             return
@@ -1350,17 +1239,20 @@ class Tracker(GetGameInfo):
                 self.steam.update_cell(app_id, self.app_id_col, "")
         self.excel.save(use_print=False, backup=False)
 
+    def intro(self):
+        """
+        Prints app title and date/time.
+        """
+        set_title(self.APP_TITLE)
+        self.console.print(self.APP_TITLE, style="primary")
+        rich_date = create_rich_date_and_time()
+        self.console.print(rich_date)
+
     def main(self) -> None:
         try:
-            self.set_title()
-            self.console.print(self.APP_TITLE, style="primary")
-            rich_date = create_rich_date_and_time()
-            self.console.print(rich_date)
-
-            # sync and backup
+            self.intro()
             self.sync_all()
             self.auto_backup()
-
             self.game_library_actions()
         except (KeyboardInterrupt, EOFError):
             delay = 0.1

@@ -183,14 +183,14 @@ def get_app_list() -> list[dict]:
     """
     Gets the full Steam app list as a dict.
     """
-    main_url = "https://api.steampowered.com/"
-    api_action = "ISteamApps/GetAppList/v0002/"
-    url = main_url + api_action
+    base_url = "https://api.steampowered.com/"
+    endpoint = "ISteamApps/GetAppList/v0002/"
+    url = base_url + endpoint
     query = {"l": "english"}
     response = requests.get(url, query)
     if response.ok:
-        app_list = response.json()["applist"]["apps"]
-        return app_list
+        data = response.json()
+        return data.get("applist", {}).get("apps", None)
     return None
 
 

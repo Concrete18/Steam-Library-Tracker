@@ -324,6 +324,14 @@ def is_response_yes(
     return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
 
 
+def set_title(title: str = "Name Missing") -> None:
+    """
+    Sets the CLI window title to the specified title if provided.
+    If no title is given, it sets the title back to the default.
+    """
+    os.system(f"title {title}")
+
+
 def create_rich_date_and_time(date: dt.datetime = None) -> str:
     """
     Returns a formatted date and time for use with Rich Console print.

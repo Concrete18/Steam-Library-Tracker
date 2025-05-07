@@ -7,8 +7,7 @@ class ApiThrottler:
     api_calls = {}
 
     def __init__(self, default_wait: float = 1.0) -> None:
-        # set default time to wait
-        self.default_wait = default_wait
+        self.default_wait = default_wait  # set default time to wait
 
     def wait_if(self, api_name: str, wait: int | float = None) -> bool:
         """
@@ -34,7 +33,7 @@ class ApiThrottler:
 
     def display(self):
         """
-        ph
+        Displays current API call data stored.
         """
         print("API Calls:")
         if not self.api_calls:
