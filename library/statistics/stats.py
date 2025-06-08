@@ -9,6 +9,9 @@ from rich.table import Table
 from rich.panel import Panel
 from rich.layout import Layout
 
+# local imports
+from library.utils.utils import *
+
 
 class Statistics:
 
@@ -44,7 +47,7 @@ class Statistics:
         avg_personal_rating = df["My Rating"].mean()
         avg_steam_rating = df["Steam Review Percent"].mean()
 
-        summary = Panel.fit(
+        summary = Panel(
             f"""
         [bold cyan]Total Time Played:[/] {total_hours:.1f} hours
         [bold cyan]Average Personal Rating:[/] {avg_personal_rating:.2f}
@@ -52,8 +55,46 @@ class Statistics:
             """,
             title="Summary",
             border_style="green",
+            expand=False,
+            height=8,
         )
         return summary
+
+    def output_playtime_info(self, df: pd.DataFrame) -> None:
+        """
+        Creates a table with counts and percentage of each play status.
+        """
+        table = Table(
+            title="Playtime Stats",
+            show_lines=True,
+            title_style="bold",
+            style="deep_sky_blue1",
+            caption="Excludes Ignored",
+        )
+        # filters out games with "Ignore" play status
+        df_filtered = df[df["Play Status"] != "Ignore"]
+
+        total_hours_sum = df_filtered["Hours Played"].sum()
+        linux_hours_sum = df_filtered["Linux Hours"].sum()
+        average_hours = df_filtered["Hours Played"].mean()
+        median_hours = df_filtered["Hours Played"].median()
+        max_hours = df_filtered["Hours Played"].max()
+        data = {
+            "Total\nHours": format_floats(total_hours_sum, 1),
+            "Total\nDays": format_floats(total_hours_sum / 24, 1),
+            "Linux\nHours": format_floats(linux_hours_sum, 1),
+            "% Linux\nHours": format_floats(linux_hours_sum / total_hours_sum, 2),
+            "Average\nHours": format_floats(average_hours, 1),
+            "Median\nHours": format_floats(median_hours, 1),
+            "Max\nHours": format_floats(max_hours, 1),
+        }
+        # row creation
+        row = []
+        for name, stat in data.items():
+            table.add_column(name, justify="center")
+            row.append(str(stat))
+        table.add_row(*row)
+        return table
 
     def get_genre_stats(self, df: pd.DataFrame, n_entries: int = 15) -> None:
         """
@@ -121,6 +162,38 @@ class Statistics:
                 break
         return table
 
+    def output_review_info(self, df: pd.DataFrame) -> None:
+        """
+        Outputs a table of review stats.
+        """
+        table = Table(
+            title="Rating Stats",
+            show_lines=True,
+            title_style="bold",
+            style="deep_sky_blue1",
+            caption="Excludes Ignored",
+        )
+        # filters out games with "Ignore" play status
+        df_filtered = df[df["Play Status"] != "Ignore"]
+
+        data = {}
+        # my ratings
+        my_ratings = df_filtered["My Rating"]
+        data["My\nTotal"] = my_ratings.count()
+        data["My\nAverage"] = round(my_ratings.mean(), 1)
+        # steam ratings
+        steam_ratings = df_filtered["Steam Review Percent"].astype("float")
+        data["Steam\nTotal"] = steam_ratings.count()
+        steam_avg = round(steam_ratings.mean(), 1)
+        data["Steam\nAverage"] = f"{round(steam_avg*100)}%"
+        # row creation
+        row = []
+        for name, stat in data.items():
+            table.add_column(name, justify="center")
+            row.append(str(stat))
+        table.add_row(*row)
+        return table
+
     def output_play_status_info(self, df: pd.DataFrame) -> None:
         """
         Creates a table with counts and percentage of each play status.
@@ -155,12 +228,12 @@ class Statistics:
         return table
 
     def build_layout(self, df: pd.DataFrame) -> Layout:
-        layout = Layout()
+        layout = Layout(size=200)
         layout.split(
             Layout(name="header", size=3),
             Layout(name="summary"),
-            Layout(name="play_status"),
-            Layout(name="average_playtimes"),
+            # Layout(name="play_status"),
+            Layout(name="stats"),
             # Layout(name="footer", size=3),
         )
         layout["header"].update(
@@ -172,14 +245,14 @@ class Statistics:
         )
         layout["summary"].update(self.summary(df))
 
-        layout["play_status"].update(Panel(self.output_play_status_info(df)))
-
-        layout["average_playtimes"].split_row(
-            Layout(name="left", size=45), Layout(name="right", size=45)
+        layout["stats"].split_row(
+            Layout(name="left", size=80),
+            Layout(name="center", size=50),
+            Layout(name="right", size=50),
         )
-        layout["left"].update(Panel(self.get_genre_stats(df)))
-
-        layout["right"].update(Panel(self.get_tag_stats(df)))
+        layout["left"].update(Panel(self.output_play_status_info(df), expand=False))
+        layout["center"].update(Panel(self.get_genre_stats(df), height=50))
+        layout["right"].update(Panel(self.get_tag_stats(df), expand=False))
 
         return layout
 
@@ -202,8 +275,8 @@ class Statistics:
             pd.Timestamp.today() - df["Last Played"]
         ).dt.days
 
-        self.summary(df)
-        self.output_play_status_info(df)
+        # self.summary(df)
+        # self.output_play_status_info(df)
         # self.get_genre_stats(df)
         # self.get_tag_stats(df)
 

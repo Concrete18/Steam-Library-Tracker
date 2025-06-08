@@ -112,7 +112,7 @@ class TestPlayStatus:
             result = self.trackerObj.decide_play_status(a["play_status"], a["minutes"])
             assert result == a["ans"]
 
-    def test_must_play(self):
+    def test_new_game(self):
         """
         Tests running on new games.
         """

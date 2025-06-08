@@ -16,7 +16,7 @@ throttler = ApiThrottler()
 
 
 @retry()
-def get_steam_username(steam_id: int, steam_key: int) -> str:
+def get_steam_username(steam_id: int, steam_key: str) -> str | None:
     """
     Gets a username based on the given `steam_id`.
     """
@@ -89,14 +89,15 @@ def get_steam_friends(steam_key: str, steam_id: int) -> dict:
             if "friendslist" in data and "friends" in data["friendslist"]:
                 return data["friendslist"]["friends"]
             else:
-                return None
+                return {}
         else:
-            return None
+            return {}
     except requests.RequestException as e:
         msg = f"Error occurred: {e}"
         if "Test error" in str(e):
-            return None
+            return {}
         error_log.warning(msg)
+    return {}
 
 
 def get_friends_list_changes(
@@ -112,14 +113,14 @@ def get_friends_list_changes(
 
 
 @retry()
-def get_owned_steam_games(steam_key: str, steam_id: int) -> list | None:
+def get_owned_steam_games(steam_key: str, steam_id: int) -> list:
     """
     Gets the games owned by the given `steam_id`.
     """
     base_url = "http://api.steampowered.com/"
     api_action = "IPlayerService/GetOwnedGames/v0001/"
     url = base_url + api_action
-    throttler.wait_if("steam_api")
+    throttler.wait_if("steam_api", 2)
     params = {
         "key": steam_key,
         "steamid": steam_id,
@@ -128,21 +129,14 @@ def get_owned_steam_games(steam_key: str, steam_id: int) -> list | None:
         "format": "json",
         "include_appinfo": 1,
     }
-    try:
-        response = requests.get(url, params)
-        if response.ok:
-            data = response.json()
-            if "response" in data and "games" in data["response"]:
-                return data["response"]["games"]
-            else:
-                return None
-        else:
-            return None
-    except requests.RequestException as e:
-        msg = f"Error occurred: {e}"
-        if "Test error" in str(e):
-            return None
-        error_log.warning(msg)
+    headers = {"User-Agent": "GameLibraryTracker/1.0"}
+    response = requests.get(url, params, headers=headers)
+    response.raise_for_status()
+    if response.ok:
+        data = response.json()
+        if "response" in data and "games" in data["response"]:
+            return data["response"]["games"]
+    return []
 
 
 @retry()
@@ -191,7 +185,7 @@ def get_app_list() -> list[dict]:
     if response.ok:
         data = response.json()
         return data.get("applist", {}).get("apps", None)
-    return None
+    return []
 
 
 def get_app_id(game: str, app_list: list[dict]) -> int | None:
@@ -205,7 +199,7 @@ def get_app_id(game: str, app_list: list[dict]) -> int | None:
 
 
 @retry()
-def get_player_count(app_id: int, steam_key: int) -> int | None:
+def get_player_count(app_id: int, steam_key: str) -> int | None:
     """
     Gets a games current player count by `app_id` using the Steam API via the `steam_key`.
     """
@@ -218,7 +212,7 @@ def get_player_count(app_id: int, steam_key: int) -> int | None:
     return None
 
 
-def get_installed_app_ids(library_vdf_path: str = None) -> list:
+def get_installed_app_ids(library_vdf_path: str = "") -> list:
     """
     Returns a list of all app_ids among all libraries from the steam library
     VDF file in `library_vdf_path`.
@@ -236,7 +230,7 @@ def get_installed_app_ids(library_vdf_path: str = None) -> list:
     return installed_app_ids
 
 
-def get_local_config_data(local_config_path: str = None) -> dict:
+def get_local_config_data(local_config_path: str = "") -> dict:
     """
     Gets the local config data for games from the Steam install data.
     """
@@ -253,7 +247,10 @@ def get_local_config_data(local_config_path: str = None) -> dict:
     )
 
 
-def get_game_local_data(app_id: int, local_config: dict) -> tuple[int, int]:
+def get_game_local_data(
+    app_id: int, local_config: dict
+) -> tuple[int | None, int | None]:
+    """ """
     game_config_data = local_config.get(str(app_id), {})
     last_played = int(game_config_data.get("LastPlayed", 0))
     play_time = int(game_config_data.get("Playtime", 0))

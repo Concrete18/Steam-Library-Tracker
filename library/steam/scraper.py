@@ -12,8 +12,8 @@ throttler = ApiThrottler(default_wait=1)
 
 @dataclass()
 class StoreData:
-    review_percent: float | None = None
-    review_total: int | None = None
+    review_percent: float = 0.0
+    review_total: int = 0
     early_access: bool = False
     user_tags: list[str] = field(default_factory=list)
 
@@ -22,14 +22,14 @@ class Scraper:
     url = "https://store.steampowered.com/app/"
 
     @staticmethod
-    def get_review_data(soup: BeautifulSoup) -> tuple[float | None, int | None]:
+    def get_review_data(soup: BeautifulSoup) -> tuple[float, int]:
         """
-        Returns the review percent and total.
+        Returns the review percent and total based on the `soup`.
         """
         hidden_review_class = "nonresponsive_hidden responsive_reviewdesc"
         results = soup.find_all(class_=hidden_review_class)
         text = None
-        percent, total = None, None
+        percent, total = 0.0, 0
         if len(results) == 1:
             text = results[0].text.strip()
         elif len(results) > 1:
@@ -46,7 +46,9 @@ class Scraper:
             # get total
             if len(parsed_data) > 1:
                 cleaned_num = parsed_data[1].replace(",", "")
-                total = int(re.search(r"\d+", cleaned_num).group()) or None
+                result = re.search(r"\d+", cleaned_num)
+                if result:
+                    total = int(result.group()) or 0
         return percent, total
 
     @staticmethod

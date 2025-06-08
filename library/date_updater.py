@@ -30,7 +30,7 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     """
     Loads purchase history from config folder.
     """
-    path = Path("configs\steam_purchase_history.json")
+    path = Path("configs/steam_purchase_history.json")
     if path.exists():
         with open(path) as file:
             purchase_data = json.load(file)
@@ -39,7 +39,7 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     return []
 
 
-def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[dict]:
+def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> dict:
     """
     Creates a list of game data while removing entries that were purchased and then refunded
 
@@ -63,10 +63,10 @@ def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[di
 
 
 def get_dates_to_update(
-    games_data: list[dict],
+    games_data: dict,
     steam_sheet: Sheet,
     date_added_col: str,
-) -> list[dict]:
+) -> dict:
     """
     Updates the Date Added column with the correct dates using `games_data`,
     """

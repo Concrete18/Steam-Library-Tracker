@@ -3,14 +3,14 @@ import shutil, json, re, sys
 
 
 class Setup:
+    # TODO fix errors in setup.py
 
     def validate_steam_id(self, steam_id: int) -> bool:
         """
         Validates a `steam_id`.
         """
-        steam_id = str(steam_id)
         pattern = r"^\d{17}$"
-        if re.match(pattern, steam_id):
+        if re.match(pattern, str(steam_id)):
             return True
         else:
             return False
@@ -51,7 +51,7 @@ class Setup:
             return True
         return False
 
-    def run(self) -> tuple[str, dict, dict] | None:
+    def run(self) -> tuple[str, dict, dict, dict]:
         """
         Creates all missing config files if they do not exist.
 

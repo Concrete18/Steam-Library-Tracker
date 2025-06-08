@@ -22,7 +22,7 @@ class Game:
     developer: str = ""
     publisher: str = ""
     review_percent: float = 0.0
-    review_total: int | None = None
+    review_total: int = 0
     release_year: int = 0
     early_access: bool = False
     price: float | None = None
@@ -76,7 +76,7 @@ class Game:
         return "Yes" if self.early_access else "No"
 
     @property
-    def store_link(self) -> str:
+    def store_link(self) -> str | None:
         """
         Generates a steam store url to the games page using it's `app_id`.
         """
@@ -125,7 +125,7 @@ class GetGameInfo:
         wrong for any or all return values.
         """
         if "price_overview" not in app_details:
-            return None, None
+            return None, 0.0
         price_data = app_details["price_overview"]
         # price
         price = price_data.get("final", None)

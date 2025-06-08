@@ -7,9 +7,10 @@ class ApiThrottler:
     api_calls = {}
 
     def __init__(self, default_wait: float = 1.0) -> None:
-        self.default_wait = default_wait  # set default time to wait
+        # set default time to wait
+        self.default_wait = default_wait
 
-    def wait_if(self, api_name: str, wait: int | float = None) -> bool:
+    def wait_if(self, api_name: str, wait: int | float | None = None) -> bool:
         """
         Delays execution for a set period if the `api_name` was accessed too recently.
         Delay length is set by `sleep_time` in seconds.

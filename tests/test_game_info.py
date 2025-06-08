@@ -86,7 +86,7 @@ class TestGame:
         assert game.publisher == ""
         assert game.release_year == 0
         assert game.review_percent == 0.0
-        assert game.review_total is None
+        assert game.review_total == 0
         assert game.price is None
         # assert game.time_to_beat == 0.0
         assert game.player_count is None
