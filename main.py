@@ -654,6 +654,23 @@ class Tracker(GetGameInfo):
                 app_id = names_dict["app_id"]
                 self.steam.update_cell(app_id, self.name_col, new_name)
 
+    def output_name_changes(self, name_changes: list[dict]) -> None:
+        """
+        Outputs a table of name changes.
+        """
+        table = Table(
+            title=f"Name Changes: {len(name_changes)}",
+            show_lines=True,
+            title_style="bold",
+            style="green3",
+        )
+        table.add_column("New Name", justify="left")
+        table.add_column("Old Name", justify="left")
+        for names_dict in name_changes:
+            row = [names_dict["new_name"], names_dict["old_name"]]
+            table.add_row(*row)
+        self.console.print(table, new_line_start=True)
+
     def output_played_games_info(self, played_games: list[dict]) -> None:
         """
         Outputs a table of played game stats.
@@ -785,8 +802,12 @@ class Tracker(GetGameInfo):
         # prints the total games updated and added
         if 0 < len(played_games) < 50:
             self.output_played_games_info(played_games)
-        # game names changed
-        self.name_change_checker(name_changes)
+        # game names change
+        for names_dict in name_changes:
+            new_name = names_dict["new_name"]
+            app_id = names_dict["app_id"]
+            self.steam.update_cell(app_id, self.name_col, names_dict["new_name"])
+        self.output_name_changes(name_changes)
         # games added
         total_added_games = len(added_games)
         if 0 < total_added_games < 50:
