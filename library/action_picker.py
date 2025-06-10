@@ -1,4 +1,5 @@
 # standard library
+from typing import Callable
 import sys
 
 # third-party imports
@@ -11,16 +12,16 @@ console = Console()
 
 
 def advanced_picker(
-    choices: list[tuple[str, callable]],
+    choices: list[tuple[str, Callable | None]],
     prompt: str,
     indicator="->",
-) -> tuple[str, callable]:
+) -> tuple[str, Callable]:
     """
     Choice picker using the advanced and less compatible Pick module.
     """
-    options = [choice[0] for choice in choices]
+    options = [choice[0] for choice in choices if choice[1]]
     selected_index = pick(options, prompt, indicator=indicator)[1]
-    return choices[selected_index]
+    return choices[selected_index]  # type: ignore
 
 
 def action_picker(choices: list[tuple], repeat: bool = True) -> None:
