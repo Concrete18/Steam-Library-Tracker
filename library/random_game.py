@@ -1,10 +1,14 @@
+# standard library
 from easierexcel import Sheet
+from typing import Any
 from pick import pick
 import random
 
+# third-party imports
 from rich.console import Console
 from rich.theme import Theme
 
+# local imports
 from library.utils.utils import *
 
 
@@ -48,19 +52,21 @@ class RandomGame:
         for app_id in self.sheet.row_idx.keys():
             if status_choice == "Installed":
                 installed = self.sheet.get_cell(app_id, self.installed_column)
-                if not installed:  # pragma: no cover
-                    continue
-                if installed.lower() == "yes":
-                    game_list.append(app_id)
+                if isinstance(installed, str):
+                    if installed.lower() == "yes":
+                        game_list.append(app_id)
+                else:
+                    continue  # pragma: no cover
             else:
                 game_play_status = self.sheet.get_cell(app_id, self.play_status_column)
-                if not game_play_status:  # pragma: no cover
-                    continue
-                if game_play_status.lower() == status_choice.lower():
-                    game_list.append(app_id)
+                if isinstance(game_play_status, str):
+                    if game_play_status.lower() == status_choice.lower():
+                        game_list.append(app_id)
+                else:
+                    continue  # pragma: no cover
         return game_list
 
-    def get_random_game(self, game_list) -> tuple[str, list]:
+    def get_random_game(self, game_list: list[str]) -> tuple[Any, list]:
         """
         Picks random game with the given `play_status` then removes it from the `game_list` so it wont show up again during this session.
         """
@@ -71,7 +77,7 @@ class RandomGame:
         picked_game = self.sheet.get_cell(picked_app_id, self.name_column)
         return picked_game, game_list
 
-    def pick_game(self, game_list: list) -> tuple[str, list]:
+    def pick_game(self, game_list: list) -> tuple[str | None, list]:
         """
         Picks random game from `game_list` with `choice`.
         Returns `game_list` with picked game removed.
@@ -103,5 +109,5 @@ class RandomGame:
         status_choices = ["Installed", *self.play_status_choices]
         PROMPT = "\nWhat Play/Installed Status do you want a random game picked for?"
         status_choice = pick(status_choices, PROMPT, indicator="->")[0]
-        game_list = self.create_game_list(status_choice)
+        game_list = self.create_game_list(status_choice)  # type: ignore
         self.random_pick_loop(game_list)
