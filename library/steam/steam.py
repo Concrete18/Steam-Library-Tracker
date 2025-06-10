@@ -112,7 +112,7 @@ def get_friends_list_changes(
     return additions, removals
 
 
-@retry()
+@retry(print_error=False)
 def get_owned_steam_games(steam_key: str, steam_id: int) -> list:
     """
     Gets the games owned by the given `steam_id`.

@@ -35,7 +35,7 @@ def benchmark(round_digits: int = 2) -> Callable:  # pragma: no cover
     return decorator
 
 
-def retry(max_retries=4, delay=5):
+def retry(max_retries=4, delay=5, print_error=True):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -44,7 +44,8 @@ def retry(max_retries=4, delay=5):
                 try:
                     return func(*args, **kwargs)
                 except RequestException as e:
-                    print(e)
+                    if print_error:
+                        print(e)
                     retries += 1
                     time.sleep(delay)
             print(f"Failed after {max_retries} retries.")
