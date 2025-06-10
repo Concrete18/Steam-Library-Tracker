@@ -282,7 +282,9 @@ class Tracker(GetGameInfo):
 
         return save_every_nth
 
-    def set_play_status(self, app_id: int, new_status: str, cur_status: str = ""):
+    def set_play_status(
+        self, app_id: int, new_status: str | None, cur_status: str = ""
+    ):
         """
         Sets `app_id`'s Play Status cell to `new_status` if it the current status is unplayed.
         """
@@ -370,10 +372,12 @@ class Tracker(GetGameInfo):
         self.excel.save(use_print=False)
         set_title(self.APP_TITLE)
 
-    def sync_game_data(self, df):
+    def sync_game_data(self, df: pd.DataFrame | None):
         """
         Gets app_ids and updates games using update_extra_game_info func.
         """
+        if not isinstance(df, pd.DataFrame):
+            return
         self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=50)
         self.update_extra_game_info(app_ids, update_type)
@@ -413,7 +417,9 @@ class Tracker(GetGameInfo):
         total_size, unit = convert_size(total)
         self.console.print(f"[b]Total Workshop Size:[/] {total_size:,} {unit}")
 
-    def get_recently_played_app_ids(self, df: pd.DataFrame, n_days: int = 30) -> list:
+    def get_recent_app_ids(
+        self, df: pd.DataFrame, column: str, n_days: int = 30
+    ) -> list[int]:
         """
         Gets the app_ids of the recently played games via a dataframe.
         """
@@ -421,9 +427,9 @@ class Tracker(GetGameInfo):
         if recently_executed(self.config_data, "recently_played", n_days):
             return []
         # get recently played games
-        recently_played = self.find_recent_games(df, self.last_played_col, n_days)
-        recently_played_app_ids = [game[self.app_id_col] for game in recently_played]
-        return recently_played_app_ids
+        recently_played = self.find_recent_games(df, column, n_days)
+        recently_app_ids = [game[self.app_id_col] for game in recently_played]
+        return recently_app_ids
 
     def app_ids_to_names(self, app_ids: list[int]) -> list[Any]:
         """
@@ -447,7 +453,7 @@ class Tracker(GetGameInfo):
         if not self.internet_connected:
             return
         # starts the update list with recently played games
-        update_list = self.get_recently_played_app_ids(df, n_days=30)
+        update_list = self.get_recent_app_ids(df, self.last_played_col, n_days=30)
         column_list = [
             self.genre_col,
             self.pub_col,
@@ -606,17 +612,18 @@ class Tracker(GetGameInfo):
         # for ind in top_30_ratings.index:
         #     print(df["Name"][ind], df["My Rating"][ind])
 
-    def output_statistics(self, dataframe: pd.DataFrame) -> None:
+    def output_statistics(self, df: pd.DataFrame | None) -> None:
         """
         Outputs tables of game library statistics.
         """
         # TODO switch to new system
-        pass
+        if not isinstance(df, pd.DataFrame):
+            return
 
     @staticmethod
     def decide_play_status(
         play_status: str | None, minutes_played: float | None
-    ) -> str:
+    ) -> str | None:
         """
         Using time_played and play_status,
         determines what the play_status should change to.
@@ -627,11 +634,11 @@ class Tracker(GetGameInfo):
         if play_status not in ["Played", "Unplayed", "Must Play", None]:
             return play_status
         # play status change
-        if minutes_played >= 30:
-            play_status = "Played"
-        else:
-            if play_status != "Must Play":
-                play_status = "Unplayed"
+        if isinstance(minutes_played, float) or isinstance(minutes_played, int):
+            if minutes_played >= 30:
+                return "Played"
+        if play_status != "Must Play":
+            return "Unplayed"
         return play_status
 
     def name_change_checker(self, name_changes: list[dict]) -> None:
@@ -717,12 +724,10 @@ class Tracker(GetGameInfo):
             game_name, app_id = game["name"], game["appid"]
             # sets last played using localconfig.vdf
             last_played, _ = get_game_local_data(app_id, local_config)
-            if last_played:
-                try:
-                    last_played = dt.datetime.fromtimestamp(int(last_played))
-                except Exception as e:
-                    print(game_name, e)
-                    last_played = "-"
+            if isinstance(last_played, int):
+                last_played = dt.datetime.fromtimestamp(last_played)
+            else:
+                last_played = "-"
             # ignore check
             if self.game_skipper.skip_game(game_name, app_id):
                 continue
@@ -792,9 +797,11 @@ class Tracker(GetGameInfo):
         # checks for removed games
         total_removed_games = len(sheet_games)
         if total_removed_games:
-            removed_game_names = [
-                self.steam.get_cell(app_id, self.name_col) for app_id in sheet_games
-            ]
+            removed_game_names = []
+            for app_id in sheet_games:
+                found_app_id = self.steam.get_cell(app_id, self.name_col)
+                if isinstance(found_app_id, str):
+                    removed_game_names.append(found_app_id)
             removed_games_names_str = list_to_sentence(removed_game_names)
             if is_response_yes(
                 f"\nDo you want to delete all the following games?\n{removed_games_names_str}"
@@ -817,11 +824,11 @@ class Tracker(GetGameInfo):
         try:
             owned_games = get_owned_steam_games(steam_key, steam_id)
         except requests.ConnectTimeout:
-            # TODO find out why this occurs more often lately
             text = "\nFailed to retrieve Steam Games\nSteam Servers may be down"
             input(text)
+            # TODO make it easy to rerun when the internet or servers are working again
             return
-        except requests.TooManyRedirects:
+        except:
             time.sleep(15)
             owned_games = get_owned_steam_games(steam_key, steam_id)
         sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
@@ -835,7 +842,7 @@ class Tracker(GetGameInfo):
         game_name: str,
         minutes_played: float,
         linux_minutes_played: float,
-        new_status: str,
+        new_status: str | None,
         cur_status: str,
         installed: bool = False,
         time_played: str | None = None,
@@ -847,9 +854,10 @@ class Tracker(GetGameInfo):
         installed_value = "Yes" if installed else "No"
         self.steam.update_cell(str(app_id), self.installed_col, installed_value)
         prev_hours = self.steam.get_cell(app_id, self.hours_played_col)
-        try:
+        # TODO improve this
+        if isinstance(prev_hours, int) or isinstance(prev_hours, str):
             prev_hours = float(prev_hours)
-        except (TypeError, ValueError):
+        elif not isinstance(prev_hours, float):
             prev_hours = 0.0
         cur_hours = get_hours_played(minutes_played)
         if not cur_hours:
@@ -886,7 +894,7 @@ class Tracker(GetGameInfo):
         minutes_played: float | None = None,
         linux_minutes_played: float | None = None,
         time_played: str | None = None,
-        last_played: dt.datetime | None = None,
+        last_played: dt.datetime | str | None = None,
         play_status: str | None = None,
         get_internet_info: bool = True,
         save_after_add: bool = False,
@@ -1134,8 +1142,7 @@ class Tracker(GetGameInfo):
         app_ids = []
         if selected_action == options[0]:
             update_type = "Recent"
-            recently_played = self.find_recent_games(df, self.last_played_col, 30)
-            app_ids = [game[self.app_id_col] for game in recently_played]
+            app_ids = self.get_recent_app_ids(df, self.last_played_col, 30)
         elif selected_action == options[1]:
             update_type = "All"
             app_ids = self.steam.row_idx.keys()
@@ -1148,10 +1155,12 @@ class Tracker(GetGameInfo):
                 return app_ids, None
         return app_ids, update_type
 
-    def sync_player_counts(self, df: pd.DataFrame) -> None:
+    def sync_player_counts(self, df: pd.DataFrame | None) -> None:
         """
         Updates game player counts using the Steam API.
         """
+        if not isinstance(df, pd.DataFrame):
+            return
         self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=15)
         self.bulk_update_player_count(app_ids, update_type)
@@ -1234,6 +1243,8 @@ class Tracker(GetGameInfo):
         app_list = get_app_list()
         for app_id in self.steam.row_idx:
             name = self.steam.get_cell(app_id, self.name_col)
+            if not isinstance(name, str):
+                continue
             correct_app_id = get_app_id(name, app_list)
             if app_id and correct_app_id:
                 if int(app_id) != int(correct_app_id):
