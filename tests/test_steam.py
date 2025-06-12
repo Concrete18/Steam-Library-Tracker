@@ -305,7 +305,7 @@ class TestGetAppId:
 
 
 class TestGetInstalledAppIds:
-    vdf_path = "tests\data\libraryfolders.vdf"
+    vdf_path = "tests/data/libraryfolders.vdf"
 
     def test_success(self):
         app_ids = get_installed_app_ids(self.vdf_path)
@@ -313,7 +313,7 @@ class TestGetInstalledAppIds:
 
 
 class TestGetGameLocalData:
-    vdf_path = "tests\data\localconfig.vdf"
+    vdf_path = "tests/data/localconfig.vdf"
     local_config = get_local_config_data(vdf_path)
 
     def test_all_data_found(self):
