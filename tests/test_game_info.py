@@ -5,7 +5,7 @@ import json
 import pytest
 
 # local imports
-from library.game import Game, GetGameInfo
+from library.game import *
 from library.utils.utils import *
 
 
@@ -98,22 +98,19 @@ class TestGame:
 class TestParseReleaseDate:
 
     def test_success(self):
-        App = GetGameInfo()
         APP_DETAILS = {"release_date": {"date": "Feb 20, 2024"}}
-        year = App.parse_release_date(APP_DETAILS)
+        year = parse_release_date(APP_DETAILS)
         assert year == 2024
 
     def test_insufficient_data(self):
-        App = GetGameInfo()
         APP_DETAILS = {"release_date": {}}
-        year = App.parse_release_date(APP_DETAILS)
+        year = parse_release_date(APP_DETAILS)
         assert year == 0
 
 
 class TestGetPriceInfo:
 
     def test_success(self):
-        App = GetGameInfo()
 
         APP_DETAILS = {
             "price_overview": {
@@ -126,13 +123,12 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount = App.get_price(APP_DETAILS)
+        price, discount = get_price(APP_DETAILS)
         assert price == 29.99
         assert discount == 0.5
 
     def test_insufficient_data(self):
-        App = GetGameInfo()
-        price, discount = App.get_price({})
+        price, discount = get_price({})
         assert not price
         assert not discount
 
@@ -194,12 +190,11 @@ class TestGetAppDetails:
         return mock_response
 
     def test_success(self, mock_response, mocker):
-        App = GetGameInfo()
         mocker.patch(
             "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
         )
         mocker.patch("requests.get", return_value=mock_response)
-        app_details = App.get_app_details(2379780)
+        app_details = get_app_details(2379780)
         assert app_details
 
         app_id = app_details.get("steam_appid", 0)
@@ -208,19 +203,17 @@ class TestGetAppDetails:
         assert game_name == "Balatro"
 
     def test_request_error(self, mock_response, mocker):
-        App = GetGameInfo()
         mocker.patch(
             "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
         )
         mock_response.ok = False
         mocker.patch("requests.get", return_value=mock_response)
-        assert App.get_app_details(2379780) == {}
+        assert get_app_details(2379780) == {}
 
 
 class TestGetGameInfo:
 
     def test_success(self, mocker):
-        App = GetGameInfo()
         app_id = 2379780
 
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
@@ -247,7 +240,7 @@ class TestGetGameInfo:
 
         api_key, _ = get_steam_key_and_id()
 
-        game = App.get_game_info(app_details, api_key)
+        game = get_game_info(app_details, api_key)
         assert isinstance(game, Game)
         # attribute check
         assert game.app_id == app_id
@@ -275,12 +268,10 @@ class TestGetGameInfo:
 
     def test_not_enough_data(self):
         api_key, _ = get_steam_key_and_id()
-        App = GetGameInfo()
         app_details = {}
-        game = App.get_game_info(app_details, api_key)
+        game = get_game_info(app_details, api_key)
         assert not game
 
     def test_missing_args(self):
-        App = GetGameInfo()
         with pytest.raises(TypeError):
-            App.get_game_info()
+            get_game_info()  # type: ignore

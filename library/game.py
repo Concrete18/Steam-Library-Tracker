@@ -111,80 +111,80 @@ class Game:
         return time_to_beat
 
 
-class GetGameInfo:
+def parse_release_date(app_details: dict) -> int:
+    release_date = app_details.get("release_date", {}).get("date", {})
+    year = get_year(release_date) if release_date else None
+    return year or 0
 
-    def parse_release_date(self, app_details: dict) -> int:
-        release_date = app_details.get("release_date", {}).get("date", {})
-        year = get_year(release_date) if release_date else None
-        return year or 0
 
-    @staticmethod
-    def get_price(app_details: dict) -> tuple[float | None, float]:
-        """
-        Gets price info from `app_details` and returns None if anything is set up
-        wrong for any or all return values.
-        """
-        if "price_overview" not in app_details:
-            return None, 0.0
-        price_data = app_details["price_overview"]
-        # price
-        price = price_data.get("final", None)
-        final_price = round(price * 0.01, 2) if price else price
-        # discount
-        discount = float(price_data.get("discount_percent", 0.0))
-        return final_price, discount
+def get_price(app_details: dict) -> tuple[float | None, float]:
+    """
+    Gets price info from `app_details` and returns None if anything is set up
+    wrong for any or all return values.
+    """
+    if "price_overview" not in app_details:
+        return None, 0.0
+    price_data = app_details["price_overview"]
+    # price
+    price = price_data.get("final", None)
+    final_price = round(price * 0.01, 2) if price else price
+    # discount
+    discount = float(price_data.get("discount_percent", 0.0))
+    return final_price, discount
 
-    @staticmethod
-    @retry()
-    def get_app_details(app_id: int) -> dict:
-        """
-        Gets game details.
-        """
-        url = "https://store.steampowered.com/api/appdetails"
-        params = {"appids": app_id, "cc": "us", "l": "english"}
-        throttler.wait_if("steam_store")
-        response = requests.get(url, params=params)
-        if response.ok:
-            return response.json().get(str(app_id), {}).get("data", {})
-        return {}
 
-    def get_game_info(self, app_details: dict, steam_key: str) -> Game:
-        """
-        Creates a Game object with `app_id`, `game_name` and data from `app_details`.
-        """
-        if not app_details or not steam_key:
-            return Game()
-        app_id = app_details.get("steam_appid", 0)
-        game_name = app_details.get("name", "")
-        developer = ", ".join(app_details.get("developers", []))
-        publisher = ", ".join(app_details.get("publishers", []))
-        genre = [desc["description"] for desc in app_details.get("genres", [])]
-        release_year = self.parse_release_date(app_details)
-        price, discount = self.get_price(app_details)
-        categories = [desc["description"] for desc in app_details.get("categories", [])]
+@retry()
+def get_app_details(app_id: int) -> dict:
+    """
+    Gets game details.
+    """
+    url = "https://store.steampowered.com/api/appdetails"
+    params = {"appids": app_id, "cc": "us", "l": "english"}
+    throttler.wait_if("steam_store")
+    response = requests.get(url, params=params)
+    if response.ok:
+        return response.json().get(str(app_id), {}).get("data", {})
+    return {}
 
-        page_data = scraper.get_store_page_data(app_id)
-        percent = page_data.review_percent
-        total = page_data.review_total
-        user_tags = page_data.user_tags
-        early_access = page_data.early_access
 
-        # player count
-        player_count = get_player_count(app_id, steam_key) if steam_key else None
+def get_game_info(app_details: dict, steam_key: str) -> Game:
+    """
+    Creates a Game object with `app_id`, `game_name` and data from `app_details`.
+    """
+    if not app_details or not steam_key:
+        return Game()
+    app_id = app_details.get("steam_appid", 0)
+    game_name = app_details.get("name", "")
+    developer = ", ".join(app_details.get("developers", []))
+    publisher = ", ".join(app_details.get("publishers", []))
+    genre = [desc["description"] for desc in app_details.get("genres", [])]
+    release_year = parse_release_date(app_details)
+    price, discount = get_price(app_details)
+    categories = [desc["description"] for desc in app_details.get("categories", [])]
 
-        return Game(
-            app_id=app_id,
-            name=game_name,
-            developer=developer,
-            publisher=publisher,
-            genre=genre,
-            review_percent=percent,
-            review_total=total,
-            user_tags=user_tags,
-            player_count=player_count,
-            release_year=release_year,
-            early_access=early_access,
-            price=price,
-            discount=discount,
-            categories=categories,
-        )
+    # TODO mock this data
+    page_data = scraper.get_store_page_data(app_id)
+    percent = page_data.review_percent
+    total = page_data.review_total
+    user_tags = page_data.user_tags
+    early_access = page_data.early_access
+
+    # player count
+    player_count = get_player_count(app_id, steam_key) if steam_key else None
+
+    return Game(
+        app_id=app_id,
+        name=game_name,
+        developer=developer,
+        publisher=publisher,
+        genre=genre,
+        review_percent=percent,
+        review_total=total,
+        user_tags=user_tags,
+        player_count=player_count,
+        release_year=release_year,
+        early_access=early_access,
+        price=price,
+        discount=discount,
+        categories=categories,
+    )

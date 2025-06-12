@@ -17,7 +17,7 @@ from rich.theme import Theme
 from setup import Setup
 from library.backup import Backup
 from library.steam.steam import *
-from library.game import Game, GetGameInfo
+from library.game import *
 from library.random_game import RandomGame
 from library.game_skipper import GameSkipper
 from library.utils.api_throttler import ApiThrottler
@@ -31,8 +31,7 @@ from library.utils.internet import Internet
 from easierexcel import Excel, Sheet
 
 
-# TODO stop inheriting GetGameInfo
-class Tracker(GetGameInfo):
+class Tracker:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
 
@@ -348,8 +347,8 @@ class Tracker(GetGameInfo):
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
             # get new data from the internet
-            app_details = self.get_app_details(app_id)
-            game = self.get_game_info(app_details, self.steam_key)
+            app_details = get_app_details(app_id)
+            game = get_game_info(app_details, self.steam_key)
             game_data = self.get_game_column_dict(game)
             # update data
             for column, data in game_data.items():
@@ -951,9 +950,9 @@ class Tracker(GetGameInfo):
         }
         extra_data = {}
         if get_internet_info:
-            app_details = self.get_app_details(app_id)
+            app_details = get_app_details(app_id)
             if app_details:
-                game = self.get_game_info(app_details, self.steam_key)
+                game = get_game_info(app_details, self.steam_key)
                 extra_data = self.get_game_column_dict(game)
         game_data = {**base_data, **extra_data}
 
@@ -996,8 +995,8 @@ class Tracker(GetGameInfo):
             if rating is None:
                 continue
             if rating >= min_rating and app_id:
-                app_details = self.get_app_details(app_id)
-                game = self.get_game_info(app_details, self.steam_key)
+                app_details = get_app_details(app_id)
+                game = get_game_info(app_details, self.steam_key)
                 if not game.on_sale:
                     continue
                 games.append((game, rating))
