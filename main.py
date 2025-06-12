@@ -803,11 +803,12 @@ class Tracker(GetGameInfo):
         if 0 < len(played_games) < 50:
             self.output_played_games_info(played_games)
         # game names change
-        for names_dict in name_changes:
-            new_name = names_dict["new_name"]
-            app_id = names_dict["app_id"]
-            self.steam.update_cell(app_id, self.name_col, names_dict["new_name"])
-        self.output_name_changes(name_changes)
+        if name_changes:
+            for names_dict in name_changes:
+                new_name = names_dict["new_name"]
+                app_id = names_dict["app_id"]
+                self.steam.update_cell(app_id, self.name_col, names_dict["new_name"])
+            self.output_name_changes(name_changes)
         # games added
         total_added_games = len(added_games)
         if 0 < total_added_games < 50:
@@ -875,7 +876,6 @@ class Tracker(GetGameInfo):
         installed_value = "Yes" if installed else "No"
         self.steam.update_cell(str(app_id), self.installed_col, installed_value)
         prev_hours = self.steam.get_cell(app_id, self.hours_played_col)
-        # TODO improve this
         if isinstance(prev_hours, int) or isinstance(prev_hours, str):
             prev_hours = float(prev_hours)
         elif not isinstance(prev_hours, float):
@@ -1174,7 +1174,7 @@ class Tracker(GetGameInfo):
                 app_ids = [game["App ID"]]
             else:
                 return app_ids, None
-        return app_ids, update_type
+        return app_ids, update_type  # type: ignore
 
     def sync_player_counts(self, df: pd.DataFrame | None) -> None:
         """
