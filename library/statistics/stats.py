@@ -35,14 +35,14 @@ class Statistics:
 
         # Load your Excel file
         file = (
-            "D:\Dropbox\Coding\Projects\Python\Game Library Tracker\Game Library.xlsx"
+            "D:/Dropbox/Coding/Projects/Python/Game Library Tracker/Game Library.xlsx"
         )
         self.dataframe = pd.read_excel(file, na_values="-")
 
         # Setup Rich console
         self.console = Console()
 
-    def summary(self, df: pd.DataFrame) -> None:
+    def summary(self, df: pd.DataFrame) -> Panel:
         total_hours = df["Hours Played"].sum()
         avg_personal_rating = df["My Rating"].mean()
         avg_steam_rating = df["Steam Review Percent"].mean()
@@ -60,7 +60,7 @@ class Statistics:
         )
         return summary
 
-    def output_playtime_info(self, df: pd.DataFrame) -> None:
+    def output_playtime_info(self, df: pd.DataFrame) -> Table:
         """
         Creates a table with counts and percentage of each play status.
         """
@@ -96,7 +96,7 @@ class Statistics:
         table.add_row(*row)
         return table
 
-    def get_genre_stats(self, df: pd.DataFrame, n_entries: int = 15) -> None:
+    def get_genre_stats(self, df: pd.DataFrame, n_entries: int = 15) -> Table:
         """
         Average playtime per genre.
         """
@@ -132,7 +132,7 @@ class Statistics:
                 break
         return table
 
-    def get_tag_stats(self, df: pd.DataFrame, n_entries: int = 15) -> None:
+    def get_tag_stats(self, df: pd.DataFrame, n_entries: int = 15) -> Table:
         """
         Average playtime per tag.
         """
@@ -162,7 +162,7 @@ class Statistics:
                 break
         return table
 
-    def output_review_info(self, df: pd.DataFrame) -> None:
+    def output_review_info(self, df: pd.DataFrame) -> Table:
         """
         Outputs a table of review stats.
         """
@@ -194,7 +194,7 @@ class Statistics:
         table.add_row(*row)
         return table
 
-    def output_play_status_info(self, df: pd.DataFrame) -> None:
+    def output_play_status_info(self, df: pd.DataFrame) -> Table:
         """
         Creates a table with counts and percentage of each play status.
         """
