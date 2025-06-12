@@ -21,15 +21,17 @@ from library.game import Game, GetGameInfo
 from library.random_game import RandomGame
 from library.game_skipper import GameSkipper
 from library.utils.api_throttler import ApiThrottler
-from library.date_updater import *
 from library.action_picker import advanced_picker, action_picker
+from library.date_updater import *
 from library.utils.utils import *
 from library.logger import Logger
+from library.utils.internet import Internet
 
 # my package imports
 from easierexcel import Excel, Sheet
 
 
+# TODO stop inheriting GetGameInfo
 class Tracker(GetGameInfo):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -99,6 +101,7 @@ class Tracker(GetGameInfo):
 
     # misc
     throttler = ApiThrottler()
+    internet = Internet()
 
     # sets play status choices for multiple functions
     # -----------------------------
@@ -151,9 +154,6 @@ class Tracker(GetGameInfo):
         self.save_to_file = save
         if not self.steam_id:
             self.update_steam_id()
-        self.internet_connected = check_internet_connection()
-        if not self.internet_connected:
-            self.console.print("\nNo Internet Detected", style="warning")
         self.load_excel_file()
 
     def load_excel_file(self):
@@ -203,7 +203,8 @@ class Tracker(GetGameInfo):
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
         """
-        if not self.internet_connected:
+        if not self.internet.online:
+            print("Friends can't be synced without Internet")
             return
         # check last run
         if recently_executed(self.config_data, "friends_sync", check_freq_days):
@@ -259,6 +260,7 @@ class Tracker(GetGameInfo):
         self.config_data["friend_ids"] = cur_friend_ids
         save_json(self.config_data, self.config_path)
 
+    @internet.check
     def sync_all(self):
         """
         Runs Steam synchronization.
@@ -376,6 +378,9 @@ class Tracker(GetGameInfo):
         """
         Gets app_ids and updates games using update_extra_game_info func.
         """
+        if not self.internet.online:
+            print("Game Data can't be synced without Internet")
+            return
         if not isinstance(df, pd.DataFrame):
             return
         self.load_excel_file()
@@ -386,6 +391,9 @@ class Tracker(GetGameInfo):
         """
         Checks the directory size for each games workshop folder.
         """
+        if not self.internet.online:
+            print("\nWorkshop can't be checked without Internet")
+            return
         print()
         total = 0
         with Progress(transient=True) as progress:
@@ -450,7 +458,7 @@ class Tracker(GetGameInfo):
 
         Use `skip_by_play_status` to only check games with a specific play status.
         """
-        if not self.internet_connected:
+        if not self.internet.online:
             return
         # starts the update list with recently played games
         update_list = self.get_recent_app_ids(df, self.last_played_col, n_days=30)
@@ -616,6 +624,7 @@ class Tracker(GetGameInfo):
         """
         Outputs tables of game library statistics.
         """
+        print("Statistics are currently a work in progress\n")
         # TODO switch to new system
         if not isinstance(df, pd.DataFrame):
             return
@@ -841,7 +850,7 @@ class Tracker(GetGameInfo):
         and runs excel update/add functions.
         """
         owned_games = []
-        if not self.internet_connected:
+        if not self.internet.online:
             return
         try:
             owned_games = get_owned_steam_games(steam_key, steam_id)
@@ -1038,6 +1047,9 @@ class Tracker(GetGameInfo):
         Gets sale information for games that are at a minimun rating or higher.
         Rating is set up using an IntPrompt.ask after running.
         """
+        if not self.internet.online:
+            print("Favorite Game Sales can't be checked without Internet")
+            return
         self.load_excel_file()
         # sets minimum rating to and defaults to 8 if response is blank or invalid
         min_rating = IntPrompt.ask(
@@ -1215,6 +1227,7 @@ class Tracker(GetGameInfo):
         """
         Reloads excel file and runs Steam sync again.
         """
+        # BUG this fails to output correctly when there is no internet
         if self.excel.changes_made:
             self.excel.save(use_print=False)
         os.system("cls")
