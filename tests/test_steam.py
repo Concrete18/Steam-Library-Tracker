@@ -28,6 +28,7 @@ class TestGetOwnedSteamGames:
 
     STEAM_KEY, STEAM_ID = get_steam_key_and_id()
 
+    # FIXME find out why this are so slow
     def test_success(self, mock_response, mocker):
         # Mock requests.get and return the mock response
         mocker.patch("requests.get", return_value=mock_response)
@@ -123,7 +124,7 @@ class TestGetSteamUsername:
 
         mocker.patch("requests.get", return_value=mock_response)
 
-        result = get_steam_username(self.STEAM_KEY, self.STEAM_ID)
+        result = get_steam_username(self.STEAM_ID, self.STEAM_KEY)
 
         assert result == "test_user"
 
@@ -132,7 +133,7 @@ class TestGetSteamUsername:
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 
-        result = get_steam_username(self.STEAM_KEY, 123456)
+        result = get_steam_username(123456, self.STEAM_KEY)
         assert result is None
 
 
