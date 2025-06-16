@@ -1,3 +1,4 @@
+# third-party imports
 import pytest, requests
 
 # local imports
@@ -5,12 +6,14 @@ from library.steam.steam import *
 from library.steam.scraper import *
 from library.utils.utils import *
 
+WAIT_IF = "library.utils.api_throttler.ApiThrottler.wait_if"
+
 
 class TestGetOwnedSteamGames:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("library.utils.api_throttler", return_value=None)
+
         # Create a mock response object
         mock_response = mocker.Mock()
         # Set the JSON data for the response
@@ -28,8 +31,8 @@ class TestGetOwnedSteamGames:
 
     STEAM_KEY, STEAM_ID = get_steam_key_and_id()
 
-    # FIXME find out why this are so slow
     def test_success(self, mock_response, mocker):
+        mocker.patch(WAIT_IF, return_value=None)
         # Mock requests.get and return the mock response
         mocker.patch("requests.get", return_value=mock_response)
         # Call the function you want to test
@@ -42,8 +45,9 @@ class TestGetOwnedSteamGames:
 
     def test_request_error(self, mocker):
         test_exception = requests.RequestException("Test error")
+        mocker.patch(WAIT_IF, return_value=None)
         mocker.patch("requests.get", side_effect=test_exception)
-
+        mocker.patch("time.sleep", return_value=None)
         result = get_owned_steam_games(self.STEAM_KEY, 123456)
         assert result is None
 
@@ -80,7 +84,7 @@ class TestGetRecentlyPlayedGames:
     STEAM_KEY, STEAM_ID = get_steam_key_and_id()
 
     def test_success(self, mock_response, mocker):
-        mocker.patch("library.utils.api_throttler", return_value=None)
+        mocker.patch(WAIT_IF, return_value=None)
         mocker.patch("requests.get", return_value=mock_response)
 
         result = get_recently_played_steam_games(
@@ -93,7 +97,7 @@ class TestGetRecentlyPlayedGames:
         ]
 
     def test_request_error(self, mocker):
-        mocker.patch("library.utils.api_throttler", return_value=None)
+        mocker.patch(WAIT_IF, return_value=None)
         test_exception = requests.RequestException("Test error")
         mocker.patch("requests.get", side_effect=test_exception)
 

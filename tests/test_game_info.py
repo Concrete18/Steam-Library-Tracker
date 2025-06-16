@@ -7,6 +7,9 @@ import pytest
 # local imports
 from library.game import *
 from library.utils.utils import *
+from library.steam.scraper import StoreData
+
+WAIT_IF = "library.utils.api_throttler.ApiThrottler.wait_if"
 
 
 class TestGame:
@@ -157,7 +160,7 @@ class TestGetPriceInfo:
 #         """
 #         Gets the time to beat for Hades as long as it is upper case.
 #         """
-#         mocker.patch("library.utils.api_throttler", return_value=None)
+#         mocker.patch(WAIT_IF, return_value=None)
 #         hltb_object = [self.hltb(10, 30)]
 #         mocker.patch(self.func_path, side_effect=[None, hltb_object])
 
@@ -168,7 +171,7 @@ class TestGetPriceInfo:
 #         """
 #         Makes sure get_time_to_beat returns '-' for a non existing game.
 #         """
-#         mocker.patch("library.utils.api_throttler", return_value=None)
+#         mocker.patch(WAIT_IF, return_value=None)
 #         mocker.patch(self.func_path, return_value=None)
 
 #         test = self.test.get_time_to_beat("Fake game is fake")
@@ -179,9 +182,7 @@ class TestGetAppDetails:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch(
-            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=None
-        )
+        mocker.patch(WAIT_IF, return_value=None)
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             data = json.load(file)
         mock_response = mocker.Mock()
@@ -190,9 +191,7 @@ class TestGetAppDetails:
         return mock_response
 
     def test_success(self, mock_response, mocker):
-        mocker.patch(
-            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
-        )
+        mocker.patch(WAIT_IF, return_value=False)
         mocker.patch("requests.get", return_value=mock_response)
         app_details = get_app_details(2379780)
         assert app_details
@@ -203,9 +202,7 @@ class TestGetAppDetails:
         assert game_name == "Balatro"
 
     def test_request_error(self, mock_response, mocker):
-        mocker.patch(
-            "library.utils.api_throttler.ApiThrottler.wait_if", return_value=False
-        )
+        mocker.patch(WAIT_IF, return_value=False)
         mock_response.ok = False
         mocker.patch("requests.get", return_value=mock_response)
         assert get_app_details(2379780) == {}
@@ -237,6 +234,16 @@ class TestGetGameInfo:
         # mocks get_player_count
         func = "library.game.get_player_count"
         mocker.patch(func, return_value=600)
+
+        # mocks get_store_page_data
+        func = "library.steam.scraper.Scraper.get_store_page_data"
+        store_data = StoreData(
+            review_percent=0.97,
+            review_total=9856,
+            early_access=False,
+            user_tags=["Roguelike", "Card Game", "Deckbuilding"],
+        )
+        mocker.patch(func, return_value=store_data)
 
         api_key, _ = get_steam_key_and_id()
 
