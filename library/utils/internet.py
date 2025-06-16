@@ -9,9 +9,12 @@ import requests
 
 
 class Internet:
+    CHECK_INTERVAL_SECONDS = 600
+    TEST_URL = "http://www.google.com"
+    TIMEOUT_SECONDS = 5
+
     custom_theme = Theme(
         {
-            # error
             "info": "dim cyan",
             "warning": "bold magenta",
             "danger": "bold red",
@@ -27,14 +30,15 @@ class Internet:
         """
         Returns True if internet is available, False otherwise.
         """
-        if time.time() - self.last_check_time > 600:
+        now = time.time()
+        if now - self.last_check_time > self.CHECK_INTERVAL_SECONDS:
             try:
-                requests.get("http://www.google.com", timeout=5)
+                requests.get(self.TEST_URL, timeout=self.TIMEOUT_SECONDS)
                 self.online = True
             except requests.ConnectionError:
                 self.online = False
                 self.console.print("No Internet Detected", style="warning")
-            self.last_check_time = time.time()
+            self.last_check_time = now
         return self.online
 
     def check(self, func: Callable) -> Callable:
