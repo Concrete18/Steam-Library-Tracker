@@ -1319,7 +1319,3 @@ class Tracker:
 if __name__ == "__main__":
     App = Tracker(save=True)
     App.main()
-
-    # games = get_owned_steam_games(App.steam_key, App.steam_id)
-    # for game in games:
-    #     print(game)
