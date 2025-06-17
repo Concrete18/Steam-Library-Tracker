@@ -864,6 +864,9 @@ class Tracker:
         sheet_app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
         if not sheet_app_ids:
             print(f"\nStarting First Steam Sync")
+        if not owned_games:
+            print("No Steam Games were Found")
+            return
         self.sync_steam_games_with_sheet(owned_games, sheet_app_ids)
 
     def update_steam_game(
