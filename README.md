@@ -63,6 +63,32 @@ pip install -r requirements.txt
 5. Run main.py again. This should run through your Steam Games and fill your newly created excel file.
 6. Enjoy!
 
+## Testing
+
+Pytest is used for unit testing.
+
+### Setup
+
+You will need to install the the dev dependencies using the following.
+
+```bash
+pip install -r requirements_dev.txt
+```
+
+### Running Tests
+
+Run basic tests with one of this but -vv is optional for showing more information.
+
+```bash
+pytest -vv
+```
+
+Use this to find slow tests.
+
+```bash
+pytest --durations=10
+```
+
 ## Documentation
 
 ### Auto Updating Steam Data
@@ -105,7 +131,7 @@ Allows syncing of player counts for all games, recent games or only 1 game.
 
 Update Dated Added dates using a json file. This is only needed due to the Steam API not providing purchase dates for games in any way I can find.
 
-#### Json Example
+#### JSON Example
 
 ```json
 [
