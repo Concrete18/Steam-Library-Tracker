@@ -39,7 +39,7 @@ class Backup:
 
     def maintain_redundancy(self):
         """
-        ph
+        Keeps backup redundancy to a specified amount.
         """
         pattern = f"{self.file.stem}_*{self.file.suffix}"
         backups = sorted(self.backup_dir.glob(pattern), key=os.path.getmtime)

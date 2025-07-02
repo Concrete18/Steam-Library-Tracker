@@ -1,7 +1,15 @@
-import pytest, json
+# standard library
+import json
 
-from utils.game_info import Game, GetGameInfo
-from utils.utils import *
+# third-party imports
+import pytest
+
+# local imports
+from library.game import *
+from library.utils.utils import *
+from library.steam.scraper import StoreData
+
+WAIT_IF = "library.utils.api_throttler.ApiThrottler.wait_if"
 
 
 class TestGame:
@@ -16,17 +24,18 @@ class TestGame:
             publisher="Pub",
             genre=["Testing", "early access"],
             release_year=2024,
+            early_access=True,
             price=12.34,
             discount=0.88,
             categories=["Category 1"],
             user_tags=["Tag 1"],
         )
-        assert len(vars(game)) == 20
+        assert len(vars(game)) == 18
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
         assert game.publisher == "Pub"
-        assert game.early_access == "Yes"
+        assert game.early_access_str == "Yes"
         assert game.genre == ["Testing", "early access"]
         assert game.release_year == 2024
         assert game.price == 12.34
@@ -34,7 +43,6 @@ class TestGame:
         assert game.on_sale
         assert game.categories == ["Category 1"]
         assert game.user_tags == ["Tag 1"]
-        assert game.game_url == "https://store.steampowered.com/app/12345/"
 
     def test_not_on_sale(self):
         NAME = "Test1"
@@ -56,35 +64,18 @@ class TestGame:
             genre=["Testing"],
             user_tags=["Testing"],
         )
-        assert game.early_access == "No"
-
-    def test_is_early_access(self):
-        NAME = "Test1"
-        APP_ID = 12345
-        game1 = Game(
-            name=NAME,
-            app_id=APP_ID,
-            genre=["Testing", "Early Access"],
-        )
-        assert game1.early_access == "Yes"
-        game2 = Game(
-            name=NAME,
-            app_id=APP_ID,
-            user_tags=["Testing", "Early Access"],
-        )
-        assert game2.early_access == "Yes"
+        assert game.early_access_str == "No"
 
     def test_no_args(self):
         game = Game()
         assert not Game()
         # total attributes
-        assert len(vars(game)) == 20
+        assert len(vars(game)) == 18
         # required values
         assert game.name == ""
         assert game.app_id == 0
         # str
-        assert game.game_url == 0
-        assert game.early_access == "No"
+        assert game.early_access_str == "No"
         # float
         assert game.discount == 0.0
         # false
@@ -97,10 +88,10 @@ class TestGame:
         assert game.developer == ""
         assert game.publisher == ""
         assert game.release_year == 0
-        assert game.steam_review_percent == 0.0
-        assert game.steam_review_total is None
+        assert game.review_percent == 0.0
+        assert game.review_total == 0
         assert game.price is None
-        assert game.time_to_beat == 0.0
+        # assert game.time_to_beat == 0.0
         assert game.player_count is None
         assert game.tags_str == ""
         assert game.categories_str == ""
@@ -110,22 +101,19 @@ class TestGame:
 class TestParseReleaseDate:
 
     def test_success(self):
-        App = GetGameInfo()
         APP_DETAILS = {"release_date": {"date": "Feb 20, 2024"}}
-        year = App.parse_release_date(APP_DETAILS)
+        year = parse_release_date(APP_DETAILS)
         assert year == 2024
 
     def test_insufficient_data(self):
-        App = GetGameInfo()
         APP_DETAILS = {"release_date": {}}
-        year = App.parse_release_date(APP_DETAILS)
+        year = parse_release_date(APP_DETAILS)
         assert year == 0
 
 
 class TestGetPriceInfo:
 
     def test_success(self):
-        App = GetGameInfo()
 
         APP_DETAILS = {
             "price_overview": {
@@ -138,64 +126,63 @@ class TestGetPriceInfo:
             }
         }
 
-        price, discount = App.get_price(APP_DETAILS)
+        price, discount = get_price(APP_DETAILS)
         assert price == 29.99
         assert discount == 0.5
 
     def test_insufficient_data(self):
-        App = GetGameInfo()
-        price, discount = App.get_price({})
+        price, discount = get_price({})
         assert not price
         assert not discount
 
 
-class TestGetTimeToBeat:
-    test = GetGameInfo()
-    func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
+# class TestGetTimeToBeat:
+#     test = GetGameInfo()
+#     func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
 
-    class hltb:
-        def __init__(self, main_story, main_extra) -> None:
-            self.main_story = main_story
-            self.main_extra = main_extra
-            self.similarity = 1
+#     class hltb:
+#         def __init__(self, main_story, main_extra) -> None:
+#             self.main_story = main_story
+#             self.main_extra = main_extra
+#             self.similarity = 1
 
-    def test_should_be_title_caps(self, mocker):
-        """
-        Gets the time to beat for Hades as long as it is title case.
-        """
-        hltb_object = [self.hltb(50, 70)]
-        mocker.patch(self.func_path, return_value=hltb_object)
+#     def test_should_be_title_caps(self, mocker):
+#         """
+#         Gets the time to beat for Hades as long as it is title case.
+#         """
+#         hltb_object = [self.hltb(50, 70)]
+#         mocker.patch(self.func_path, return_value=hltb_object)
 
-        test = self.test.get_time_to_beat("Hades")
-        assert test == 70
+#         test = self.test.get_time_to_beat("Hades")
+#         assert test == 70
 
-    def test_should_be_all_caps(self, mocker):
-        """
-        Gets the time to beat for Hades as long as it is upper case.
-        """
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
-        hltb_object = [self.hltb(10, 30)]
-        mocker.patch(self.func_path, side_effect=[None, hltb_object])
+#     def test_should_be_all_caps(self, mocker):
+#         """
+#         Gets the time to beat for Hades as long as it is upper case.
+#         """
+#         mocker.patch(WAIT_IF, return_value=None)
+#         hltb_object = [self.hltb(10, 30)]
+#         mocker.patch(self.func_path, side_effect=[None, hltb_object])
 
-        test = self.test.get_time_to_beat("HITMAN 3")
-        assert test == 30
+#         test = self.test.get_time_to_beat("HITMAN 3")
+#         assert test == 30
 
-    def test_not_found(self, mocker):
-        """
-        Makes sure get_time_to_beat returns '-' for a non existing game.
-        """
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
-        mocker.patch(self.func_path, return_value=None)
+#     def test_not_found(self, mocker):
+#         """
+#         Makes sure get_time_to_beat returns '-' for a non existing game.
+#         """
+#         mocker.patch(WAIT_IF, return_value=None)
+#         mocker.patch(self.func_path, return_value=None)
 
-        test = self.test.get_time_to_beat("Fake game is fake")
-        assert test == "-"
+#         test = self.test.get_time_to_beat("Fake game is fake")
+#         assert test == "-"
 
 
 class TestGetAppDetails:
 
     @pytest.fixture
     def mock_response(self, mocker):
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch(WAIT_IF, return_value=None)
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             data = json.load(file)
         mock_response = mocker.Mock()
@@ -204,55 +191,75 @@ class TestGetAppDetails:
         return mock_response
 
     def test_success(self, mock_response, mocker):
-        App = GetGameInfo()
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch(WAIT_IF, return_value=False)
         mocker.patch("requests.get", return_value=mock_response)
-        assert App.get_app_details(2379780)
+        app_details = get_app_details(2379780)
+        assert app_details
+
+        app_id = app_details.get("steam_appid", 0)
+        game_name = app_details.get("name", "")
+        assert app_id == 2379780
+        assert game_name == "Balatro"
 
     def test_request_error(self, mock_response, mocker):
-        App = GetGameInfo()
-        mocker.patch("utils.utils.api_sleeper", return_value=None)
+        mocker.patch(WAIT_IF, return_value=False)
         mock_response.ok = False
         mocker.patch("requests.get", return_value=mock_response)
-        assert App.get_app_details(2379780) == {}
+        assert get_app_details(2379780) == {}
 
 
 class TestGetGameInfo:
 
     def test_success(self, mocker):
-        App = GetGameInfo()
+        app_id = 2379780
 
         with open("tests/data/game_app_details.json", "r", encoding="utf-8") as file:
             app_details_json = json.load(file)
-        app_details = app_details_json.get(str(2379780), {}).get("data")
+        app_details = app_details_json.get(str(app_id), {}).get("data")
 
-        # mocks get_steam_review
-        result = {"total": 9856, "percent": 0.97}
-        mocker.patch("utils.steam.Steam.get_steam_review", return_value=result)
+        # mocks get_review_data
+        mocker.patch(
+            "library.steam.scraper.Scraper.get_review_data", return_value=(0.97, 9856)
+        )
+
         # mocks get_steam_user_tags
         result = ["Roguelike", "Card Game", "Deckbuilding"]
-        mocker.patch("utils.steam.Steam.get_steam_user_tags", return_value=result)
+        mocker.patch(
+            "library.steam.scraper.Scraper.get_steam_user_tags", return_value=result
+        )
+
         # mocks get_time_to_beat
-        mocker.patch("utils.game_info.GetGameInfo.get_time_to_beat", return_value=20)
+        # mocker.patch("library.game.get_time_to_beat", return_value=20)
+
         # mocks get_player_count
-        func = "utils.steam.Steam.get_player_count"
+        func = "library.game.get_player_count"
         mocker.patch(func, return_value=600)
+
+        # mocks get_store_page_data
+        func = "library.steam.scraper.Scraper.get_store_page_data"
+        store_data = StoreData(
+            review_percent=0.97,
+            review_total=9856,
+            early_access=False,
+            user_tags=["Roguelike", "Card Game", "Deckbuilding"],
+        )
+        mocker.patch(func, return_value=store_data)
 
         api_key, _ = get_steam_key_and_id()
 
-        game = App.get_game_info(app_details, api_key)
+        game = get_game_info(app_details, api_key)
         assert isinstance(game, Game)
         # attribute check
-        assert game.app_id == 2379780
+        assert game.app_id == app_id
         assert game.name == "Balatro"
         assert game.developer == "LocalThunk"
         assert game.publisher == "Playstack"
         assert game.genre == ["Casual", "Indie", "Strategy"]
-        assert game.early_access == "No"
-        assert game.steam_review_percent == 0.97
-        assert game.steam_review_total == 9856
+        assert game.early_access_str == "No"
+        assert game.review_percent == 0.97
+        assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
-        assert game.time_to_beat == 20
+        # assert game.time_to_beat == 20
         assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99
@@ -268,12 +275,10 @@ class TestGetGameInfo:
 
     def test_not_enough_data(self):
         api_key, _ = get_steam_key_and_id()
-        App = GetGameInfo()
         app_details = {}
-        game = App.get_game_info(app_details, api_key)
+        game = get_game_info(app_details, api_key)
         assert not game
 
     def test_missing_args(self):
-        App = GetGameInfo()
         with pytest.raises(TypeError):
-            App.get_game_info()
+            get_game_info()  # type: ignore

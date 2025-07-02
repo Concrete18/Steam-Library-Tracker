@@ -4,7 +4,16 @@ import pytest, time, json, os
 
 
 # local imports
-from utils.utils import *
+from library.utils.utils import *
+
+
+class TestCreateHyperlink:
+
+    def test_success(self):
+        url = "www.test.com"
+        label = "Test Site"
+        hyperlink = create_hyperlink(url, label)
+        assert hyperlink == '=HYPERLINK("www.test.com","Test Site")'
 
 
 class TestHoursPlayed:

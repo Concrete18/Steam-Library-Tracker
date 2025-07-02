@@ -1,6 +1,6 @@
 import re
 
-from utils.utils import *
+from library.utils.utils import *
 
 
 class GameSkipper:
@@ -52,7 +52,9 @@ class GameSkipper:
         self.name_ignore_list = custom_names_to_ignore + self.MEDIA_LIST
         self.app_id_ignore_list = app_id_ignore_list
 
-    def skip_game(self, game_name: str = None, app_id: int = None) -> bool:
+    def skip_game(
+        self, game_name: str | None = None, app_id: int | None = None
+    ) -> bool:
         """
         Checks if a game should be skipped based on `name` or `app_id`.
 

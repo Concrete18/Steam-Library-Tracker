@@ -147,6 +147,11 @@ steam_purchase_history.json
 # custom directors
 .vscode/
 logs/*
-outputs/
 commit.py
 /backup
+test.py
+
+# temp
+word_cloud.py
+IMDB-Dataset.csv
+table.py

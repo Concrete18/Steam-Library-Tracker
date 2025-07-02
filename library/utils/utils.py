@@ -3,6 +3,7 @@ from pathlib import Path
 import time, json, re, os
 import datetime as dt
 from functools import wraps
+from typing import Callable
 
 # third-party imports
 from requests.exceptions import RequestException
@@ -10,12 +11,12 @@ import requests
 from pick import pick
 
 
-def benchmark(round_digits: int = 2) -> callable:  # pragma: no cover
+def benchmark(round_digits: int = 2) -> Callable:  # pragma: no cover
     """
     Prints `func` name and a benchmark for runtime.
     """
 
-    def decorator(func: callable) -> callable:
+    def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapped(*args, **kwargs):
             try:
@@ -34,7 +35,7 @@ def benchmark(round_digits: int = 2) -> callable:  # pragma: no cover
     return decorator
 
 
-def retry(max_retries=4, delay=5):
+def retry(max_retries=4, delay=5, print_error=True):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -42,7 +43,9 @@ def retry(max_retries=4, delay=5):
             while retries < max_retries:
                 try:
                     return func(*args, **kwargs)
-                except RequestException:
+                except RequestException as e:
+                    if print_error:
+                        print(e)
                     retries += 1
                     time.sleep(delay)
             print(f"Failed after {max_retries} retries.")
@@ -73,30 +76,20 @@ def get_steam_key_and_id() -> tuple[str, int]:
     with open(config) as file:
         data = json.load(file)
     api_key = data["steam_data"]["api_key"]
-    steam_id = str(data["steam_data"]["steam_id"])
+    steam_id = data["steam_data"]["steam_id"]
     return api_key, steam_id
 
 
-def create_hyperlink(url: str, label: str) -> str:
+def create_hyperlink(url: str | None, label: str = "Link") -> str | None:
     """
     Generates a steam an excel HYPERLINK to `url` with the `label`.
     """
-    return f'=HYPERLINK("{url}","{label}")'
+    if url:
+        return f'=HYPERLINK("{url}","{label}")'
+    return None
 
 
-def api_sleeper(api, sleep_length=0.5, api_calls={}) -> None:
-    """
-    Delays delays for a set period of time if the `api` was run too recently.
-    Delay length is set by `sleep_length`.
-    """
-    cur_datetime = dt.datetime.now()
-    if api in api_calls.keys():
-        if api_calls[api] + dt.timedelta(seconds=sleep_length) > cur_datetime:
-            time.sleep(sleep_length)
-    api_calls[api] = cur_datetime
-
-
-def get_hours_played(minutes_played: float) -> float:
+def get_hours_played(minutes_played: float | None) -> float | None:
     """
     Converts `minutes_played` to a hours played in decimal form.
     """
@@ -166,12 +159,12 @@ def url_sanitize(string: str, space_replace: str = "-") -> str:
 
 
 def convert_time_passed(
-    minutes: int = 0,
-    hours: int = 0,
-    days: int = 0,
-    weeks: int = 0,
-    months: int = 0,
-    years: int = 0,
+    minutes: int | float = 0,
+    hours: int | float = 0,
+    days: int | float = 0,
+    weeks: int | float = 0,
+    months: int | float = 0,
+    years: int | float = 0,
 ) -> str:
     """
     Outputs a string for the time passed.
@@ -255,7 +248,7 @@ def get_dir_size(directory: str) -> int:
     return size
 
 
-def convert_size(bytes: int) -> tuple[int, str]:
+def convert_size(bytes: int) -> tuple[float, str]:
     """
     Converts bytes to a matched unit.
     """
@@ -334,10 +327,20 @@ def is_response_yes(
     return pick(options=choices, title=prompt, indicator="->")[0] == "Yes"
 
 
-def create_rich_date_and_time(date: dt.datetime = dt.datetime.now()) -> str:
+def set_title(title: str = "Name Missing") -> None:
+    """
+    Sets the CLI window title to the specified title if provided.
+    If no title is given, it sets the title back to the default.
+    """
+    os.system(f"title {title}")
+
+
+def create_rich_date_and_time(date: dt.datetime | None = None) -> str:
     """
     Returns a formatted date and time for use with Rich Console print.
     """
+    if not isinstance(date, dt.datetime) or not date:
+        date = dt.datetime.now()
     formatted_date = f"[secondary]{date.strftime('%A, %B %d, %Y')}[/]"
     formatted_time = f"[secondary]{date.strftime('%I:%M %p')}[/]"
     return f"{formatted_date} [dim]|[/] {formatted_time}"

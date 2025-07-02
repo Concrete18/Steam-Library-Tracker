@@ -4,12 +4,10 @@ import datetime as dt
 import json
 
 # local imports
-from utils.steam import Steam
+from library.steam.steam import *
 
 # my package imports
 from easierexcel import Sheet
-
-steam_class = Steam()
 
 
 def parse_date(entry):
@@ -32,7 +30,7 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     """
     Loads purchase history from config folder.
     """
-    path = Path("configs\steam_purchase_history.json")
+    path = Path("configs/steam_purchase_history.json")
     if path.exists():
         with open(path) as file:
             purchase_data = json.load(file)
@@ -41,7 +39,7 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     return []
 
 
-def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[dict]:
+def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> dict:
     """
     Creates a list of game data while removing entries that were purchased and then refunded
 
@@ -52,7 +50,7 @@ def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[di
         entry_type = entry.get("type")
         games = entry.get("games", [])
         for game_name in games:
-            app_id = steam_class.get_app_id(game_name, app_list)
+            app_id = get_app_id(game_name, app_list)
             if entry_type == "Refund":
                 to_update.pop(app_id, None)
             else:
@@ -65,10 +63,12 @@ def create_game_data(purchase_data: list[dict], app_list: list[dict]) -> list[di
 
 
 def get_dates_to_update(
-    games_data: list[dict], steam_sheet: Sheet, date_added_col: str
-) -> list[dict]:
+    games_data: dict,
+    steam_sheet: Sheet,
+    date_added_col: str,
+) -> dict:
     """
-    ph
+    Updates the Date Added column with the correct dates using `games_data`,
     """
     dates_to_update = {}
     for app_id, data in games_data.items():

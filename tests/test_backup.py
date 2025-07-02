@@ -1,7 +1,7 @@
 import pytest
 
 # local imports
-from utils.backup import Backup
+from library.backup import Backup
 
 
 class TestBackup:

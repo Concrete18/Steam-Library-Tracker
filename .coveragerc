@@ -2,7 +2,8 @@
 exclude_lines =
     pragma: no cover
 
+[run]
 omit =
     tests/*
-    classes/__init__.py
-    classes/logger.py
+    utils/__init__.py
+    utils/logger.py

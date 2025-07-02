@@ -1,7 +1,7 @@
 import pytest
 
 # local imports
-from utils.game_skipper import GameSkipper
+from library.game_skipper import GameSkipper
 
 
 class TestSkipGame:
