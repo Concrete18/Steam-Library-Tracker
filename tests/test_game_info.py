@@ -136,48 +136,6 @@ class TestGetPriceInfo:
         assert not discount
 
 
-# class TestGetTimeToBeat:
-#     test = GetGameInfo()
-#     func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
-
-#     class hltb:
-#         def __init__(self, main_story, main_extra) -> None:
-#             self.main_story = main_story
-#             self.main_extra = main_extra
-#             self.similarity = 1
-
-#     def test_should_be_title_caps(self, mocker):
-#         """
-#         Gets the time to beat for Hades as long as it is title case.
-#         """
-#         hltb_object = [self.hltb(50, 70)]
-#         mocker.patch(self.func_path, return_value=hltb_object)
-
-#         test = self.test.get_time_to_beat("Hades")
-#         assert test == 70
-
-#     def test_should_be_all_caps(self, mocker):
-#         """
-#         Gets the time to beat for Hades as long as it is upper case.
-#         """
-#         mocker.patch(WAIT_IF, return_value=None)
-#         hltb_object = [self.hltb(10, 30)]
-#         mocker.patch(self.func_path, side_effect=[None, hltb_object])
-
-#         test = self.test.get_time_to_beat("HITMAN 3")
-#         assert test == 30
-
-#     def test_not_found(self, mocker):
-#         """
-#         Makes sure get_time_to_beat returns '-' for a non existing game.
-#         """
-#         mocker.patch(WAIT_IF, return_value=None)
-#         mocker.patch(self.func_path, return_value=None)
-
-#         test = self.test.get_time_to_beat("Fake game is fake")
-#         assert test == "-"
-
-
 class TestGetAppDetails:
 
     @pytest.fixture

@@ -4,7 +4,6 @@ import time
 
 # third-party imports
 import requests
-from howlongtobeatpy import HowLongToBeat
 
 # local imports
 from library.utils.utils import *
@@ -83,32 +82,6 @@ class Game:
         if self.app_id:
             return f"https://store.steampowered.com/app/{self.app_id}/"
         return None
-
-    def get_time_to_beat(self, game_name: str) -> float | str:
-        """
-        Uses howlongtobeatpy to get the time to beat for entered game.
-        """
-        beat = HowLongToBeat()
-        throttler.wait_if("time_to_beat", 0.5)
-        try:
-            results = beat.search(game_name)
-        except:  # pragma: no cover
-            time.sleep(10)
-            for _ in range(3):
-                try:
-                    results = beat.search(game_name)
-                    break
-                except:
-                    time.sleep(10)
-            return "-"
-        if not results:  # pragma: no cover
-            throttler.wait_if("time_to_beat", 0.5)
-            results = beat.search(game_name, similarity_case_sensitive=False)
-        time_to_beat = "-"
-        if results and len(results) > 0:
-            best_element = max(results, key=lambda element: element.similarity)
-            time_to_beat = best_element.main_extra or best_element.main_story or "-"
-        return time_to_beat
 
 
 def parse_release_date(app_details: dict) -> int:
