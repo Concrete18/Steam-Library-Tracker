@@ -91,7 +91,6 @@ class TestGame:
         assert game.review_percent == 0.0
         assert game.review_total == 0
         assert game.price is None
-        # assert game.time_to_beat == 0.0
         assert game.player_count is None
         assert game.tags_str == ""
         assert game.categories_str == ""
@@ -186,9 +185,6 @@ class TestGetGameInfo:
             "library.steam.scraper.Scraper.get_steam_user_tags", return_value=result
         )
 
-        # mocks get_time_to_beat
-        # mocker.patch("library.game.get_time_to_beat", return_value=20)
-
         # mocks get_player_count
         func = "library.game.get_player_count"
         mocker.patch(func, return_value=600)
@@ -217,7 +213,6 @@ class TestGetGameInfo:
         assert game.review_percent == 0.97
         assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
-        # assert game.time_to_beat == 20
         assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99

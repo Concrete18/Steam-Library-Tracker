@@ -27,7 +27,6 @@ class Game:
     price: float | None = None
     discount: float = 0.0
     player_count: int | None = None
-    # time_to_beat: float = 0.0
 
     # lists
     # -----------------------------

@@ -140,7 +140,6 @@ class Tracker:
         hours_played_col := "Hours Played",
         linux_hours_col := "Linux Hours",
         last_play_time_col := "Last Play Time",
-        time_to_beat_col := "Time To Beat in Hours",
         store_link_col := "Store Link",
         release_col := "Release Year",
         app_id_col := "App ID",
@@ -329,7 +328,6 @@ class Tracker:
             self.genre_col: game.genre_str or "-",
             self.user_tags_col: game.tags_str or "-",
             self.ea_col: game.early_access_str or "-",
-            # self.time_to_beat_col: game.time_to_beat or "-",
             self.store_link_col: create_hyperlink(game.store_link, "Store") or "-",
             self.release_col: game.release_year or "-",
         }
@@ -352,13 +350,7 @@ class Tracker:
             game_data = self.get_game_column_dict(game)
             # update data
             for column, data in game_data.items():
-                # TODO improve this so it is written better and easier to read
-                columns_to_skip = [self.time_to_beat_col]
-                if column in columns_to_skip:
-                    continue
                 if not data:
-                    continue
-                if not game_row.get(self.time_to_beat_col):
                     continue
                 if not game_row.get(self.ea_col):
                     continue
@@ -468,8 +460,6 @@ class Tracker:
             self.steam_rev_per_col,
             self.steam_rev_total_col,
             self.user_tags_col,
-            # TODO add this back once time to beat is working again
-            # self.time_to_beat_col,
             self.release_col,
             self.ea_col,
         ]
@@ -537,7 +527,6 @@ class Tracker:
         table.add_column("Name", justify="left", min_width=30)
         table.add_column("Play\nStatus", justify="center")
         table.add_column("Hours\nPlayed", justify="right")
-        table.add_column("Time\nTo Beat", justify="right")
         table.add_column("Last\nPlay Time", justify="center")
         # add rows
         for game in recently_played_games[:10]:
@@ -566,12 +555,6 @@ class Tracker:
                 if not math.isnan(game[self.hours_played_col])
                 else "0"
             )
-            # time to beat
-            ttb = game[self.time_to_beat_col]
-            if ttb > 0:
-                ttb = str(float(ttb))
-            else:
-                ttb = "-"
             # row setup
             row = [
                 days_since,
@@ -579,7 +562,6 @@ class Tracker:
                 game[self.name_col],
                 game[self.play_status_col],
                 hours_played,
-                ttb,
                 last_play_time,
             ]
             table.add_row(*row)
@@ -1031,7 +1013,6 @@ class Tracker:
                 self.steam_rev_total_col: game.review_total,
                 self.dev_col: game.developer,
                 self.pub_col: game.publisher,
-                # self.time_to_beat_col: game.time_to_beat,
                 self.user_tags_col: game.tags_str,
                 self.release_col: game.release_year,
                 self.genre_col: game.genre_str,
