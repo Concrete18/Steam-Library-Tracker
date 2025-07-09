@@ -238,26 +238,6 @@ class TestGetFriendsListChanges:
         assert removals == []
 
 
-class TestGetSteamGamePlayerCount:
-
-    @pytest.fixture
-    def mock_response(self, mocker):
-        mock_response = mocker.Mock()
-        mock_response.json.return_value = {
-            "response": {"player_count": 5000, "result": 1}
-        }
-        mock_response.ok = True
-        return mock_response
-
-    STEAM_KEY, STEAM_ID = get_steam_key_and_id()
-
-    def test_success(self, mock_response, mocker):
-        mocker.patch("requests.get", return_value=mock_response)
-        player_count = get_player_count(730, self.STEAM_KEY)
-        assert isinstance(player_count, int)
-        assert player_count == 5000
-
-
 # class TestGetSteamGameUserTags:
 
 #     def test_success(self):

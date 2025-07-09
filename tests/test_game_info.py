@@ -30,7 +30,7 @@ class TestGame:
             categories=["Category 1"],
             user_tags=["Tag 1"],
         )
-        assert len(vars(game)) == 18
+        assert len(vars(game)) == 17
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
@@ -70,7 +70,7 @@ class TestGame:
         game = Game()
         assert not Game()
         # total attributes
-        assert len(vars(game)) == 18
+        assert len(vars(game)) == 17
         # required values
         assert game.name == ""
         assert game.app_id == 0
@@ -91,7 +91,6 @@ class TestGame:
         assert game.review_percent == 0.0
         assert game.review_total == 0
         assert game.price is None
-        assert game.player_count is None
         assert game.tags_str == ""
         assert game.categories_str == ""
         assert game.genre_str == ""
@@ -185,10 +184,6 @@ class TestGetGameInfo:
             "library.steam.scraper.Scraper.get_steam_user_tags", return_value=result
         )
 
-        # mocks get_player_count
-        func = "library.game.get_player_count"
-        mocker.patch(func, return_value=600)
-
         # mocks get_store_page_data
         func = "library.steam.scraper.Scraper.get_store_page_data"
         store_data = StoreData(
@@ -213,7 +208,6 @@ class TestGetGameInfo:
         assert game.review_percent == 0.97
         assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
-        assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99
         assert game.discount == 0.0

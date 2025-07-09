@@ -26,7 +26,6 @@ class Game:
     early_access: bool = False
     price: float | None = None
     discount: float = 0.0
-    player_count: int | None = None
 
     # lists
     # -----------------------------
@@ -115,7 +114,11 @@ def get_app_details(app_id: int) -> dict:
     throttler.wait_if("steam_store")
     response = requests.get(url, params=params)
     if response.ok:
-        return response.json().get(str(app_id), {}).get("data", {})
+        data = response.json().get(str(app_id), {})
+        if data.get("success"):
+            return data.get("data", {})
+        else:
+            return {"app_id": app_id, "store": "delisted"}
     return {}
 
 
@@ -135,14 +138,11 @@ def get_game_info(app_details: dict, steam_key: str) -> Game:
     categories = [desc["description"] for desc in app_details.get("categories", [])]
 
     # TODO mock this data
-    page_data = scraper.get_store_page_data(app_id)
-    percent = page_data.review_percent
-    total = page_data.review_total
-    user_tags = page_data.user_tags
-    early_access = page_data.early_access
-
-    # player count
-    player_count = get_player_count(app_id, steam_key) if steam_key else None
+    store_data = scraper.get_store_page_data(app_id)
+    percent = store_data.review_percent
+    total = store_data.review_total
+    user_tags = store_data.user_tags
+    early_access = store_data.early_access
 
     return Game(
         app_id=app_id,
@@ -153,7 +153,6 @@ def get_game_info(app_details: dict, steam_key: str) -> Game:
         review_percent=percent,
         review_total=total,
         user_tags=user_tags,
-        player_count=player_count,
         release_year=release_year,
         early_access=early_access,
         price=price,

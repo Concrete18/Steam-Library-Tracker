@@ -126,7 +126,6 @@ class Tracker:
         steam_rev_total_col := "Steam Review Total",
         price_col := "Price",
         discount_col := "Discount",
-        steam_player_count_col := "Player Count",
         name_col := "Name",
         play_status_col := "Play Status",
         platform_col := "Platform",
@@ -324,7 +323,6 @@ class Tracker:
             self.steam_rev_total_col: game.review_total or "-",
             self.price_col: game.price or "-",
             self.discount_col: game.discount or "-",
-            self.steam_player_count_col: game.player_count or "-",
             self.genre_col: game.genre_str or "-",
             self.user_tags_col: game.tags_str or "-",
             self.ea_col: game.early_access_str or "-",
@@ -344,8 +342,13 @@ class Tracker:
         desc = f"Syncing {update_type} Game Data"
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
+            if game_row.get(self.store_link_col) == "Delisted":
+                continue
             # get new data from the internet
             app_details = get_app_details(app_id)
+            if app_details.get("store") == "delisted":
+                self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
+                continue
             game = get_game_info(app_details, self.steam_key)
             game_data = self.get_game_column_dict(game)
             # update data
@@ -373,6 +376,7 @@ class Tracker:
             print("Game Data can't be synced without Internet")
             return
         if not isinstance(df, pd.DataFrame):
+            print("Dataframe is invalid")
             return
         self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=50)
@@ -1118,28 +1122,6 @@ class Tracker:
             print("\nNo game matches found")
             return {}
 
-    def bulk_update_player_count(
-        self, app_ids: list[int], update_type: str | None
-    ) -> list:
-        """
-        Bulk updates player counts.
-        """
-        print()  # forced new line due to how track() works
-        player_counts = []
-        if not update_type:
-            update_type = "Some"
-        desc = f"Updating {update_type} Player Count(s)"
-        for app_id in track(app_ids, description=desc):
-            player_count = get_player_count(app_id, self.steam_key)
-            player_counts.append(player_count)
-            self.steam.update_cell(
-                str(app_id),
-                self.steam_player_count_col,
-                player_count,
-            )
-            self.throttler.wait_if("steam_player_count")
-        return player_counts
-
     def game_select(
         self, df: pd.DataFrame, last_num: int = 15
     ) -> tuple[list[int], str | None]:
@@ -1170,17 +1152,6 @@ class Tracker:
             else:
                 return app_ids, None
         return app_ids, update_type  # type: ignore
-
-    def sync_player_counts(self, df: pd.DataFrame | None) -> None:
-        """
-        Updates game player counts using the Steam API.
-        """
-        if not isinstance(df, pd.DataFrame):
-            return
-        self.load_excel_file()
-        app_ids, update_type = self.game_select(df, last_num=15)
-        self.bulk_update_player_count(app_ids, update_type)
-        self.excel.save(use_print=False, backup=False)
 
     def update_add_dates(self):
         """
@@ -1225,14 +1196,12 @@ class Tracker:
         """
         Gives a choice of actions for the current game library.
         """
-        player_count_sync = lambda: (self.sync_player_counts(self.dataframe))
         game_data_sync = lambda: (self.sync_game_data(self.dataframe))
         stat_display = lambda: (self.output_statistics(self.dataframe))
         choices = [
             ("Resync", self.resync_all),
             ("Open in Excel", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
-            ("Player Counts Sync", player_count_sync),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", game_data_sync),
             ("Statistics Display", stat_display),
