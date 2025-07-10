@@ -91,9 +91,18 @@ class Tracker:
             "danger": "bold red",
             # color scale
             "top_scale": "bold green1",
-            "high_scale": "bold medium_spring_green",
+            "high_scale": "bold spring_green1",
             "mid_scale": "bold cyan1",
-            "bottom_scale": "bold grey58",
+            "bottom_scale": "bold steel_blue1",
+            "faded": "grey58",
+            # play status
+            "endless": "bold green4",
+            "finished": "bold green1",
+            "played": "bold light_goldenrod2",
+            "unplayed": "bold sky_blue2",
+            "waiting": "bold dark_goldenrod",
+            "quit": "bold deep_pink2",
+            "replay": "bold dodger_blue2",
         }
     )
     console = Console(theme=custom_theme)
@@ -513,6 +522,31 @@ class Tracker:
             if self.save_to_file:
                 self.excel.save(use_print=False, backup=False)
 
+    @staticmethod
+    def days_since_format(days: int) -> str:
+        """
+        Formats days since for display in a Rich Table.
+        """
+        if days == 0:
+            return f"[top_scale]{days}"
+        elif days <= 2:
+            return f"[high_scale]{days}"
+        elif days <= 4:
+            return f"[mid_scale]{days}"
+        elif days <= 6:
+            return f"[bottom_scale]{days}"
+        else:
+            return f"[faded]{days}"
+
+    @staticmethod
+    def play_status_format(play_status: str) -> str:
+        """
+        Formats play status for display in a Rich Table.
+        """
+        if play_status.lower() == "ignore":
+            return f"[faded]{play_status}"
+        return f"[{play_status.lower()}]{play_status}"
+
     def output_recently_played_games(self, df: pd.DataFrame, n_days: int = 7) -> None:
         """
         Creates a table with the recently played Games.
@@ -546,9 +580,12 @@ class Tracker:
                 else:
                     last_played = "-"
                 if last_played_dt:
-                    days_since = str(abs(get_days_since(last_played_dt)))
+                    days_since_int = abs(get_days_since(last_played_dt))
+                    days_since = self.days_since_format(days_since_int)
             except:
                 pass
+            game_name = game[self.name_col]
+            play_status = self.play_status_format(game[self.play_status_col])
             # last play time
             last_play_time = "-"
             if type(game[self.last_play_time_col]) is str:
@@ -563,8 +600,8 @@ class Tracker:
             row = [
                 days_since,
                 last_played,
-                game[self.name_col],
-                game[self.play_status_col],
+                game_name,
+                play_status,
                 hours_played,
                 last_play_time,
             ]
