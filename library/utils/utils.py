@@ -48,7 +48,7 @@ def retry(max_retries=4, delay=5, print_error=True):
                         print(e)
                     retries += 1
                     time.sleep(delay)
-            print(f"Failed after {max_retries} retries.")
+            print(f"\nFailed after {max_retries} retries.")
             return None
 
         return wrapper

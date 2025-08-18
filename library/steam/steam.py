@@ -197,6 +197,7 @@ def get_app_id(game: str, app_list: list[dict]) -> int | None:
             return item["appid"]
     return None
 
+
 def get_installed_app_ids(library_vdf_path: str = "") -> list:
     """
     Returns a list of all app_ids among all libraries from the steam library

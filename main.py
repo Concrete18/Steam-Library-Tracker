@@ -8,6 +8,7 @@ import pandas as pd
 from difflib import SequenceMatcher
 from pick import pick
 from rich.console import Console
+from rich.panel import Panel
 from rich.prompt import IntPrompt
 from rich.progress import track, Progress
 from rich.table import Table
@@ -210,16 +211,19 @@ class Tracker:
         Shows a table of new and removed friends Steam ID's and usernames.
         """
         if not self.internet.online:
-            print("Friends can't be synced without Internet")
+            print("\nFriends can't be synced without Internet")
             return
         # check last run
         if recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
-        update_last_run(self.config_data, self.config_path, "friends_sync")
+
         # get friends
         print("\nStarting Steam Friends Sync")
         prev_friend_ids = self.config_data["friend_ids"]
         friend_data = get_steam_friends(self.steam_key, self.steam_id)
+        if not friend_data:
+            print("No Friends data found.")
+            return
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
         additions, removals = get_friends_list_changes(prev_friend_ids, cur_friend_ids)
@@ -262,11 +266,11 @@ class Tracker:
             msg = f"Friends List Addition: {username}"
             self.friend_log.info(msg)
         self.console.print(table, new_line_start=True)
+        update_last_run(self.config_data, self.config_path, "friends_sync")
         # update friend data in config
         self.config_data["friend_ids"] = cur_friend_ids
         save_json(self.config_data, self.config_path)
 
-    @internet.check
     def sync_all(self):
         """
         Runs Steam synchronization.
@@ -1219,6 +1223,9 @@ class Tracker:
         Reloads excel file and runs Steam sync again.
         """
         # BUG this fails to output correctly when there is no internet
+        online = self.internet.is_online()
+        if not online:
+            return
         if self.excel.changes_made:
             self.excel.save(use_print=False)
         os.system("cls")
@@ -1284,13 +1291,14 @@ class Tracker:
         Prints app title and date/time.
         """
         set_title(self.APP_TITLE)
-        self.console.print(self.APP_TITLE, style="primary")
+        self.console.print(Panel(self.APP_TITLE, style="primary", expand=False))
         rich_date = create_rich_date_and_time()
         self.console.print(rich_date)
 
     def main(self) -> None:
         try:
             self.intro()
+            self.internet.print_status()
             self.sync_all()
             self.auto_backup()
             self.game_library_actions()
