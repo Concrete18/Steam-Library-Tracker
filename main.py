@@ -264,7 +264,8 @@ class Tracker:
             table.add_row(*row)
             # logging
             msg = f"Friends List Addition: {username}"
-            self.friend_log.info(msg)
+            cleaned_msg = unicode_remover(msg)
+            self.friend_log.info(cleaned_msg)
         self.console.print(table, new_line_start=True)
         update_last_run(self.config_data, self.config_path, "friends_sync")
         # update friend data in config
@@ -1222,7 +1223,6 @@ class Tracker:
         """
         Reloads excel file and runs Steam sync again.
         """
-        # BUG this fails to output correctly when there is no internet
         online = self.internet.is_online()
         if not online:
             return
