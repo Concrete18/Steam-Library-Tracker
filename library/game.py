@@ -137,7 +137,7 @@ def get_game_info(app_details: dict, steam_key: str) -> Game:
     price, discount = get_price(app_details)
     categories = [desc["description"] for desc in app_details.get("categories", [])]
 
-    # TODO mock this data
+    # TODO mock StoreData in test
     store_data = scraper.get_store_page_data(app_id)
     percent = store_data.review_percent
     total = store_data.review_total
