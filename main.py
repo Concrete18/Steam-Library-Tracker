@@ -8,10 +8,12 @@ import pandas as pd
 from difflib import SequenceMatcher
 from pick import pick
 from rich.console import Console
+from rich.panel import Panel
 from rich.prompt import IntPrompt
 from rich.progress import track, Progress
 from rich.table import Table
 from rich.theme import Theme
+from unidecode import unidecode
 
 # local imports
 from setup import Setup
@@ -91,9 +93,18 @@ class Tracker:
             "danger": "bold red",
             # color scale
             "top_scale": "bold green1",
-            "high_scale": "bold medium_spring_green",
+            "high_scale": "bold spring_green1",
             "mid_scale": "bold cyan1",
-            "bottom_scale": "bold grey58",
+            "bottom_scale": "bold steel_blue1",
+            "faded": "grey58",
+            # play status
+            "endless": "bold green4",
+            "finished": "bold green1",
+            "played": "bold light_goldenrod2",
+            "unplayed": "bold sky_blue2",
+            "waiting": "bold dark_goldenrod",
+            "quit": "bold deep_pink2",
+            "replay": "bold dodger_blue2",
         }
     )
     console = Console(theme=custom_theme)
@@ -126,7 +137,6 @@ class Tracker:
         steam_rev_total_col := "Steam Review Total",
         price_col := "Price",
         discount_col := "Discount",
-        steam_player_count_col := "Player Count",
         name_col := "Name",
         play_status_col := "Play Status",
         platform_col := "Platform",
@@ -140,7 +150,6 @@ class Tracker:
         hours_played_col := "Hours Played",
         linux_hours_col := "Linux Hours",
         last_play_time_col := "Last Play Time",
-        time_to_beat_col := "Time To Beat in Hours",
         store_link_col := "Store Link",
         release_col := "Release Year",
         app_id_col := "App ID",
@@ -203,16 +212,19 @@ class Tracker:
         Shows a table of new and removed friends Steam ID's and usernames.
         """
         if not self.internet.online:
-            print("Friends can't be synced without Internet")
+            print("\nFriends can't be synced without Internet")
             return
         # check last run
         if recently_executed(self.config_data, "friends_sync", check_freq_days):
             return
-        update_last_run(self.config_data, self.config_path, "friends_sync")
+
         # get friends
         print("\nStarting Steam Friends Sync")
         prev_friend_ids = self.config_data["friend_ids"]
         friend_data = get_steam_friends(self.steam_key, self.steam_id)
+        if not friend_data:
+            print("No Friends data found.")
+            return
         cur_friend_ids = [friend["steamid"] for friend in friend_data]
         # finds changes
         additions, removals = get_friends_list_changes(prev_friend_ids, cur_friend_ids)
@@ -253,13 +265,13 @@ class Tracker:
             table.add_row(*row)
             # logging
             msg = f"Friends List Addition: {username}"
-            self.friend_log.info(msg)
+            self.friend_log.info(unidecode(msg))
         self.console.print(table, new_line_start=True)
+        update_last_run(self.config_data, self.config_path, "friends_sync")
         # update friend data in config
         self.config_data["friend_ids"] = cur_friend_ids
         save_json(self.config_data, self.config_path)
 
-    @internet.check
     def sync_all(self):
         """
         Runs Steam synchronization.
@@ -325,11 +337,9 @@ class Tracker:
             self.steam_rev_total_col: game.review_total or "-",
             self.price_col: game.price or "-",
             self.discount_col: game.discount or "-",
-            self.steam_player_count_col: game.player_count or "-",
             self.genre_col: game.genre_str or "-",
             self.user_tags_col: game.tags_str or "-",
             self.ea_col: game.early_access_str or "-",
-            # self.time_to_beat_col: game.time_to_beat or "-",
             self.store_link_col: create_hyperlink(game.store_link, "Store") or "-",
             self.release_col: game.release_year or "-",
         }
@@ -346,19 +356,18 @@ class Tracker:
         desc = f"Syncing {update_type} Game Data"
         for app_id in track(app_ids, description=desc):
             game_row = self.steam.get_row(app_id)
+            if game_row.get(self.store_link_col) == "Delisted":
+                continue
             # get new data from the internet
             app_details = get_app_details(app_id)
+            if app_details.get("store") == "delisted":
+                self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
+                continue
             game = get_game_info(app_details, self.steam_key)
             game_data = self.get_game_column_dict(game)
             # update data
             for column, data in game_data.items():
-                # TODO improve this so it is written better and easier to read
-                columns_to_skip = [self.time_to_beat_col]
-                if column in columns_to_skip:
-                    continue
                 if not data:
-                    continue
-                if not game_row.get(self.time_to_beat_col):
                     continue
                 if not game_row.get(self.ea_col):
                     continue
@@ -381,6 +390,7 @@ class Tracker:
             print("Game Data can't be synced without Internet")
             return
         if not isinstance(df, pd.DataFrame):
+            print("Dataframe is invalid")
             return
         self.load_excel_file()
         app_ids, update_type = self.game_select(df, last_num=50)
@@ -468,8 +478,6 @@ class Tracker:
             self.steam_rev_per_col,
             self.steam_rev_total_col,
             self.user_tags_col,
-            # TODO add this back once time to beat is working again
-            # self.time_to_beat_col,
             self.release_col,
             self.ea_col,
         ]
@@ -519,6 +527,31 @@ class Tracker:
             if self.save_to_file:
                 self.excel.save(use_print=False, backup=False)
 
+    @staticmethod
+    def days_since_format(days: int) -> str:
+        """
+        Formats days since for display in a Rich Table.
+        """
+        if days == 0:
+            return f"[top_scale]{days}"
+        elif days <= 2:
+            return f"[high_scale]{days}"
+        elif days <= 4:
+            return f"[mid_scale]{days}"
+        elif days <= 6:
+            return f"[bottom_scale]{days}"
+        else:
+            return f"[faded]{days}"
+
+    @staticmethod
+    def play_status_format(play_status: str) -> str:
+        """
+        Formats play status for display in a Rich Table.
+        """
+        if play_status.lower() == "ignore":
+            return f"[faded]{play_status}"
+        return f"[{play_status.lower()}]{play_status}"
+
     def output_recently_played_games(self, df: pd.DataFrame, n_days: int = 7) -> None:
         """
         Creates a table with the recently played Games.
@@ -537,7 +570,6 @@ class Tracker:
         table.add_column("Name", justify="left", min_width=30)
         table.add_column("Play\nStatus", justify="center")
         table.add_column("Hours\nPlayed", justify="right")
-        table.add_column("Time\nTo Beat", justify="right")
         table.add_column("Last\nPlay Time", justify="center")
         # add rows
         for game in recently_played_games[:10]:
@@ -553,9 +585,12 @@ class Tracker:
                 else:
                     last_played = "-"
                 if last_played_dt:
-                    days_since = str(abs(get_days_since(last_played_dt)))
+                    days_since_int = abs(get_days_since(last_played_dt))
+                    days_since = self.days_since_format(days_since_int)
             except:
                 pass
+            game_name = game[self.name_col]
+            play_status = self.play_status_format(game[self.play_status_col])
             # last play time
             last_play_time = "-"
             if type(game[self.last_play_time_col]) is str:
@@ -566,20 +601,13 @@ class Tracker:
                 if not math.isnan(game[self.hours_played_col])
                 else "0"
             )
-            # time to beat
-            ttb = game[self.time_to_beat_col]
-            if ttb > 0:
-                ttb = str(float(ttb))
-            else:
-                ttb = "-"
             # row setup
             row = [
                 days_since,
                 last_played,
-                game[self.name_col],
-                game[self.play_status_col],
+                game_name,
+                play_status,
                 hours_played,
-                ttb,
                 last_play_time,
             ]
             table.add_row(*row)
@@ -1031,7 +1059,6 @@ class Tracker:
                 self.steam_rev_total_col: game.review_total,
                 self.dev_col: game.developer,
                 self.pub_col: game.publisher,
-                # self.time_to_beat_col: game.time_to_beat,
                 self.user_tags_col: game.tags_str,
                 self.release_col: game.release_year,
                 self.genre_col: game.genre_str,
@@ -1137,28 +1164,6 @@ class Tracker:
             print("\nNo game matches found")
             return {}
 
-    def bulk_update_player_count(
-        self, app_ids: list[int], update_type: str | None
-    ) -> list:
-        """
-        Bulk updates player counts.
-        """
-        print()  # forced new line due to how track() works
-        player_counts = []
-        if not update_type:
-            update_type = "Some"
-        desc = f"Updating {update_type} Player Count(s)"
-        for app_id in track(app_ids, description=desc):
-            player_count = get_player_count(app_id, self.steam_key)
-            player_counts.append(player_count)
-            self.steam.update_cell(
-                str(app_id),
-                self.steam_player_count_col,
-                player_count,
-            )
-            self.throttler.wait_if("steam_player_count")
-        return player_counts
-
     def game_select(
         self, df: pd.DataFrame, last_num: int = 15
     ) -> tuple[list[int], str | None]:
@@ -1190,17 +1195,6 @@ class Tracker:
                 return app_ids, None
         return app_ids, update_type  # type: ignore
 
-    def sync_player_counts(self, df: pd.DataFrame | None) -> None:
-        """
-        Updates game player counts using the Steam API.
-        """
-        if not isinstance(df, pd.DataFrame):
-            return
-        self.load_excel_file()
-        app_ids, update_type = self.game_select(df, last_num=15)
-        self.bulk_update_player_count(app_ids, update_type)
-        self.excel.save(use_print=False, backup=False)
-
     def update_add_dates(self):
         """
         Updates Games "Added Date".
@@ -1229,7 +1223,9 @@ class Tracker:
         """
         Reloads excel file and runs Steam sync again.
         """
-        # BUG this fails to output correctly when there is no internet
+        online = self.internet.is_online()
+        if not online:
+            return
         if self.excel.changes_made:
             self.excel.save(use_print=False)
         os.system("cls")
@@ -1244,14 +1240,12 @@ class Tracker:
         """
         Gives a choice of actions for the current game library.
         """
-        player_count_sync = lambda: (self.sync_player_counts(self.dataframe))
         game_data_sync = lambda: (self.sync_game_data(self.dataframe))
         stat_display = lambda: (self.output_statistics(self.dataframe))
         choices = [
             ("Resync", self.resync_all),
             ("Open in Excel", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
-            ("Player Counts Sync", player_count_sync),
             ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
             ("Game Data Sync", game_data_sync),
             ("Statistics Display", stat_display),
@@ -1297,13 +1291,14 @@ class Tracker:
         Prints app title and date/time.
         """
         set_title(self.APP_TITLE)
-        self.console.print(self.APP_TITLE, style="primary")
+        self.console.print(Panel(self.APP_TITLE, style="primary", expand=False))
         rich_date = create_rich_date_and_time()
         self.console.print(rich_date)
 
     def main(self) -> None:
         try:
             self.intro()
+            self.internet.print_status()
             self.sync_all()
             self.auto_backup()
             self.game_library_actions()

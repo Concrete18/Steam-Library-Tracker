@@ -1,7 +1,6 @@
-# howlongtobeatpy==1.0.5
 beautifulsoup4==4.11.1
 openpyxl==3.1.0
-requests==2.32.4
+requests
 pandas==2.2.3
 easierexcel
 rich==13.3.2

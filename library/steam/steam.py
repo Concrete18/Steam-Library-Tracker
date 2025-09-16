@@ -198,20 +198,6 @@ def get_app_id(game: str, app_list: list[dict]) -> int | None:
     return None
 
 
-@retry()
-def get_player_count(app_id: int, steam_key: str) -> int | None:
-    """
-    Gets a games current player count by `app_id` using the Steam API via the `steam_key`.
-    """
-    url = f"http://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={app_id}&key={steam_key}"
-    response = requests.get(url)
-    if response.ok:
-        data = response.json()
-        current_players = data.get("response", {}).get("player_count", "N/A")
-        return current_players
-    return None
-
-
 def get_installed_app_ids(library_vdf_path: str = "") -> list:
     """
     Returns a list of all app_ids among all libraries from the steam library

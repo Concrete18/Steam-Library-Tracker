@@ -34,7 +34,6 @@ class TestGetGameColumnDict:
             "Steam Review Total": "-",
             "Price": "-",
             "Discount": "-",
-            "Player Count": "-",
             "Genre": "-",
             "User Tags": "-",
             "Early Access": "No",

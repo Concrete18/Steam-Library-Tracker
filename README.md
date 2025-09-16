@@ -23,7 +23,6 @@ Many different types of information is auto retrieved using API's and Scraping.
 - [Game Status Highlighting](#Game-Status-Highlighting)
 - [Favorite Game Sale Checker](#Favorite-Game-Sale-Checker)
 - [Random game picker](#Random-game-picker)
-- [Player Count Sync](#Player-Count-Sync)
 - [Update Library Add Dates](#Update-Library-Add-Dates)
 - [Friends List Tracking](#Friends-List-Tracking)
 - [Library Statistics](#Library-Statistics)
@@ -122,10 +121,6 @@ all the games that are currently on sale with the selected rating or higher.
 ### Random game picker
 
 Picks a random game based on the Play Status you select.
-
-### Player Count Sync
-
-Allows syncing of player counts for all games, recent games or only 1 game.
 
 ### Update Library Add Dates
 

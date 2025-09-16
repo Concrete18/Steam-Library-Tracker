@@ -30,7 +30,7 @@ class TestGame:
             categories=["Category 1"],
             user_tags=["Tag 1"],
         )
-        assert len(vars(game)) == 18
+        assert len(vars(game)) == 17
         assert game.app_id == APP_ID
         assert game.name == NAME
         assert game.developer == "Dev"
@@ -70,7 +70,7 @@ class TestGame:
         game = Game()
         assert not Game()
         # total attributes
-        assert len(vars(game)) == 18
+        assert len(vars(game)) == 17
         # required values
         assert game.name == ""
         assert game.app_id == 0
@@ -91,8 +91,6 @@ class TestGame:
         assert game.review_percent == 0.0
         assert game.review_total == 0
         assert game.price is None
-        # assert game.time_to_beat == 0.0
-        assert game.player_count is None
         assert game.tags_str == ""
         assert game.categories_str == ""
         assert game.genre_str == ""
@@ -134,48 +132,6 @@ class TestGetPriceInfo:
         price, discount = get_price({})
         assert not price
         assert not discount
-
-
-# class TestGetTimeToBeat:
-#     test = GetGameInfo()
-#     func_path = "howlongtobeatpy.HowLongToBeat.HowLongToBeat.search"
-
-#     class hltb:
-#         def __init__(self, main_story, main_extra) -> None:
-#             self.main_story = main_story
-#             self.main_extra = main_extra
-#             self.similarity = 1
-
-#     def test_should_be_title_caps(self, mocker):
-#         """
-#         Gets the time to beat for Hades as long as it is title case.
-#         """
-#         hltb_object = [self.hltb(50, 70)]
-#         mocker.patch(self.func_path, return_value=hltb_object)
-
-#         test = self.test.get_time_to_beat("Hades")
-#         assert test == 70
-
-#     def test_should_be_all_caps(self, mocker):
-#         """
-#         Gets the time to beat for Hades as long as it is upper case.
-#         """
-#         mocker.patch(WAIT_IF, return_value=None)
-#         hltb_object = [self.hltb(10, 30)]
-#         mocker.patch(self.func_path, side_effect=[None, hltb_object])
-
-#         test = self.test.get_time_to_beat("HITMAN 3")
-#         assert test == 30
-
-#     def test_not_found(self, mocker):
-#         """
-#         Makes sure get_time_to_beat returns '-' for a non existing game.
-#         """
-#         mocker.patch(WAIT_IF, return_value=None)
-#         mocker.patch(self.func_path, return_value=None)
-
-#         test = self.test.get_time_to_beat("Fake game is fake")
-#         assert test == "-"
 
 
 class TestGetAppDetails:
@@ -228,13 +184,6 @@ class TestGetGameInfo:
             "library.steam.scraper.Scraper.get_steam_user_tags", return_value=result
         )
 
-        # mocks get_time_to_beat
-        # mocker.patch("library.game.get_time_to_beat", return_value=20)
-
-        # mocks get_player_count
-        func = "library.game.get_player_count"
-        mocker.patch(func, return_value=600)
-
         # mocks get_store_page_data
         func = "library.steam.scraper.Scraper.get_store_page_data"
         store_data = StoreData(
@@ -259,8 +208,6 @@ class TestGetGameInfo:
         assert game.review_percent == 0.97
         assert game.review_total == 9856
         assert game.user_tags == ["Roguelike", "Card Game", "Deckbuilding"]
-        # assert game.time_to_beat == 20
-        assert game.player_count == 600
         assert game.release_year == 2024
         assert game.price == 14.99
         assert game.discount == 0.0

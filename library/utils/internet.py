@@ -1,5 +1,4 @@
 # standard library
-from typing import Callable
 import time
 
 # third-party imports
@@ -10,7 +9,7 @@ import requests
 
 class Internet:
     CHECK_INTERVAL_SECONDS = 600
-    TEST_URL = "http://www.google.com"
+    TEST_URL = "https://store.steampowered.com/"
     TIMEOUT_SECONDS = 5
 
     custom_theme = Theme(
@@ -24,44 +23,34 @@ class Internet:
 
     def __init__(self):
         self.last_check_time = 0
-        self.online = False
+        self.is_online()
 
-    def is_internet_available(self) -> bool:
+    def is_online(self) -> bool:
         """
         Returns True if internet is available, False otherwise.
         """
         now = time.time()
+        self.online = False
         if now - self.last_check_time > self.CHECK_INTERVAL_SECONDS:
             try:
-                requests.get(self.TEST_URL, timeout=self.TIMEOUT_SECONDS)
-                self.online = True
+                response = requests.get(self.TEST_URL, timeout=self.TIMEOUT_SECONDS)
+                if response.ok:
+                    self.online = True
             except requests.ConnectionError:
-                self.online = False
-                self.console.print("No Internet Detected", style="warning")
+                pass
             self.last_check_time = now
         return self.online
 
-    def check(self, func: Callable) -> Callable:
+    def print_status(self) -> None:
         """
-        Checks if the internet is available sets the online class attribute to True or False.
+        Prints info on whether the internet is online or not.
         """
-
-        def wrapper(*args, **kwargs):
-            if not self.is_internet_available():
-                return None
-            return func(*args, **kwargs)
-
-        return wrapper
+        if self.online:
+            self.console.print("Internet is Online", style="info")
+        else:
+            self.console.print("Internet is Offline", style="warning")
 
 
 if __name__ == "__main__":
     internet = Internet()
-
-    @internet.check
-    def test():
-        if internet.online:
-            print("Internet is Online")
-        else:
-            print("Internet is Offline")
-
-    test()
+    internet.print_status()
