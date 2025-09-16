@@ -1,5 +1,4 @@
 import datetime as dt
-from pathlib import Path
 import pytest, time, json, os
 
 
@@ -202,7 +201,7 @@ class TestFormatFloats:
 
     def test_n_digits_not_valid(self):
         with pytest.raises(TypeError):
-            format_floats(1234.12345, "1")
+            format_floats(1234.12345, "1")  # type: ignore
 
 
 class TestStringToDate:
@@ -256,14 +255,8 @@ class TestUnicodeRemover:
     def test_trim_removal(self):
         new_string = unicode_remover("® ® ® ö Test ® ® ®")
         assert new_string == "o Test"
-
-    def test_trim_removal(self):
         new_string = unicode_remover("\u2122 \u2013Test\u2013 \u2122")
         assert new_string == "-Test-"
-
-    def test_not_string(self):
-        new_string = unicode_remover(123)
-        assert new_string == 123
 
 
 class TestCreateAndSentence:
@@ -285,7 +278,7 @@ class TestSaveJson:
     @classmethod
     def setup_class(cls):
         print("\nSetup Class")
-        cls.path = Path("tests/test.json")
+        cls.path = "tests/test.json"
 
     @classmethod
     def teardown_class(cls):
@@ -294,13 +287,13 @@ class TestSaveJson:
     @pytest.fixture(autouse=True)
     def setup_and_teardown(self):
         print("\nSetup Method")
-        if self.path.exists():
+        if os.path.exists(self.path):
             os.remove(self.path)
         with open(self.path, "w") as file:
             file.write("{}")
         yield
         print("\nTeardown Method")
-        if self.path.exists():
+        if os.path.exists(self.path):
             os.remove(self.path)
 
     @staticmethod

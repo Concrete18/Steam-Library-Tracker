@@ -13,6 +13,7 @@ from rich.prompt import IntPrompt
 from rich.progress import track, Progress
 from rich.table import Table
 from rich.theme import Theme
+from unidecode import unidecode
 
 # local imports
 from setup import Setup
@@ -264,8 +265,7 @@ class Tracker:
             table.add_row(*row)
             # logging
             msg = f"Friends List Addition: {username}"
-            cleaned_msg = unicode_remover(msg)
-            self.friend_log.info(cleaned_msg)
+            self.friend_log.info(unidecode(msg))
         self.console.print(table, new_line_start=True)
         update_last_run(self.config_data, self.config_path, "friends_sync")
         # update friend data in config
