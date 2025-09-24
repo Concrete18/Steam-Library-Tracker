@@ -168,7 +168,7 @@ class Tracker:
         """
         Loads Excel data from file.
         """
-        self.excel = Excel(self.excel_filename, use_logging=self.logging)
+        self.excel = Excel(self.excel_filename)
         self.steam = Sheet(
             excel_object=self.excel,
             sheet_name="Steam",
@@ -320,11 +320,19 @@ class Tracker:
         """
         Finds recent games by dates in `column` within `n_days`.
         """
-        df[column] = pd.to_datetime(df[column])
-        filtered_df = df[abs((df[column] - dt.datetime.now()).dt.days) <= n_days]
-        return filtered_df.sort_values(
-            by=self.last_played_col, ascending=False
-        ).to_dict(orient="records")
+        if column not in df.columns:
+            return []
+        # convert to datetimes and coerce bad values to NaT
+        col = pd.to_datetime(df[column], errors="coerce")
+        # handle timezone-aware columns: make 'now' match the column's tz if present
+        tz = col.dt.tz
+        now = pd.Timestamp.now(tz=tz) if tz is not None else pd.Timestamp.now()
+        start = now - pd.Timedelta(days=n_days)
+        end = now + pd.Timedelta(days=n_days)
+        # between handles comparisons vectorized and avoids Series - datetime typing issues
+        mask = col.between(start, end)
+        filtered_df = df.loc[mask].sort_values(by=self.last_played_col, ascending=False)
+        return filtered_df.to_dict(orient="records")
 
     def get_game_column_dict(self, game: Game) -> dict:
         """
@@ -861,8 +869,9 @@ class Tracker:
                 if isinstance(found_app_id, str):
                     removed_game_names.append(found_app_id)
             removed_games_names_str = list_to_sentence(removed_game_names)
+            total = len(removed_game_names)
             if is_response_yes(
-                f"\nDo you want to delete all the following games?\n{removed_games_names_str}"
+                f"\nDo you want to delete all the following {total} games?\n{removed_games_names_str}"
             ):
                 for app_id in sheet_games:
                     self.steam.delete_row(str(app_id))
@@ -1158,8 +1167,9 @@ class Tracker:
                 return None
             print(f"\nSelected: {chosen_game[0]}")
             app_id = chosen_game[1]
-            game = self.steam.get_row(app_id)
-            return game
+            if isinstance(app_id, str):
+                game = self.steam.get_row(app_id)
+                return game
         else:
             print("\nNo game matches found")
             return {}

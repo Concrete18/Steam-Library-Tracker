@@ -1,7 +1,7 @@
 from library.random_game import RandomGame
 from easierexcel import Excel, Sheet
 
-excel = Excel("tests/data/test_library.xlsx", use_logging=False)
+excel = Excel("tests/data/test_library.xlsx")
 steam = Sheet(excel_object=excel, sheet_name="Steam", column_name="App ID")
 
 
