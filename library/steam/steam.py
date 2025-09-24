@@ -125,7 +125,7 @@ def get_owned_steam_games(steam_key: str, steam_id: int) -> list:
         "key": steam_key,
         "steamid": steam_id,
         "l": "english",
-        "include_played_free_games": 0,
+        "include_played_free_games": 1,
         "format": "json",
         "include_appinfo": 1,
     }
