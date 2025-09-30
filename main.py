@@ -368,6 +368,8 @@ class Tracker:
                 continue
             # get new data from the internet
             app_details = get_app_details(app_id)
+            if not app_details:  # makes no changes of app data was not acquired
+                continue
             if app_details.get("store") == "delisted":
                 self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
                 continue
