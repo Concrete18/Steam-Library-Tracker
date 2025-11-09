@@ -1,4 +1,9 @@
+# standard library
+import datetime as dt
+
+# third-party imports
 import pytest
+import pandas as pd
 
 # local imports
 from main import Tracker
@@ -43,6 +48,25 @@ class TestGetGameColumnDict:
         }
 
 
+class TestGetRecentAppIds:
+
+    trackerObj = Tracker(save=False)
+
+    def test_success(self):
+        today = dt.datetime.today()
+        data = {
+            "App ID": ["1", "2", "3"],
+            "Last Played": [
+                today - dt.timedelta(days=7),
+                today - dt.timedelta(days=18),
+                today - dt.timedelta(days=35),
+            ],
+        }
+        df = pd.DataFrame(data)
+        recent = self.trackerObj.get_recent_app_ids(df, "App ID", "Last Played", 30)
+        assert recent == [1, 2]
+
+
 class TestPlayStatus:
 
     trackerObj = Tracker(save=False)
@@ -60,8 +84,8 @@ class TestPlayStatus:
         for test in tests:
             play_status = test["play_status"]
             minutes = test["minutes"]
-            awnser = test["ans"]
-            assert self.trackerObj.decide_play_status(play_status, minutes) == awnser
+            answer = test["ans"]
+            assert self.trackerObj.decide_play_status(play_status, minutes) == answer
 
     def test_do_nothing(self):
         """

@@ -28,6 +28,8 @@ from library.date_updater import *
 from library.utils.utils import *
 from library.logger import Logger
 from library.utils.internet import Internet
+from library.obsidian.integration import sync_to_obsidian
+
 
 # my package imports
 from easierexcel import Excel, Sheet
@@ -279,9 +281,10 @@ class Tracker:
         self.sync_steam_games(self.steam_key, self.steam_id)
         self.dataframe = self.steam.create_dataframe(na_vals=["-", "NaN"])
         self.output_recently_played_games(self.dataframe)
-        # TODO add review score tracking
-        self.updated_game_data(self.dataframe)
+        self.update_game_data(self.dataframe)
         self.sync_friends_list()
+        # TODO uncomment when ready
+        # sync_to_obsidian(self.dataframe)
 
     def create_save_every_nth(self, save_on_nth: int = 20):
         counter = 0
@@ -304,12 +307,12 @@ class Tracker:
         if cur_status == "Unplayed" and new_status != cur_status:
             return self.steam.update_cell(str(app_id), self.play_status_col, new_status)
 
-    def set_date_updated(self, app_id):
+    def set_date_updated(self, app_id: int | str) -> bool | None:
         """
         Sets `app_id`'s Date Updated cell to the current date.
         """
         cur_date = dt.datetime.now()
-        return self.steam.update_cell(app_id, self.date_updated_col, cur_date)
+        return self.steam.update_cell(str(app_id), self.date_updated_col, cur_date)
 
     def find_recent_games(
         self,
@@ -379,8 +382,6 @@ class Tracker:
             for column, data in game_data.items():
                 if not data:
                     continue
-                if not game_row.get(self.ea_col):
-                    continue
                 self.steam.update_cell(str(app_id), column, data)
             # saves data
             if self.save_to_file:
@@ -445,17 +446,13 @@ class Tracker:
         self.console.print(f"[b]Total Workshop Size:[/] {total_size:,} {unit}")
 
     def get_recent_app_ids(
-        self, df: pd.DataFrame, column: str, n_days: int = 30
+        self, df: pd.DataFrame, app_id_col: str, last_played_col: str, n_days: int = 30
     ) -> list[int]:
         """
         Gets the app_ids of the recently played games via a dataframe.
         """
-        # check last run
-        if recently_executed(self.config_data, "recently_played", n_days):
-            return []
-        # get recently played games
-        recently_played = self.find_recent_games(df, column, n_days)
-        recently_app_ids = [game[self.app_id_col] for game in recently_played]
+        recently_played = self.find_recent_games(df, last_played_col, n_days)
+        recently_app_ids = [int(game[app_id_col]) for game in recently_played]
         return recently_app_ids
 
     def app_ids_to_names(self, app_ids: list[int]) -> list[Any]:
@@ -464,7 +461,7 @@ class Tracker:
         """
         return [self.steam.get_cell(app_id, self.name_col) for app_id in app_ids]
 
-    def updated_game_data(
+    def update_game_data(
         self,
         df: pd.DataFrame,
         skip_filled: bool = True,
@@ -479,8 +476,12 @@ class Tracker:
         """
         if not self.internet.online:
             return
+        if recently_executed(self.config_data, "recently_played", 15):
+            return []
         # starts the update list with recently played games
-        update_list = self.get_recent_app_ids(df, self.last_played_col, n_days=30)
+        update_list = self.get_recent_app_ids(
+            df, self.app_id_col, self.last_played_col, n_days=30
+        )
         column_list = [
             self.genre_col,
             self.pub_col,
@@ -507,15 +508,15 @@ class Tracker:
             if skip_filled:
                 for column in column_list:
                     cell = game_data[column]
-                    if cell is None and app_id not in update_list:
-                        update_list.append(app_id)
+                    if cell is None and int(app_id) not in update_list:
+                        update_list.append(int(app_id))
                         continue
             else:
-                update_list.append(app_id)
+                update_list.append(int(app_id))
         # checks if data should be updated
         if update_list:
             update_games_total = len(update_list)
-            if update_games_total <= 5:
+            if update_games_total <= 10:
                 game_names = self.app_ids_to_names(update_list)
                 game_list_str = list_to_sentence(game_names)
                 msg = f"\n{game_list_str}\n\nDo you want to update data for the above {update_games_total} games?"
@@ -698,7 +699,7 @@ class Tracker:
             msg = f'Do you want to update "{old_name}"\'s name to {new_name}?:\n'
             if is_response_yes(msg):
                 app_id = names_dict["app_id"]
-                self.steam.update_cell(app_id, self.name_col, new_name)
+                self.steam.update_cell(str(app_id), self.name_col, new_name)
 
     def output_name_changes(self, name_changes: list[dict]) -> None:
         """
@@ -853,7 +854,9 @@ class Tracker:
             for names_dict in name_changes:
                 new_name = names_dict["new_name"]
                 app_id = names_dict["app_id"]
-                self.steam.update_cell(app_id, self.name_col, names_dict["new_name"])
+                self.steam.update_cell(
+                    str(app_id), self.name_col, names_dict["new_name"]
+                )
             self.output_name_changes(name_changes)
         # games added
         total_added_games = len(added_games)
@@ -1194,7 +1197,10 @@ class Tracker:
         app_ids = []
         if selected_action == options[0]:
             update_type = "Recent"
-            app_ids = self.get_recent_app_ids(df, self.last_played_col, 30)
+            app_ids = self.get_recent_app_ids(
+                df, self.app_id_col, self.last_played_col, 30
+            )
+            sys.exit()
         elif selected_action == options[1]:
             update_type = "All"
             app_ids = self.steam.row_idx.keys()
@@ -1224,7 +1230,9 @@ class Tracker:
                 games_data, self.steam, self.date_added_col
             )
             for app_id, purchase_datetime in dates_to_update.items():
-                self.steam.update_cell(app_id, self.date_added_col, purchase_datetime)
+                self.steam.update_cell(
+                    str(app_id), self.date_added_col, purchase_datetime
+                )
 
             msg = f"\n\n{len(dates_to_update)} games Added dates were updated"
             self.console.print(msg)
@@ -1292,10 +1300,12 @@ class Tracker:
                 if int(app_id) != int(correct_app_id):
                     print(name, app_id, correct_app_id)
                     if correct_app_id:
-                        self.steam.update_cell(app_id, self.app_id_col, correct_app_id)
+                        self.steam.update_cell(
+                            str(app_id), self.app_id_col, correct_app_id
+                        )
             else:
                 print(name, app_id, correct_app_id)
-                self.steam.update_cell(app_id, self.app_id_col, "")
+                self.steam.update_cell(str(app_id), self.app_id_col, "")
         self.excel.save(use_print=False, backup=False)
 
     def intro(self):

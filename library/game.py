@@ -111,7 +111,7 @@ def get_app_details(app_id: int) -> dict:
     """
     url = "https://store.steampowered.com/api/appdetails"
     params = {"appids": app_id, "cc": "us", "l": "english"}
-    throttler.wait_if("steam_store")
+    throttler.wait_if("steam_store", 2)
     response = requests.get(url, params=params)
     if response.ok:
         data = response.json().get(str(app_id), {})
