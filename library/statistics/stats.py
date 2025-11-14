@@ -44,7 +44,7 @@ class Statistics:
 
     def summary(self, df: pd.DataFrame) -> Panel:
         total_hours = df["Hours Played"].sum()
-        avg_personal_rating = df["My Rating"].mean()
+        avg_personal_rating = df["Rating"].mean()
         avg_steam_rating = df["Steam Review Percent"].mean()
 
         summary = Panel(
@@ -178,7 +178,7 @@ class Statistics:
 
         data = {}
         # my ratings
-        my_ratings = df_filtered["My Rating"]
+        my_ratings = df_filtered["Rating"]
         data["My\nTotal"] = my_ratings.count()
         data["My\nAverage"] = round(my_ratings.mean(), 1)
         # steam ratings

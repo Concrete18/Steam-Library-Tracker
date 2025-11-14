@@ -28,7 +28,6 @@ from library.date_updater import *
 from library.utils.utils import *
 from library.logger import Logger
 from library.utils.internet import Internet
-from library.obsidian.integration import sync_to_obsidian
 
 
 # my package imports
@@ -128,13 +127,14 @@ class Tracker:
         "Ignore",
     )
 
+    # TODO move columns to its own file
     # columns
     # -----------------------------
     EXCEL_COLUMNS = [
         date_added_col := "Date Added",
         date_updated_col := "Date Updated",
         last_played_col := "Last Played",
-        my_rating_col := "My Rating",
+        my_rating_col := "Rating",
         steam_rev_per_col := "Steam Review Percent",
         steam_rev_total_col := "Steam Review Total",
         price_col := "Price",
@@ -643,7 +643,7 @@ class Tracker:
         df_filtered_tags = df_exploded[df_exploded["Tag"].isin(popular_tags)]
 
         # Group by the 'Genre' column and calculate the average rating for each genre
-        average_ratings_by_genre = df_filtered_tags.groupby("Tag")["My Rating"].mean()
+        average_ratings_by_genre = df_filtered_tags.groupby("Tag")["Rating"].mean()
 
         filtered_tags = average_ratings_by_genre.index[
             average_ratings_by_genre.index.isin(
@@ -656,7 +656,7 @@ class Tracker:
         print(top_30_ratings)
 
         # for ind in top_30_ratings.index:
-        #     print(df["Name"][ind], df["My Rating"][ind])
+        #     print(df["Name"][ind], df["Rating"][ind])
 
     def output_statistics(self, df: pd.DataFrame | None) -> None:
         """
