@@ -27,30 +27,36 @@ def find_local_library_image(app_id):
                 return os.path.join(root, file)
 
 
+def get_year(name: str, year) -> int | None:
+    if pd.isna(year):
+        pattern = r"\((\d{4})\)"
+        matches = re.findall(pattern, name)
+        if matches:
+            return int(matches[0])
+    try:
+        return int(year)
+    except:
+        return None
+
+
 def generate_markdown(name, row) -> str:
     """
     Generate the markdown content for a game note.
     """
     appid = row[APP_ID_COLUMN]
+    # TODO rating is blank
     rating = int(row[RATING_COLUMN])
-
-    year = None
-    year_value = row[YEAR_COLUMN]
-    if pd.isna(year_value):
-        pattern = r"\((\d{4})\)"
-        matches = re.findall(pattern, name)
-        if matches:
-            year = int(matches[0])
-    else:
-        year = int(row[YEAR_COLUMN])
+    if not isinstance(rating, int):
+        print(name, rating)
+    year = get_year(name, row[YEAR_COLUMN])
 
     image_path = (
         f"https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/library_600x900.jpg"
     )
-    response = requests.get(image_path)
-    if not response.ok:
-        # TODO move image into its own folder and delete it if it is noy longer needed
-        image_path = find_local_library_image(appid)
+    # response = requests.get(image_path)
+    # if not response.ok:
+    #     # TODO move image into its own folder and delete it if it is noy longer needed
+    #     image_path = find_local_library_image(appid)
 
     data = {
         "name": name,
@@ -61,6 +67,7 @@ def generate_markdown(name, row) -> str:
         "store_page": f"https://store.steampowered.com/app/{appid}",
         "image": image_path,
     }
+
     return "---\n" + yaml.dump(data, sort_keys=False) + "---\n"
 
 
@@ -73,37 +80,38 @@ def sync_favorite_games_to_obsidian(ob: Obsidian, df: pd.DataFrame) -> None:
     high_rated = df[df[RATING_COLUMN] >= RATING_THRESHOLD]
 
     DESTINATION_FOLDER = "Misc/Base Data/Favorite Games"
+    full_path = ob.full_path(DESTINATION_FOLDER)
     valid_files = set()
     for _, row in high_rated.iterrows():
         name = str(row[NAME_COLUMN]).strip()
-        filename = os.path.join(ob.full_path(DESTINATION_FOLDER), f"{name}.md")
-        valid_files.add(filename)
+        cleaned_title = ob.cleaned_title(name)
+        valid_files.add(f"{cleaned_title}.md")
+        file_path = os.path.join(full_path, f"{cleaned_title}.md")
         content = generate_markdown(name, row)
         new_hash = file_hash(content)
 
         # check if file exists and unchanged
-        if os.path.exists(filename):
-            with open(filename, "r", encoding="utf-8") as f:
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
                 old_content = f.read()
             old_hash = file_hash(old_content)
             if old_hash == new_hash:
                 continue
-            ob.update_note(filename, content)
+            ob.update_note(file_path, content)
             print(f"Updated: {name}")
-
         else:
-            # write new or updated file
-            ob.create_note(name, content, DESTINATION_FOLDER)
+            ob.create_note(cleaned_title, content, DESTINATION_FOLDER)
             print(f"Created: {name}")
 
     # delete files for games no longer rated 9+
-    for file in os.listdir(ob.vault_path):
-        if not file.endswith(".md"):
-            continue
-        full_path = os.path.join(ob.full_path(file))
-        if full_path not in valid_files:
-            # os.remove(full_path)
-            print(f"Deleted: {file}")
+    for _, _, files in os.walk(full_path):
+        for file in files:
+            if not file.endswith(".md"):
+                continue
+            if file not in valid_files:
+                delete_path = os.path.join(full_path, file)
+                os.remove(delete_path)
+                print(f"Deleted: {delete_path}")
 
     print("Sync complete.")
 

@@ -26,6 +26,10 @@ class Obsidian:
         return f"[{title}]({url})"
 
     @staticmethod
+    def cleaned_title(title):
+        return title.replace(":", "").strip() or "untitled"
+
+    @staticmethod
     def insert_image(url_or_path):
         """
         ph
@@ -91,11 +95,12 @@ class Obsidian:
         """
         Allows searching for an existing note by title.
         """
+        cleaned_title = self.cleaned_title(target_title)
         for root, _, files in os.walk(self.vault_path):
             for f in files:
                 file = Path(f)
                 print(file.stem, file.suffix)
-                if target_title == file.stem and file.suffix == ".md":
+                if cleaned_title == file.stem and file.suffix == ".md":
                     path = Path(f"{root}/{file.name}")
                     if path.exists():
                         return path
@@ -117,7 +122,8 @@ class Obsidian:
         Create a new note in Obsidian.
         Returns True if note was created and False if it already exists.
         """
-        file = self.vault_path / note_folder / f"{title}.md"
+        cleaned_title = self.cleaned_title(title)
+        file = self.vault_path / note_folder / f"{cleaned_title}.md"
         if file.exists():
             return False
         with open(file, "w", encoding="utf-8") as outfile:
