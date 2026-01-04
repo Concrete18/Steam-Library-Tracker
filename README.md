@@ -170,3 +170,13 @@ Some games have a name that may be very common so you can use its App ID instead
   "name_ignore_list": ["Steam Deck Deposit"]
 }
 ```
+
+## Development
+
+### Testing
+
+Prevent Line from being needed for code coverage with the below comment.
+
+```python
+# pragma: no cover
+```
