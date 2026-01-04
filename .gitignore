@@ -150,6 +150,7 @@ logs/*
 commit.py
 /backup
 test.py
+/data
 
 # temp
 word_cloud.py

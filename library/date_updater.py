@@ -30,7 +30,7 @@ def load_purchase_data() -> list[dict]:  # pragma: no cover
     """
     Loads purchase history from config folder.
     """
-    path = Path("configs/steam_purchase_history.json")
+    path = Path("data/steam_purchase_history.json")
     if path.exists():
         with open(path) as file:
             purchase_data = json.load(file)
