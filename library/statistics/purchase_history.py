@@ -45,7 +45,8 @@ def create_csv():
                     writer.writerow([game, date, entry_type, "?"])
                     total_missing += 1
 
-        print(total_missing)
+        if total_missing:
+            print(f"Total values missing: {total_missing}")
 
 
 def game_summary(df: pd.DataFrame) -> Panel:
@@ -61,26 +62,37 @@ def game_summary(df: pd.DataFrame) -> Panel:
     cur_month = df[df["date"] >= now - pd.Timedelta(days=30)]
     cur_year = df[df["date"] >= now - pd.Timedelta(days=365)]
 
-    prev_week = df[df["date"] >= now - pd.Timedelta(days=7)]
-    prev_month = df[df["date"] >= now - pd.Timedelta(days=30)]
-    prev_year = df[df["date"] >= now - pd.Timedelta(days=365)]
+    prev_week = df[
+        (df["date"] >= now - pd.Timedelta(days=14))
+        & (df["date"] <= now - pd.Timedelta(days=7))
+    ]
+
+    prev_month = df[
+        (df["date"] >= now - pd.Timedelta(days=60))
+        & (df["date"] <= now - pd.Timedelta(days=30))
+    ]
+
+    prev_year = df[
+        (df["date"] >= now - pd.Timedelta(days=730))
+        & (df["date"] <= now - pd.Timedelta(days=365))
+    ]
 
     summary = Panel(
         f"""
-    [bold cyan]Current Week:[/]   ${cur_week["total"].sum():.2f}
-    [bold cyan]Current Month:[/]  ${cur_month["total"].sum():.2f}
-    [bold cyan]Current Year:[/]   ${cur_year["total"].sum():.2f}
+    [bold cyan]Current Week:[/]   ${cur_week["total"].sum():,.2f}
+    [bold cyan]Current Month:[/]  ${cur_month["total"].sum():,.2f}
+    [bold cyan]Current Year:[/]   ${cur_year["total"].sum():,.2f}
 
-    [bold cyan]Previous Week:[/]  ${prev_week["total"].sum():.2f}
-    [bold cyan]Previous Month:[/] ${prev_month["total"].sum():.2f}
-    [bold cyan]Previous Year:[/]  ${prev_year["total"].sum():.2f}
+    [bold cyan]Previous Week:[/]  ${prev_week["total"].sum():,.2f}
+    [bold cyan]Previous Month:[/] ${prev_month["total"].sum():,.2f}
+    [bold cyan]Previous Year:[/]  ${prev_year["total"].sum():,.2f}
 
-    [bold cyan]Avg Price[/] ${avg_paid:.2f}
+    [bold cyan]Avg Price:[/] ${avg_paid:,.2f}
+    [bold cyan]Total Payed:[/] ${total_paid:,.2f}
         """,
         title="Game Summary",
         border_style="green",
         expand=False,
-        height=8,
     )
     return summary
 
@@ -101,7 +113,6 @@ def market_summary(df: pd.DataFrame) -> Panel:
         title="Market Summary",
         border_style="green",
         expand=False,
-        height=8,
     )
     return summary
 
