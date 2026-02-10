@@ -6,6 +6,7 @@ import json, csv
 import pandas as pd
 import matplotlib.pyplot as plt
 from rich.console import Console
+from rich.table import Table
 from rich.panel import Panel
 
 console = Console()
@@ -28,25 +29,33 @@ def create_csv():
     with open("data/steam_purchase_history.csv", "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
 
-        writer.writerow(["name", "date", "type", "total"])
+        writer.writerow(["name", "date", "type", "desc", "total"])
         "name, date, type, total"
 
-        total_missing = 0
         for entry in data:
             games = entry.get("games", [])
             date = entry.get("date")
-            total = entry.get("total")
+            total = entry.get("total", 0)
             entry_type = entry.get("type")
 
             if len(games) == 1:
-                writer.writerow([games[0], date, entry_type, total])
+                writer.writerow([games[0], date, entry_type, "", total])
+            elif entry_type == "In-Game Purchase":
+                writer.writerow([games[0], date, entry_type, games[1], total])
             else:
+                first = True
                 for game in games:
-                    writer.writerow([game, date, entry_type, "?"])
-                    total_missing += 1
-
-        if total_missing:
-            print(f"Total values missing: {total_missing}")
+                    grouped_total = total if first else 0
+                    first = False
+                    writer.writerow(
+                        [
+                            game,
+                            date,
+                            entry_type,
+                            "grouped purchase",
+                            grouped_total,
+                        ]
+                    )
 
 
 def game_summary(df: pd.DataFrame) -> Panel:
@@ -148,6 +157,31 @@ def show_tables(df: pd.DataFrame):
     # plt.show()
 
 
+def in_game_purchases(df: pd.DataFrame):
+    # ensure numeric
+    df["total"] = pd.to_numeric(df["total"], errors="coerce")
+    in_game = df[df["type"] == "In-Game Purchase"]
+    sums = in_game.groupby("name", as_index=False)["total"].sum().values.tolist()
+    sorted_sums = sorted(sums, key=lambda entry: entry[1], reverse=True)
+
+    TABLE_TITLE = "In-Game Purchase Totals"
+    table = Table(
+        title=TABLE_TITLE,
+        show_lines=True,
+        title_style="bold",
+        style="green3",
+    )
+    table.add_column("Name", justify="left")
+    table.add_column("Total", justify="right")
+
+    for name, total in sorted_sums:
+        if name == "Uninitialized":
+            continue
+        row = [name, f"${total:.2f}"]
+        table.add_row(*row)
+    console.print(table, new_line_start=True)
+
+
 def purchase_history_stats():
     file = "D:/Dropbox/Coding/Projects/Python/Game Library Tracker/data/steam_purchase_history.csv"
     df = pd.read_csv(file, na_values="?")
@@ -173,7 +207,9 @@ def purchase_history_stats():
     for entry in stats:
         console.print(entry)
 
+    in_game_purchases(df)
+
 
 if __name__ == "__main__":
-    # create_csv()
+    create_csv()
     purchase_history_stats()
