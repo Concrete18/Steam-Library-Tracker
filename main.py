@@ -947,6 +947,7 @@ class Tracker:
             added_time = convert_time_passed(hours=hours_played)
             self.steam.update_cell(str(app_id), self.last_play_time_col, added_time)
             self.steam.update_cell(str(app_id), self.time_played_col, time_played)
+            self.steam.update_cell(str(app_id), self.time_played_col, time_played)
             self.set_date_updated(app_id)
             self.set_play_status(app_id, new_status, cur_status)
             self.steam.format_row(str(app_id))
