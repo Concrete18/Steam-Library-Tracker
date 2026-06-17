@@ -26,6 +26,7 @@ from library.utils.api_throttler import ApiThrottler
 from library.action_picker import advanced_picker, action_picker
 from library.date_updater import *
 from library.utils.utils import *
+from library.utils.progress import create_progress_bar
 from library.logger import Logger
 from library.utils.internet import Internet
 
@@ -365,31 +366,36 @@ class Tracker:
         if not update_type:
             update_type = "Some"
         desc = f"Syncing {update_type} Game Data"
-        for app_id in track(app_ids, description=desc):
-            game_row = self.steam.get_row(app_id)
-            if game_row.get(self.store_link_col) == "Delisted":
-                continue
-            # get new data from the internet
-            app_details = get_app_details(app_id)
-            if not app_details:  # makes no changes of app data was not acquired
-                continue
-            if app_details.get("store") == "delisted":
-                self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
-                continue
-            game = get_game_info(app_details, self.steam_key)
-            game_data = self.get_game_column_dict(game)
-            # update data
-            for column, data in game_data.items():
-                if not data:
+        progress_bar = create_progress_bar(desc)
+        with progress_bar as p:
+            for app_id in p.track(app_ids):
+                game_row = self.steam.get_row(app_id)
+                if game_row.get(self.store_link_col) == "Delisted":
                     continue
-                self.steam.update_cell(str(app_id), column, data)
-            # saves data
-            if self.save_to_file:
-                save_every_nth()
-            # title progress percentage
-            cur_itr += 1
-            progress = cur_itr / len(app_ids) * 100
-            set_title(f"{progress:.1f}% - {self.APP_TITLE}")
+                # get new data from the internet
+                app_details = get_app_details(app_id)
+                if not app_details:  # makes no changes of app data was not acquired
+                    continue
+                if app_details.get("store") == "delisted":
+                    self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
+                    continue
+                game = get_game_info(app_details, self.steam_key)
+                game_data = self.get_game_column_dict(game)
+                # update data
+                for column, data in game_data.items():
+                    if not data:
+                        continue
+                    self.steam.update_cell(str(app_id), column, data)
+                # saves data
+                if self.save_to_file:
+                    save_every_nth()
+                # title progress percentage
+                cur_itr += 1
+                progress = cur_itr / len(app_ids) * 100
+                set_title(f"{progress:.1f}% - {self.APP_TITLE}")
+                # wait a bit to prevent issues with Steam API
+                if cur_itr % 25 == 0:
+                    time.sleep(20)
         self.excel.save(use_print=False)
         set_title(self.APP_TITLE)
 
@@ -784,68 +790,71 @@ class Tracker:
         desc = f"Syncing [bold]{total_games:,}[/bold] Steam Games"
         installed_app_ids = get_installed_app_ids(self.library_path)
         local_config = get_local_config_data(self.local_config_path)
-        for game in track(steam_games, description=desc):
-            game_name, app_id = game["name"], game["appid"]
-            # sets last played using localconfig.vdf
-            last_played, _ = get_game_local_data(app_id, local_config)
-            if isinstance(last_played, int):
-                last_played = dt.datetime.fromtimestamp(last_played)
-            else:
-                last_played = "-"
-            # ignore check
-            if self.game_skipper.skip_game(game_name, app_id):
-                continue
-            # name change check
-            cur_game_data = self.steam.get_row(app_id)
-            old_name = cur_game_data[self.name_col]
-            new_name = game_name
-            if old_name and old_name != new_name:
-                msg = f'Name Change: "{old_name}" to "{new_name}"'
-                self.main_log.info(msg)
-                name_changes.append(
-                    {
-                        "new_name": new_name,
-                        "old_name": old_name,
-                        "app_id": app_id,
-                    }
-                )
-            # sets play time earlier so it only needs to be set up once
-            minutes_played = game.get("playtime_forever", 0)
-            time_played = convert_time_passed(minutes=minutes_played)
-            linux_minutes_played = game.get("playtime_linux_forever", 0)
-            # play status
-            cur_status = cur_game_data[self.play_status_col]
-            new_status = self.decide_play_status(cur_status, minutes_played)
-            installed = app_id in installed_app_ids
-            # updates or adds game
-            if app_id in sheet_games:
-                sheet_games.remove(app_id)
-                update_info = self.update_steam_game(
-                    app_id=app_id,
-                    game_name=game_name,
-                    minutes_played=minutes_played,
-                    linux_minutes_played=linux_minutes_played,
-                    new_status=new_status,
-                    cur_status=cur_status,
-                    time_played=time_played,
-                    last_played=last_played,
-                    installed=installed,
-                )
-                if update_info:
-                    played_games.append(update_info)
-            else:
-                added_info = self.add_steam_game(
-                    app_id=app_id,
-                    game_name=game_name,
-                    minutes_played=minutes_played,
-                    linux_minutes_played=linux_minutes_played,
-                    time_played=time_played,
-                    last_played=last_played,
-                    play_status=new_status,
-                    get_internet_info=len(added_games) <= 10,
-                    installed=installed,
-                )
-                added_games.append(added_info)
+
+        progress_bar = create_progress_bar(desc)
+        with progress_bar as p:
+            for game in p.track(steam_games):
+                game_name, app_id = game["name"], game["appid"]
+                # sets last played using localconfig.vdf
+                last_played, _ = get_game_local_data(app_id, local_config)
+                if isinstance(last_played, int):
+                    last_played = dt.datetime.fromtimestamp(last_played)
+                else:
+                    last_played = "-"
+                # ignore check
+                if self.game_skipper.skip_game(game_name, app_id):
+                    continue
+                # name change check
+                cur_game_data = self.steam.get_row(app_id)
+                old_name = cur_game_data[self.name_col]
+                new_name = game_name
+                if old_name and old_name != new_name:
+                    msg = f'Name Change: "{old_name}" to "{new_name}"'
+                    self.main_log.info(msg)
+                    name_changes.append(
+                        {
+                            "new_name": new_name,
+                            "old_name": old_name,
+                            "app_id": app_id,
+                        }
+                    )
+                # sets play time earlier so it only needs to be set up once
+                minutes_played = game.get("playtime_forever", 0)
+                time_played = convert_time_passed(minutes=minutes_played)
+                linux_minutes_played = game.get("playtime_linux_forever", 0)
+                # play status
+                cur_status = cur_game_data[self.play_status_col]
+                new_status = self.decide_play_status(cur_status, minutes_played)
+                installed = app_id in installed_app_ids
+                # updates or adds game
+                if app_id in sheet_games:
+                    sheet_games.remove(app_id)
+                    update_info = self.update_steam_game(
+                        app_id=app_id,
+                        game_name=game_name,
+                        minutes_played=minutes_played,
+                        linux_minutes_played=linux_minutes_played,
+                        new_status=new_status,
+                        cur_status=cur_status,
+                        time_played=time_played,
+                        last_played=last_played,
+                        installed=installed,
+                    )
+                    if update_info:
+                        played_games.append(update_info)
+                else:
+                    added_info = self.add_steam_game(
+                        app_id=app_id,
+                        game_name=game_name,
+                        minutes_played=minutes_played,
+                        linux_minutes_played=linux_minutes_played,
+                        time_played=time_played,
+                        last_played=last_played,
+                        play_status=new_status,
+                        get_internet_info=len(added_games) <= 10,
+                        installed=installed,
+                    )
+                    added_games.append(added_info)
         # prints the total games updated and added
         if 0 < len(played_games) < 50:
             self.output_played_games_info(played_games)
