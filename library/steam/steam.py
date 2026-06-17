@@ -173,18 +173,22 @@ def get_recently_played_steam_games(
 
 
 @retry()
-def get_app_list() -> list[dict]:
+def get_app_list(steam_key: str, max_results: int | None = None) -> list[dict]:
     """
     Gets the full Steam app list as a dict.
     """
-    base_url = "https://api.steampowered.com/"
-    endpoint = "ISteamApps/GetAppList/v0002/"
-    url = base_url + endpoint
-    query = {"l": "english"}
+    url = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
+    query = {
+        "key": steam_key,
+        "last_appid": 0,
+    }
+    if max_results:
+        query["max_results"] = max_results
     response = requests.get(url, query)
     if response.ok:
         data = response.json()
-        return data.get("applist", {}).get("apps", None)
+        app_list = data.get("response", {}).get("apps", None)
+        return app_list
     return []
 
 

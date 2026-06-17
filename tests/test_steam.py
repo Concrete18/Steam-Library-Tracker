@@ -252,7 +252,7 @@ class TestGetAppList:
     def mock_response(self, mocker):
         mock_response = mocker.Mock()
         mock_response.json.return_value = {
-            "applist": {
+            "response": {
                 "apps": [
                     {
                         "appid": 123456,
@@ -270,8 +270,9 @@ class TestGetAppList:
 
     def test_success(self, mock_response, mocker):
         mocker.patch("requests.get", return_value=mock_response)
-
-        app_list = get_app_list()
+        STEAM_KEY, _ = get_steam_key_and_id()
+        app_list = get_app_list(STEAM_KEY)
+        print(app_list)
         assert isinstance(app_list[0]["appid"], int)
         assert isinstance(app_list[0]["name"], str)
 
