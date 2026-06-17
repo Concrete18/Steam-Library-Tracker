@@ -425,7 +425,7 @@ class Tracker:
         with Progress(transient=True) as progress:
             progress.add_task("Checking Workshop Size", total=None)
 
-            app_list = get_app_list()
+            app_list = get_app_list(self.steam_key)
             entry_list = workshop_size(self.workshop_path, app_list)
 
             table_title = f"Game Workshop Sizes"
@@ -1233,7 +1233,7 @@ class Tracker:
             progress.add_task("Updating Added Dates", total=None)
 
             purchase_data = load_purchase_data()
-            app_list = get_app_list()
+            app_list = get_app_list(self.steam_key)
             games_data = create_game_data(purchase_data, app_list)
 
             dates_to_update = get_dates_to_update(
@@ -1300,7 +1300,7 @@ class Tracker:
         """
         Created to fix steam ID's in case they get messed up.
         """
-        app_list = get_app_list()
+        app_list = get_app_list(self.steam_key)
         for app_id in self.steam.row_idx:
             name = self.steam.get_cell(app_id, self.name_col)
             if not isinstance(name, str):
