@@ -173,23 +173,39 @@ def get_recently_played_steam_games(
 
 
 @retry()
-def get_app_list(steam_key: str, max_results: int | None = None) -> list[dict]:
+def get_app_list(
+    steam_key: str,
+    max_results: int | None = None,
+) -> list[dict]:
     """
     Gets the full Steam app list as a dict.
     """
     url = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
-    query = {
-        "key": steam_key,
-        "last_appid": 0,
-    }
-    if max_results:
-        query["max_results"] = max_results
-    response = requests.get(url, query)
-    if response.ok:
-        data = response.json()
-        app_list = data.get("response", {}).get("apps", None)
-        return app_list
-    return []
+    app_list = []
+    last_appid = 0
+    incomplete = True
+    while incomplete:
+        query = {
+            "key": steam_key,
+            "last_appid": last_appid,
+            "include_dlc": 0,
+            "include_software": 0,
+            "include_hardware": 0,
+        }
+        if max_results:
+            query["max_results"] = max_results
+        response = requests.get(url, query)
+        if response.ok:
+            data = response.json()
+            app_list_portion = data.get("response", {}).get("apps", None)
+            last_appid = data.get("response", {}).get("last_appid", None)
+            have_more_results = data.get("response", {}).get("have_more_results", None)
+            app_list = app_list + app_list_portion
+            if have_more_results:
+                time.sleep(1)
+            else:
+                incomplete = False
+    return app_list
 
 
 def get_app_id(game: str, app_list: list[dict]) -> int | None:
