@@ -70,34 +70,30 @@ def get_steam_id(vanity_url, steam_key):
 
 
 @retry()
-def get_steam_friends(steam_key: str, steam_id: int) -> dict:
+def get_steam_friends(steam_key: str, steam_id: int) -> list:
     """
     Gets a users Steam friends list.
     """
-    main_url = "https://api.steampowered.com/"
-    api_action = "ISteamUser/GetFriendList/v0001/"
-    url = main_url + api_action
+    url = "https://api.steampowered.com/"
+    endpoint = "ISteamUser/GetFriendList/v0001/"
     params = {
         "key": steam_key,
         "steamid": steam_id,
         "relationship": "all",
     }
     try:
-        response = requests.get(url, params)
+        response = requests.get(url + endpoint, params)
         if response.ok:
             data = response.json()
-            if "friendslist" in data and "friends" in data["friendslist"]:
-                return data["friendslist"]["friends"]
-            else:
-                return {}
+            return data.get("friendslist", {}).get("friends", {})
         else:
-            return {}
+            return []
     except requests.RequestException as e:
         msg = f"Error occurred: {e}"
         if "Test error" in str(e):
-            return {}
+            return []
         error_log.warning(msg)
-    return {}
+    return []
 
 
 def get_friends_list_changes(

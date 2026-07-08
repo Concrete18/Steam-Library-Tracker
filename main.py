@@ -30,7 +30,6 @@ from library.utils.progress import create_progress_bar
 from library.logger import Logger
 from library.utils.internet import Internet
 
-
 # my package imports
 from easierexcel import Excel, Sheet
 
@@ -209,7 +208,7 @@ class Tracker:
         else:
             self.console.print("\nFailed to backed Up Excel File", style="warning")
 
-    def sync_friends_list(self, check_freq_days: int = 7) -> None:
+    def sync_friends_list(self, check_freq_days: int = 1) -> None:
         """
         Checks for changes to your friends list.
         Shows a table of new and removed friends Steam ID's and usernames.
@@ -225,6 +224,7 @@ class Tracker:
         print("\nStarting Steam Friends Sync")
         prev_friend_ids = self.config_data["friend_ids"]
         friend_data = get_steam_friends(self.steam_key, self.steam_id)
+        print(friend_data)
         if not friend_data:
             print("No Friends data found.")
             return

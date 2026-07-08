@@ -221,7 +221,7 @@ class TestGetSteamFriends:
         mocker.patch("requests.get", side_effect=test_exception)
 
         result = get_steam_friends(self.STEAM_KEY, 123456)
-        assert result == {}
+        assert result == []
 
 
 class TestGetFriendsListChanges:
