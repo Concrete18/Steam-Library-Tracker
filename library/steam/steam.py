@@ -14,54 +14,24 @@ error_log = Log.create_log(name="base_error", log_path="logs/error.log")
 
 throttler = ApiThrottler()
 
+STEAM_API_BASE = "https://api.steampowered.com/"
+
 
 @retry()
 def get_steam_username(steam_id: int, steam_key: str) -> str | None:
     """
     Gets a username based on the given `steam_id`.
     """
-    main_url = "https://api.steampowered.com/"
-    api_action = "ISteamUser/GetPlayerSummaries/v0002/"
-    url = main_url + api_action
+    endpoint = "ISteamUser/GetPlayerSummaries/v0002/"
+    url = STEAM_API_BASE + endpoint
     params = {"key": steam_key, "steamids": steam_id}
     try:
         response = requests.get(url, params)
-        if response.ok:
-            data = response.json()
-            if (
-                "response" in data
-                and "players" in data["response"]
-                and "personaname" in data["response"]["players"][0]
-            ):
-                return data["response"]["players"][0]["personaname"]
-            else:
-                return None
-        else:
-            return None
-    except requests.RequestException as e:
-        msg = f"Error occurred: {e}"
-        if "Test error" in str(e):
-            return None
-        error_log.warning(msg)
+        response.raise_for_status()
 
-
-@retry()
-def get_steam_id(vanity_url, steam_key):
-    """
-    Gets a users Steam ID via their `vanity_url` or `vanity_username`.
-    """
-    url = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/"
-    query = {"key": steam_key, "vanityurl": vanity_url}
-    try:
-        response = requests.get(url, query)
-        if response.ok:
-            data = response.json()
-            if "response" in data and "steamid" in data["response"]:
-                return int(data["response"]["steamid"])
-            else:
-                return None
-        else:
-            return None
+        players = response.json().get("response", {}).get("players")
+        username = players[0].get("personaname", None)
+        return username
     except requests.RequestException as e:
         msg = f"Error occurred: {e}"
         if "Test error" in str(e):
@@ -74,20 +44,16 @@ def get_steam_friends(steam_key: str, steam_id: int) -> list:
     """
     Gets a users Steam friends list.
     """
-    url = "https://api.steampowered.com/"
-    endpoint = "ISteamUser/GetFriendList/v0001/"
+    url = STEAM_API_BASE + "ISteamUser/GetFriendList/v0001/"
     params = {
         "key": steam_key,
         "steamid": steam_id,
         "relationship": "all",
     }
     try:
-        response = requests.get(url + endpoint, params)
-        if response.ok:
-            data = response.json()
-            return data.get("friendslist", {}).get("friends", {})
-        else:
-            return []
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json().get("friendslist", {}).get("friends", [])
     except requests.RequestException as e:
         msg = f"Error occurred: {e}"
         if "Test error" in str(e):
@@ -128,17 +94,15 @@ def get_owned_steam_games(steam_key: str, steam_id: int) -> list:
     headers = {"User-Agent": "GameLibraryTracker/1.0"}
     response = requests.get(url, params, headers=headers)
     response.raise_for_status()
-    if response.ok:
-        data = response.json()
-        if "response" in data and "games" in data["response"]:
-            return data["response"]["games"]
-    return []
+    return response.json().get("response", {}).get("games", [])
 
 
 @retry()
 def get_recently_played_steam_games(
-    steam_key: str, steam_id: int, game_count: int = 10
-):
+    steam_key: str,
+    steam_id: int,
+    game_count: int = 10,
+) -> list:
     """
     Gets the games owned by the given `steam_id`.
     """
@@ -153,19 +117,12 @@ def get_recently_played_steam_games(
     }
     try:
         response = requests.get(url, params)
-        if response.ok:
-            data = response.json()
-            if "response" in data and "games" in data["response"]:
-                return data["response"]["games"]
-            else:
-                return None
-        else:
-            return None
+        response.raise_for_status()
+        return response.json().get("response", {}).get("games", [])
     except requests.RequestException as e:
         msg = f"Error occurred: {e}"
-        if "Test error" in str(e):
-            return None
         error_log.warning(msg)
+        return []
 
 
 @retry()
@@ -176,7 +133,8 @@ def get_app_list(
     """
     Gets the full Steam app list as a dict.
     """
-    url = "https://api.steampowered.com/IStoreService/GetAppList/v1/"
+    endpoint = "IStoreService/GetAppList/v1/"
+    url = STEAM_API_BASE + endpoint
     app_list = []
     last_appid = 0
     incomplete = True

@@ -102,7 +102,7 @@ class TestGetRecentlyPlayedGames:
         mocker.patch("requests.get", side_effect=test_exception)
 
         result = get_recently_played_steam_games(self.STEAM_KEY, 123456, game_count=1)
-        assert result is None
+        assert result == []
 
 
 class TestGetSteamUsername:
@@ -139,37 +139,6 @@ class TestGetSteamUsername:
 
         result = get_steam_username(123456, self.STEAM_KEY)
         assert result is None
-
-
-class TestGetSteamID:
-
-    @pytest.fixture
-    def mock_response(self, mocker):
-        # Create a mock response object
-        mock_response = mocker.Mock()
-        # Set the JSON data for the response
-        mock_response.json.return_value = {
-            "response": {"steamid": "1231654654", "success": 1}
-        }
-        # Set the status code and whether the request was successful
-        mock_response.ok = True
-        return mock_response
-
-    STEAM_KEY, STEAM_ID = get_steam_key_and_id()
-
-    def test_success(self, mock_response, mocker):
-        mocker.patch("requests.get", return_value=mock_response)
-
-        STEAM_ID = get_steam_id("gabelogannewell", self.STEAM_KEY)
-        assert STEAM_ID == 1231654654
-
-    def test_request_error(self, mocker):
-        STEAM_ID = get_steam_id("", self.STEAM_KEY)
-
-        test_exception = requests.RequestException("Test error")
-        mocker.patch("requests.get", side_effect=test_exception)
-
-        assert STEAM_ID is None
 
 
 class TestGetSteamFriends:
