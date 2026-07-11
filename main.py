@@ -224,7 +224,6 @@ class Tracker:
         print("\nStarting Steam Friends Sync")
         prev_friend_ids = self.config_data["friend_ids"]
         friend_data = get_steam_friends(self.steam_key, self.steam_id)
-        print(friend_data)
         if not friend_data:
             print("No Friends data found.")
             return
@@ -1210,7 +1209,6 @@ class Tracker:
             app_ids = self.get_recent_app_ids(
                 df, self.app_id_col, self.last_played_col, 30
             )
-            sys.exit()
         elif selected_action == options[1]:
             update_type = "All"
             app_ids = self.steam.row_idx.keys()
