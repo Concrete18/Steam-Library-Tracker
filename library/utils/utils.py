@@ -379,3 +379,18 @@ def recently_executed(data: dict, name: str, n_days: int):
         if sec_since < check_freq_seconds:
             return True
     return False
+
+
+def dt_to_str(datetime: dt.datetime | str | None, long=False) -> str:
+    """
+    Converts `datetime` to string with a specific format.
+    """
+    if isinstance(datetime, str):
+        return datetime
+    if not isinstance(datetime, dt.datetime):
+        return ""
+    if long:
+        format = "%a %b %d, %Y"
+    else:
+        format = "%B %d, %Y"
+    return datetime.strftime(format).replace(" 0", " ")
