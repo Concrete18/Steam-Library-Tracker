@@ -43,6 +43,7 @@ class GameSkipper:
             "bonus content",
             "trial edition",
             "technical test",
+            "technicaltest",
             "closed test",
             "open test",
             "public test",
