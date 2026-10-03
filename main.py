@@ -23,6 +23,7 @@ from library.game import *
 from library.random_game import RandomGame
 from library.game_skipper import GameSkipper
 from library.utils.api_throttler import ApiThrottler
+from library.obsidian.integration import sync_recent_games_to_obsidian
 from library.action_picker import advanced_picker, action_picker
 from library.date_updater import *
 from library.utils.utils import *
@@ -284,7 +285,7 @@ class Tracker:
         self.update_game_data(self.dataframe)
         self.sync_friends_list()
         # TODO uncomment when ready
-        # sync_to_obsidian(self.dataframe)
+        # sync_recent_games_to_obsidian(self.dataframe, self.last_played_col)
 
     def create_save_every_nth(self, save_on_nth: int = 20):
         counter = 0
@@ -313,29 +314,6 @@ class Tracker:
         """
         cur_date = dt.datetime.now()
         return self.steam.update_cell(str(app_id), self.date_updated_col, cur_date)
-
-    def find_recent_games(
-        self,
-        df: pd.DataFrame,
-        column: str,
-        n_days: int = 7,
-    ) -> list[dict]:
-        """
-        Finds recent games by dates in `column` within `n_days`.
-        """
-        if column not in df.columns:
-            return []
-        # convert to datetimes and coerce bad values to NaT
-        col = pd.to_datetime(df[column], errors="coerce")
-        # handle timezone-aware columns: make 'now' match the column's tz if present
-        tz = col.dt.tz
-        now = pd.Timestamp.now(tz=tz) if tz is not None else pd.Timestamp.now()
-        start = now - pd.Timedelta(days=n_days)
-        end = now + pd.Timedelta(days=n_days)
-        # between handles comparisons vectorized and avoids Series - datetime typing issues
-        mask = col.between(start, end)
-        filtered_df = df.loc[mask].sort_values(by=self.last_played_col, ascending=False)
-        return filtered_df.to_dict(orient="records")
 
     def get_game_column_dict(self, game: Game) -> dict:
         """
@@ -456,7 +434,7 @@ class Tracker:
         """
         Gets the app_ids of the recently played games via a dataframe.
         """
-        recently_played = self.find_recent_games(df, last_played_col, n_days)
+        recently_played = find_recent_games(df, last_played_col, n_days)
         recently_app_ids = [int(game[app_id_col]) for game in recently_played]
         return recently_app_ids
 
@@ -572,7 +550,7 @@ class Tracker:
         """
         Creates a table with the recently played Games.
         """
-        recently_played_games = self.find_recent_games(df, self.last_played_col, n_days)
+        recently_played_games = find_recent_games(df, self.last_played_col, n_days)
         # creates table
         table_title = f"Recently Played Games\nWithin {n_days} Days"
         table = Table(
@@ -1037,10 +1015,11 @@ class Tracker:
         )
         Picker.random_game_picker()
 
-    def get_favorite_games(self, min_rating: int = 8) -> list[tuple[Game, int]]:
+    def get_favorite_games(self, min_rating: int = 8) -> list[Game]:
         """
         gets favorite games from excel file as a list of dicts
         """
+        # TODO switch to using get_app_price_overviews_bulk if possible
         games = []
         desc = "Finding Favorite Games"
         for app_id in track(self.steam.row_idx.keys(), description=desc):
@@ -1053,10 +1032,11 @@ class Tracker:
                 game = get_game_info(app_details, self.steam_key)
                 if not game.on_sale:
                     continue
-                games.append((game, rating))
+                games.append(game)
+        # get_app_price_overviews_bulk()
         return games
 
-    def update_sales_sheet(self, games: list[tuple[Game, int]]) -> None:
+    def update_sales_sheet(self, games: list[Game]) -> None:
         """
         Updates the sales sheet with each games info from `games`.
         """
@@ -1066,7 +1046,7 @@ class Tracker:
             self.sales.delete_row(game)
         # add game rows
         cur_date = dt.datetime.now()
-        for game, rating in games:
+        for game in games:
             # deletes previous row for game if it exists
             if game.name in self.sales.row_idx.keys():
                 self.sales.delete_row(game.name)
@@ -1077,7 +1057,7 @@ class Tracker:
                 self.name_col: game.name,
                 self.discount_col: game.discount * 0.01,
                 self.price_col: game.price,
-                self.my_rating_col: rating,
+                self.my_rating_col: game.my_rating or "-",
                 self.steam_rev_per_col: game.review_percent,
                 self.steam_rev_total_col: game.review_total,
                 self.dev_col: game.developer,

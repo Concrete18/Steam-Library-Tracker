@@ -18,6 +18,7 @@ throttler = ApiThrottler()
 class Game:
     app_id: int = 0
     name: str = ""
+    my_rating: int = 0
     developer: str = ""
     publisher: str = ""
     review_percent: float = 0.0

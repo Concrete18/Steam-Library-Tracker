@@ -8,6 +8,7 @@ from typing import Callable
 # third-party imports
 from requests.exceptions import RequestException
 import requests
+import pandas as pd
 from pick import pick
 
 
@@ -365,6 +366,29 @@ def update_last_run(data: dict, config_path: str, name: str):  # pragma: no cove
     """
     data["last_runs"][name] = time.time()
     save_json(data, config_path)
+
+
+def find_recent_games(
+    df: pd.DataFrame,
+    column: str,
+    n_days: int = 7,
+) -> list[dict]:
+    """
+    Finds recent games by dates in `column` within `n_days`.
+    """
+    if column not in df.columns:
+        return []
+    # convert to datetimes and coerce bad values to NaT
+    col = pd.to_datetime(df[column], errors="coerce")
+    # handle timezone-aware columns: make 'now' match the column's tz if present
+    tz = col.dt.tz
+    now = pd.Timestamp.now(tz=tz) if tz is not None else pd.Timestamp.now()
+    start = now - pd.Timedelta(days=n_days)
+    end = now + pd.Timedelta(days=n_days)
+    # between handles comparisons vectorized and avoids Series - datetime typing issues
+    mask = col.between(start, end)
+    filtered_df = df.loc[mask].sort_values(by=column, ascending=False)
+    return filtered_df.to_dict(orient="records")
 
 
 def recently_executed(data: dict, name: str, n_days: int):
