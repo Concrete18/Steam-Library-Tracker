@@ -126,6 +126,29 @@ def get_recently_played_steam_games(
 
 
 @retry()
+def get_app_price_overviews_bulk(app_ids: list[int]) -> dict:
+    """
+    Gets app details.
+    """
+    url = f"https://store.steampowered.com/api/appdetails"
+    throttler.wait_if("steam_app_details", wait=1)
+    app_ids_str = ",".join(str(app_ids))
+    app_ids_str = "292030,3669870"
+    print(app_ids_str)
+    params = {
+        "appids": app_ids_str,
+        "filters": "price_overview",
+        "cc": "us",
+        "l": "english",
+    }
+    response = requests.get(url, params=params)
+    response.raise_for_status()
+    data = response.json()
+    print(data)
+    return {}
+
+
+@retry()
 def get_app_list(
     steam_key: str,
     max_results: int | None = None,
