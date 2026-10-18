@@ -356,7 +356,7 @@ class Tracker:
                 if app_details.get("store") == "delisted":
                     self.steam.update_cell(str(app_id), self.store_link_col, "Delisted")
                     continue
-                game = get_game_info(app_details, self.steam_key)
+                game = get_game_info(app_details)
                 game_data = self.get_game_column_dict(game)
                 # update data
                 for column, data in game_data.items():
@@ -975,7 +975,7 @@ class Tracker:
             self.hours_played_col: hours_played,
             self.linux_hours_col: get_hours_played(linux_minutes_played),
             self.time_played_col: time_played,
-            self.last_played_col: last_played,
+            self.last_played_col: last_played or cur_date,
             self.installed_col: "Yes" if installed else "No",
             self.date_added_col: cur_date,
             self.date_updated_col: cur_date,
@@ -984,7 +984,7 @@ class Tracker:
         if get_internet_info:
             app_details = get_app_details(app_id)
             if app_details:
-                game = get_game_info(app_details, self.steam_key)
+                game = get_game_info(app_details)
                 extra_data = self.get_game_column_dict(game)
         game_data = {**base_data, **extra_data}
 

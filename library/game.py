@@ -123,11 +123,11 @@ def get_app_details(app_id: int) -> dict:
     return {}
 
 
-def get_game_info(app_details: dict, steam_key: str) -> Game:
+def get_game_info(app_details: dict) -> Game:
     """
     Creates a Game object with `app_id`, `game_name` and data from `app_details`.
     """
-    if not app_details or not steam_key:
+    if not app_details:
         return Game()
     app_id = app_details.get("steam_appid", 0)
     game_name = app_details.get("name", "")

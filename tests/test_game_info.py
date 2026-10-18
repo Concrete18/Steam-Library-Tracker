@@ -194,9 +194,7 @@ class TestGetGameInfo:
         )
         mocker.patch(func, return_value=store_data)
 
-        api_key, _ = get_steam_key_and_id()
-
-        game = get_game_info(app_details, api_key)
+        game = get_game_info(app_details)
         assert isinstance(game, Game)
         # attribute check
         assert game.app_id == app_id
@@ -221,9 +219,8 @@ class TestGetGameInfo:
         ]
 
     def test_not_enough_data(self):
-        api_key, _ = get_steam_key_and_id()
         app_details = {}
-        game = get_game_info(app_details, api_key)
+        game = get_game_info(app_details)
         assert not game
 
     def test_missing_args(self):
