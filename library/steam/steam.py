@@ -1,4 +1,5 @@
 # standard library
+from itertools import zip_longest
 import os
 
 # third-party imports
@@ -8,6 +9,7 @@ import requests, vdf
 from library.utils.utils import *
 from library.logger import Logger
 from library.utils.api_throttler import ApiThrottler
+from library.utils.progress import create_progress_bar
 
 Log = Logger()
 error_log = Log.create_log(name="base_error", log_path="logs/error.log")
@@ -125,27 +127,67 @@ def get_recently_played_steam_games(
         return []
 
 
+@staticmethod
+def get_price(price_data: dict) -> float | None:
+    """
+    Returns the games current price.
+    """
+    if not price_data:
+        return None
+    # gets main price
+    main_price = None
+    price_output = price_data.get("final", None)
+    if price_output:
+        main_price = price_output * 0.01
+        return round(main_price, 2)
+    else:
+        return None
+
+
+@staticmethod
+def get_discount(price_data: dict) -> float | None:
+    """
+    Returns the games current discount from the `price_data`.
+    """
+    if not price_data:
+        return None
+    discount_int = price_data.get("discount_percent")
+    if isinstance(discount_int, int):
+        return float(discount_int / 100) if discount_int else None
+    return None
+
+
 @retry()
 def get_app_price_overviews_bulk(app_ids: list[int]) -> dict:
     """
     Gets app details.
     """
-    url = f"https://store.steampowered.com/api/appdetails"
-    throttler.wait_if("steam_app_details", wait=1)
-    app_ids_str = ",".join(str(app_ids))
-    app_ids_str = "292030,3669870"
-    print(app_ids_str)
-    params = {
-        "appids": app_ids_str,
-        "filters": "price_overview",
-        "cc": "us",
-        "l": "english",
-    }
-    response = requests.get(url, params=params)
-    response.raise_for_status()
-    data = response.json()
-    print(data)
-    return {}
+    print("")
+    desc = f"Updating Game Prices"
+    progress_bar = create_progress_bar(desc)
+    with progress_bar as p:
+        CHUNK_SIZE = 150
+        app_id_chunks = [
+            list(filter(None, group))
+            for group in zip_longest(*[iter(app_ids)] * CHUNK_SIZE)
+        ]
+        data = {}
+        for app_ids_chunk in p.track(app_id_chunks):
+            app_ids_str = ",".join([str(app_id) for app_id in app_ids_chunk])
+            url = f"https://store.steampowered.com/api/appdetails"
+            throttler.wait_if("steam_app_details", wait=1)
+            params = {
+                "appids": app_ids_str,
+                "filters": "price_overview",
+                "cc": "us",
+                "l": "english",
+            }
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            new_data = response.json()
+            if isinstance(new_data, dict):
+                data = data | response.json()
+    return data
 
 
 @retry()

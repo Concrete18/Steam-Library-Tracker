@@ -9,8 +9,7 @@ from difflib import SequenceMatcher
 from pick import pick
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import IntPrompt
-from rich.progress import track, Progress
+from rich.progress import Progress
 from rich.table import Table
 from rich.theme import Theme
 from unidecode import unidecode
@@ -23,7 +22,6 @@ from library.game import *
 from library.random_game import RandomGame
 from library.game_skipper import GameSkipper
 from library.utils.api_throttler import ApiThrottler
-from library.obsidian.integration import sync_recent_games_to_obsidian
 from library.action_picker import advanced_picker, action_picker
 from library.date_updater import *
 from library.utils.utils import *
@@ -1015,92 +1013,23 @@ class Tracker:
         )
         Picker.random_game_picker()
 
-    def get_favorite_games(self, min_rating: int = 8) -> list[Game]:
+    def update_prices(self):
         """
-        gets favorite games from excel file as a list of dicts
+        ph
         """
-        # TODO switch to using get_app_price_overviews_bulk if possible
-        games = []
-        desc = "Finding Favorite Games"
-        for app_id in track(self.steam.row_idx.keys(), description=desc):
-            game_row = self.steam.get_row(app_id)
-            rating = game_row[self.my_rating_col]
-            if rating is None:
+        app_ids = [int(app_id) for app_id in self.steam.row_idx.keys()]
+        price_overviews = get_app_price_overviews_bulk(app_ids)
+        for app_id in price_overviews:
+            data = price_overviews.get(app_id, {}).get("data", {})
+            if not isinstance(data, dict):
                 continue
-            if rating >= min_rating and app_id:
-                app_details = get_app_details(app_id)
-                game = get_game_info(app_details, self.steam_key)
-                if not game.on_sale:
-                    continue
-                games.append(game)
-        # get_app_price_overviews_bulk()
-        return games
-
-    def update_sales_sheet(self, games: list[Game]) -> None:
-        """
-        Updates the sales sheet with each games info from `games`.
-        """
-        # delete old game sales
-        cur_rows = list(self.sales.row_idx.keys())
-        for game in cur_rows:
-            self.sales.delete_row(game)
-        # add game rows
-        cur_date = dt.datetime.now()
-        for game in games:
-            # deletes previous row for game if it exists
-            if game.name in self.sales.row_idx.keys():
-                self.sales.delete_row(game.name)
-            # adds new game row
-            game_row = {
-                self.date_updated_col: cur_date,
-                self.app_id_col: game.app_id,
-                self.name_col: game.name,
-                self.discount_col: game.discount * 0.01,
-                self.price_col: game.price,
-                self.my_rating_col: game.my_rating or "-",
-                self.steam_rev_per_col: game.review_percent,
-                self.steam_rev_total_col: game.review_total,
-                self.dev_col: game.developer,
-                self.pub_col: game.publisher,
-                self.user_tags_col: game.tags_str,
-                self.release_col: game.release_year,
-                self.genre_col: game.genre_str,
-                self.ea_col: game.early_access_str,
-                self.store_link_col: create_hyperlink(game.store_link, "Store"),
-            }
-            self.sales.add_new_line(game_row)
-        # formats all cells and saves
-        self.sales.format_all_cells()
-        if self.save_to_file:
-            self.excel.save(use_print=False, backup=False)
-
-    def sync_favorite_games_sales(self):
-        """
-        Gets sale information for games that are at a minimun rating or higher.
-        Rating is set up using an IntPrompt.ask after running.
-        """
-        if not self.internet.online:
-            print("Favorite Game Sales can't be checked without Internet")
-            return
-        self.load_excel_file()
-        # sets minimum rating to and defaults to 8 if response is blank or invalid
-        min_rating = IntPrompt.ask(
-            "\nWhat is the minimum rating for this search? (1-10)",
-            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
-            default=8,
-            show_choices=False,
-            show_default=True,
-        )
-        print(f"Minimum Rating set to {min_rating}\n")
-        # get new game sales
-        games = self.get_favorite_games(min_rating)
-        if not games:
-            print(f"No games rated at or above {min_rating} with sales")
-            return
-        total_sales = len(games)
-        # prints info
-        print(f"\nFound {total_sales} Matching Game Sales")
-        self.update_sales_sheet(games)
+            price_overview = data.get("price_overview", {})
+            price = get_price(price_overview)
+            discount = get_discount(price_overview)
+            self.steam.update_cell(str(app_id), self.price_col, price)
+            self.steam.update_cell(str(app_id), self.discount_col, discount)
+            self.steam.format_row(str(app_id)) # TODO make sure formatting works
+        self.excel.save(use_print=False, backup=False)
 
     def search_games(
         self, search_query: str, exact: bool = False, min_match: float = 0.6
@@ -1236,7 +1165,7 @@ class Tracker:
             return
         if self.excel.changes_made:
             self.excel.save(use_print=False)
-        os.system("cls")
+        os.system("cls")  # TODO replace this with new version
         self.load_excel_file()
         self.main()
 
@@ -1254,7 +1183,7 @@ class Tracker:
             ("Resync", self.resync_all),
             ("Open in Excel", self.excel.open_excel),
             ("Random Game Explorer", self.start_random_game_picker),
-            ("Favorite Games Sales Sync", self.sync_favorite_games_sales),
+            ("Update Prices", self.update_prices),
             ("Game Data Sync", game_data_sync),
             ("Statistics Display", stat_display),
             ("Workshop Storage Check", self.check_workshop_size),
