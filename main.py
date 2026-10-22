@@ -176,12 +176,6 @@ class Tracker:
             column_name="App ID",
             options=self.excel_options,
         )
-        self.sales = Sheet(
-            excel_object=self.excel,
-            sheet_name="Sales",
-            column_name="Name",
-            options=self.excel_options,
-        )
 
     def update_steam_id(self):
         """
